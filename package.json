@@ -1,0 +1,50 @@
+{
+  "name": "schizzo-studio",
+  "version": "1.0.0",
+  "description": "SCHIZZO STUDIO — free digital drawing & pixel art app",
+  "main": "dist-electron/main.js",
+  "author": "SCHIZZO STUDIO",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev:vite": "vite",
+    "build:electron": "tsc -p electron/tsconfig.json && node -e \"require('fs').copyFileSync('electron/package.json','dist-electron/package.json')\"",
+    "dev:electron": "wait-on tcp:5173 && npm run build:electron && electron .",
+    "dev": "concurrently -k -n vite,electron -c blue,green \"npm run dev:vite\" \"npm run dev:electron\"",
+    "build": "npm run build:electron && vite build",
+    "start": "npm run build && electron .",
+    "package": "npm run build && electron-builder",
+    "publish": "npm run build && electron-builder",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "jszip": "^3.10.1",
+    "konva": "^9.3.6",
+    "lucide-react": "^0.400.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-hot-toast": "^2.4.1",
+    "react-konva": "^18.2.10",
+    "three": "^0.166.1",
+    "uuid": "^9.0.1",
+    "zustand": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.9",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@types/three": "^0.166.0",
+    "@types/uuid": "^9.0.8",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.19",
+    "concurrently": "^10.0.5",
+    "electron": "^31.0.2",
+    "electron-builder": "^24.13.3",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.4",
+    "typescript": "^5.5.2",
+    "vite": "^5.3.1",
+    "wait-on": "^9.1.0"
+  }
+}

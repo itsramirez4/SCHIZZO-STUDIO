@@ -1,0 +1,12 @@
+{
+  "presets": [
+    { "id": "brush-round", "name": "Redondo", "type": "preset", "size": 20, "hardness": 0.8, "opacity": 1, "spacing": 0.05, "scatter": 0, "angleJitter": 0, "sizeJitter": 0 },
+    { "id": "brush-soft", "name": "Suave", "type": "preset", "size": 25, "hardness": 0.3, "opacity": 0.8, "spacing": 0.1, "scatter": 0.1, "angleJitter": 0, "sizeJitter": 0 },
+    { "id": "brush-ink", "name": "Tinta", "type": "preset", "size": 15, "hardness": 1, "opacity": 1, "spacing": 0.02, "scatter": 0, "angleJitter": 0, "sizeJitter": 0 },
+    { "id": "brush-chalk", "name": "Tiza", "type": "preset", "size": 30, "hardness": 0.4, "opacity": 0.7, "spacing": 0.15, "scatter": 0.3, "angleJitter": 0, "sizeJitter": 0 },
+    { "id": "brush-spray", "name": "Spray", "type": "preset", "size": 40, "hardness": 0.2, "opacity": 0.6, "spacing": 0.2, "scatter": 0.6, "angleJitter": 0, "sizeJitter": 0 },
+    { "id": "brush-marker", "name": "Marcador", "type": "preset", "size": 18, "hardness": 0.9, "opacity": 1, "spacing": 0.08, "scatter": 0.05, "angleJitter": 0, "sizeJitter": 0 },
+    { "id": "brush-watercolor", "name": "Acuarela", "type": "preset", "size": 35, "hardness": 0.2, "opacity": 0.5, "spacing": 0.25, "scatter": 0.4, "angleJitter": 0, "sizeJitter": 0 },
+    { "id": "brush-pencil", "name": "Lápiz", "type": "preset", "size": 10, "hardness": 0.95, "opacity": 0.9, "spacing": 0.02, "scatter": 0.02, "angleJitter": 0, "sizeJitter": 0 }
+  ]
+}

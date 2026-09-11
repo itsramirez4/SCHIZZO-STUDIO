@@ -1,0 +1,27 @@
+export const MAX_HISTORY_STATES = 50;
+
+export const DEFAULT_CANVAS_WIDTH = 1920;
+export const DEFAULT_CANVAS_HEIGHT = 1080;
+export const DEFAULT_DPI = 72;
+
+export const BLEND_MODES: { label: string; value: GlobalCompositeOperation }[] = [
+  { label: 'Normal', value: 'source-over' },
+  { label: 'Multiplicar', value: 'multiply' },
+  { label: 'Pantalla', value: 'screen' },
+  { label: 'Superponer', value: 'overlay' },
+  { label: 'Oscurecer', value: 'darken' },
+  { label: 'Aclarar', value: 'lighten' },
+  { label: 'Diferencia', value: 'difference' },
+  { label: 'Exclusión', value: 'exclusion' },
+  { label: 'Luz fuerte', value: 'hard-light' },
+  { label: 'Luz suave', value: 'soft-light' },
+  { label: 'Subexponer color', value: 'color-dodge' },
+  { label: 'Sobreexponer color', value: 'color-burn' },
+  { label: 'Tono', value: 'hue' },
+  { label: 'Saturación', value: 'saturation' },
+  { label: 'Color', value: 'color' },
+  { label: 'Luminosidad', value: 'luminosity' },
+];
+
+export const ZOOM_MIN = 0.05;
+export const ZOOM_MAX = 32;
