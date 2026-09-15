@@ -35,6 +35,25 @@ export function registerExportHandlers(getWindow: () => BrowserWindow | null) {
     return { canceled: false, filePath: result.filePath };
   });
 
+  ipcMain.handle('export:batch', async (_e, files: { name: string; dataUrl: string }[], folderName: string) => {
+    const win = getWindow();
+    const result = await dialog.showOpenDialog(win!, {
+      title: 'Elegir carpeta de destino',
+      properties: ['openDirectory', 'createDirectory'],
+    });
+    if (result.canceled || result.filePaths.length === 0) return { canceled: true };
+
+    // Same reasoning as export:png-sequence: land in their own subfolder rather than loose
+    // in whatever directory was picked.
+    const dir = path.join(result.filePaths[0], folderName);
+    fs.mkdirSync(dir, { recursive: true });
+    files.forEach((f) => {
+      const base64 = f.dataUrl.replace(/^data:[^;]+;base64,/, '');
+      fs.writeFileSync(path.join(dir, f.name), Buffer.from(base64, 'base64'));
+    });
+    return { canceled: false, folderPath: dir };
+  });
+
   ipcMain.handle('export:png-sequence', async (_e, frames: string[], defaultName: string) => {
     const win = getWindow();
     const result = await dialog.showOpenDialog(win!, {

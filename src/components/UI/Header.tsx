@@ -1,10 +1,11 @@
-import { FilePlus, FolderOpen, Save, Download, Undo2, Redo2, ImagePlus, Boxes, View, Scaling, PackageOpen, LayoutGrid } from 'lucide-react';
+import { FilePlus, FolderOpen, Save, Download, Undo2, Redo2, ImagePlus, Boxes, View, Scaling, Crop, PackageOpen, LayoutGrid, History as HistoryIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useProject } from '@/hooks/useProject';
 import { useHistory } from '@/hooks/useHistory';
 import { useUIStore } from '@/store/uiStore';
 import { useAppStore } from '@/store/appStore';
 import { useWorkspaceStore } from '@/store/workspaceStore';
+import { useAutoSaveStore } from '@/store/autoSaveStore';
 import { importImagesAsLayers } from '@/services/importImage';
 import { importKraAsLayer } from '@/services/kraImport.service';
 
@@ -17,9 +18,11 @@ export default function Header() {
   const toggleReference3DPanel = useUIStore((s) => s.toggleReference3DPanel);
   const showReference3DPanel = useUIStore((s) => s.showReference3DPanel);
   const openResizeDialog = useUIStore((s) => s.openResizeDialog);
+  const trimToContent = useAppStore((s) => s.trimToContent);
   const pushHistory = useAppStore((s) => s.pushHistory);
   const addLayer = useAppStore((s) => s.addLayer);
   const setWorkspaceMode = useWorkspaceStore((s) => s.setMode);
+  const openAutoSaveDialog = useAutoSaveStore((s) => s.openDialog);
 
   async function handleImport() {
     const layerId = await importImagesAsLayers(addLayer);
@@ -36,6 +39,10 @@ export default function Header() {
     }
   }
 
+  function handleTrimToContent() {
+    if (!trimToContent()) toast('Nada que recortar — el lienzo ya está ajustado al contenido');
+  }
+
   return (
     <div className="h-11 bg-panel border-b border-border flex items-center px-2 gap-1">
       <span className="text-sm font-semibold px-2 text-accent">SCHIZZO STUDIO</span>
@@ -48,6 +55,9 @@ export default function Header() {
       </button>
       <button onClick={save} disabled={!project} title="Guardar (Ctrl+S)" className="icon-btn disabled:opacity-30">
         <Save size={16} />
+      </button>
+      <button onClick={openAutoSaveDialog} title="Copias de seguridad automáticas" className="icon-btn">
+        <HistoryIcon size={16} />
       </button>
       <button onClick={handleImport} disabled={!project} title="Importar imagen" className="icon-btn disabled:opacity-30">
         <ImagePlus size={16} />
@@ -68,6 +78,9 @@ export default function Header() {
       </button>
       <button onClick={openResizeDialog} disabled={!project} title="Redimensionar (inteligente)" className="icon-btn disabled:opacity-30">
         <Scaling size={16} />
+      </button>
+      <button onClick={handleTrimToContent} disabled={!project} title="Recortar al contenido" className="icon-btn disabled:opacity-30">
+        <Crop size={16} />
       </button>
       <button onClick={openExportDialog} disabled={!project} title="Exportar (Ctrl+E)" className="icon-btn disabled:opacity-30">
         <Download size={16} />

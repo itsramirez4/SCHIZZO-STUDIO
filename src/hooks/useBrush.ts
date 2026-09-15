@@ -8,5 +8,6 @@ export function useBrush() {
     updateCurrentBrush: useAppStore((s) => s.updateCurrentBrush),
     addBrushToLibrary: useAppStore((s) => s.addBrushToLibrary),
     removeBrushFromLibrary: useAppStore((s) => s.removeBrushFromLibrary),
+    updateBrushInLibrary: useAppStore((s) => s.updateBrushInLibrary),
   };
 }

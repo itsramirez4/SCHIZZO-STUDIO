@@ -7,7 +7,7 @@ import { RGBA, ColorBlindnessType } from '@/types/colorTools';
  * simulation (which needs a proper RGB→LMS→gamut-clip→RGB pipeline), but a solid, fast
  * approximation good enough for "does this palette still read for a colorblind viewer".
  */
-const MATRICES: Record<Exclude<ColorBlindnessType, 'monochromacy'>, number[][]> = {
+const MATRICES: Record<'protanopia' | 'deuteranopia' | 'tritanopia', number[][]> = {
   protanopia: [
     [0.567, 0.433, 0.0],
     [0.558, 0.442, 0.0],
@@ -33,6 +33,18 @@ function applyMatrix(r: number, g: number, b: number, m: number[][]): [number, n
   ];
 }
 
+/** "Anomaly" (weak) types aren't a separate matrix — they're the same dichromatic simulation
+ * as their base type (e.g. protanomaly ~ protanopia), blended back toward the original color.
+ * 0.6 is the same weight used by most simplified simulators for a "moderate" anomalous
+ * trichromacy, since a true severity-parameterized LMS model needs the full cone-response
+ * pipeline this module deliberately doesn't implement (see the module-level note above). */
+const ANOMALY_BASE: Record<'protanomaly' | 'deuteranomaly' | 'tritanomaly', 'protanopia' | 'deuteranopia' | 'tritanopia'> = {
+  protanomaly: 'protanopia',
+  deuteranomaly: 'deuteranopia',
+  tritanomaly: 'tritanopia',
+};
+const ANOMALY_SEVERITY = 0.6;
+
 export function simulateColor(color: RGBA, type: ColorBlindnessType): RGBA {
   const r = color.r / 255;
   const g = color.g / 255;
@@ -41,6 +53,16 @@ export function simulateColor(color: RGBA, type: ColorBlindnessType): RGBA {
   if (type === 'monochromacy') {
     const gray = Math.round((0.299 * r + 0.587 * g + 0.114 * b) * 255);
     return { r: gray, g: gray, b: gray, a: color.a };
+  }
+
+  if (type === 'protanomaly' || type === 'deuteranomaly' || type === 'tritanomaly') {
+    const dichromatic = simulateColor(color, ANOMALY_BASE[type]);
+    return {
+      r: Math.round(color.r * (1 - ANOMALY_SEVERITY) + dichromatic.r * ANOMALY_SEVERITY),
+      g: Math.round(color.g * (1 - ANOMALY_SEVERITY) + dichromatic.g * ANOMALY_SEVERITY),
+      b: Math.round(color.b * (1 - ANOMALY_SEVERITY) + dichromatic.b * ANOMALY_SEVERITY),
+      a: color.a,
+    };
   }
 
   const [rr, rg, rb] = applyMatrix(r, g, b, MATRICES[type]);

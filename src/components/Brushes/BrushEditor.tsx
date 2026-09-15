@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useUIStore } from '@/store/uiStore';
 import { useBrush } from '@/hooks/useBrush';
 import { useTools } from '@/hooks/useTools';
 import { createBrush } from '@/services/brush.service';
 import { isElectron } from '@/utils/fileUtils';
-import { Brush } from '@/types';
+import { Brush, BrushDynamics } from '@/types';
 import BrushPreview from './BrushPreview';
 
 const SLIDERS: { key: keyof Brush; label: string; min: number; max: number; pct?: boolean }[] = [
@@ -24,6 +24,7 @@ export default function BrushEditor() {
   const { currentBrush, updateCurrentBrush, addBrushToLibrary, setCurrentBrush } = useBrush();
   const { primaryColor } = useTools();
   const [name, setName] = useState(currentBrush.name);
+  const textureInputRef = useRef<HTMLInputElement>(null);
 
   if (!show) return null;
 
@@ -34,6 +35,27 @@ export default function BrushEditor() {
 
   function setValue(key: keyof Brush, raw: number, pct?: boolean) {
     updateCurrentBrush({ [key]: pct ? raw / 100 : raw } as Partial<Brush>);
+  }
+
+  function setDynamic(key: keyof BrushDynamics, value: boolean) {
+    const dynamics: BrushDynamics = {
+      sizeToPressure: false,
+      opacityToPressure: false,
+      angleToDirection: false,
+      ...currentBrush.dynamics,
+      [key]: value,
+    };
+    updateCurrentBrush({ dynamics });
+  }
+
+  function handleTextureFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // lets picking the exact same file again still fire onChange
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => updateCurrentBrush({ texture: reader.result as string });
+    reader.onerror = () => toast.error('No se pudo leer la imagen');
+    reader.readAsDataURL(file);
   }
 
   function saveAsNew() {
@@ -108,6 +130,46 @@ export default function BrushEditor() {
               />
             </div>
           ))}
+        </div>
+
+        <div className="mt-3 space-y-1.5">
+          <div className="text-xs text-textDim">Sensibilidad a la presión (tableta gráfica)</div>
+          <label className="flex items-center gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={currentBrush.dynamics?.sizeToPressure ?? false}
+              onChange={(e) => setDynamic('sizeToPressure', e.target.checked)}
+            />
+            Tamaño según presión
+          </label>
+          <label className="flex items-center gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={currentBrush.dynamics?.opacityToPressure ?? false}
+              onChange={(e) => setDynamic('opacityToPressure', e.target.checked)}
+            />
+            Opacidad según presión
+          </label>
+          <p className="text-[10px] text-textDim">Con mouse o un lápiz sin sensor de presión, el efecto queda parejo (no varía).</p>
+        </div>
+
+        <div className="mt-3 space-y-1.5">
+          <div className="text-xs text-textDim">Textura del pincel</div>
+          <input ref={textureInputRef} type="file" accept="image/*" className="hidden" onChange={handleTextureFile} />
+          <div className="flex items-center gap-2">
+            {currentBrush.texture && (
+              <img src={currentBrush.texture} alt="" className="w-8 h-8 object-cover rounded border border-border bg-panelLight" />
+            )}
+            <button onClick={() => textureInputRef.current?.click()} className="flex-1 bg-panelLight text-xs rounded py-1.5">
+              {currentBrush.texture ? 'Cambiar imagen' : 'Cargar imagen…'}
+            </button>
+            {currentBrush.texture && (
+              <button onClick={() => updateCurrentBrush({ texture: undefined })} className="text-xs text-textDim hover:text-text px-2">
+                Quitar
+              </button>
+            )}
+          </div>
+          <p className="text-[10px] text-textDim">Lo claro de la imagen pinta más opaco y lo oscuro menos — como un papel, tiza o estampa real, teñida con el color actual.</p>
         </div>
 
         <div className="flex gap-2 mt-4">

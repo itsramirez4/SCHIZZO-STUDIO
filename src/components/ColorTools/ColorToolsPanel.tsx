@@ -1,18 +1,27 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import ColorBlindnessSimulator from './ColorBlindnessSimulator';
 import HarmonyGenerator from './HarmonyGenerator';
 import PaletteExtractor from './PaletteExtractor';
 import ColorSpaceConverter from './ColorSpaceConverter';
 import AccessibilityChecker from './AccessibilityChecker';
+import PrintWorkspace from './PrintWorkspace';
+import ColorNamePanel from './ColorNamePanel';
+import MoodPaletteGenerator from './MoodPaletteGenerator';
+import PaletteLibraryPanel from './PaletteLibraryPanel';
+import { useAssetLibraryStore } from '@/store/assetLibraryStore';
 
-type Tab = 'blindness' | 'harmony' | 'extraction' | 'converter' | 'accessibility';
+type Tab = 'blindness' | 'harmony' | 'extraction' | 'converter' | 'accessibility' | 'print' | 'naming' | 'mood' | 'library';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'blindness', label: 'Daltonismo' },
   { id: 'harmony', label: 'Armonía' },
   { id: 'extraction', label: 'Paleta' },
+  { id: 'mood', label: 'Generador' },
+  { id: 'naming', label: 'Nombres' },
+  { id: 'library', label: 'Biblioteca' },
   { id: 'converter', label: 'Espacios' },
   { id: 'accessibility', label: 'Accesibilidad' },
+  { id: 'print', label: 'Imprenta' },
 ];
 
 /**
@@ -24,6 +33,11 @@ const TABS: { id: Tab; label: string }[] = [
  */
 export default function ColorToolsPanel() {
   const [tab, setTab] = useState<Tab>('blindness');
+  const loadLibrary = useAssetLibraryStore((s) => s.loadLibrary);
+
+  useEffect(() => {
+    loadLibrary();
+  }, [loadLibrary]);
 
   return (
     <div className="flex flex-col h-full">
@@ -44,8 +58,12 @@ export default function ColorToolsPanel() {
         {tab === 'blindness' && <ColorBlindnessSimulator />}
         {tab === 'harmony' && <HarmonyGenerator />}
         {tab === 'extraction' && <PaletteExtractor />}
+        {tab === 'mood' && <MoodPaletteGenerator />}
+        {tab === 'naming' && <ColorNamePanel />}
+        {tab === 'library' && <PaletteLibraryPanel />}
         {tab === 'converter' && <ColorSpaceConverter />}
         {tab === 'accessibility' && <AccessibilityChecker />}
+        {tab === 'print' && <PrintWorkspace />}
       </div>
     </div>
   );

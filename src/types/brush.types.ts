@@ -18,4 +18,12 @@ export interface Brush {
   texture?: string;
   dynamics?: BrushDynamics;
   color?: string;
+  /** 0 (no lag, default/backward-compatible) to 1 (heavy lag) — the actual stamped point
+   * trails the real pointer position, smoothing out a shaky freehand line. Optional so
+   * existing saved brushes/presets without it just behave as 0, unchanged. */
+  smoothing?: number;
+
+  // Asset Library metadata (optional so existing presets/exported .brush files stay valid).
+  tags?: string[];
+  favorite?: boolean;
 }

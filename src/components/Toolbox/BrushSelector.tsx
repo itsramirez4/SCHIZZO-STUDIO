@@ -9,7 +9,7 @@ export default function BrushSelector() {
     <div className="p-2 border-t border-border">
       <div className="flex items-center justify-between mb-1">
         <span className="text-xs text-textDim">Pinceles</span>
-        <button onClick={openBrushEditor} className="text-xs text-accent hover:underline">
+        <button onClick={openBrushEditor} title="Editar pincel" className="text-xs text-accent hover:underline">
           Editar
         </button>
       </div>

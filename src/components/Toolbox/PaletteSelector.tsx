@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { colorPalettes } from '@/data/colorPalettes';
 import { useTools } from '@/hooks/useTools';
+import { useRecentColorsStore } from '@/store/recentColorsStore';
 
 export default function PaletteSelector() {
   const { setPrimaryColor } = useTools();
+  const addRecentColor = useRecentColorsStore((s) => s.addColor);
   const [activeId, setActiveId] = useState(colorPalettes[0].id);
   const active = colorPalettes.find((p) => p.id === activeId)!;
 
@@ -25,7 +27,10 @@ export default function PaletteSelector() {
         {active.colors.map((hex) => (
           <button
             key={hex}
-            onClick={() => setPrimaryColor(hex)}
+            onClick={() => {
+              setPrimaryColor(hex);
+              addRecentColor(hex);
+            }}
             title={hex}
             style={{ background: hex }}
             className="aspect-square rounded border border-border hover:scale-110 hover:z-10 transition-transform"

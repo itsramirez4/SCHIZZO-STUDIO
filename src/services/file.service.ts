@@ -17,7 +17,7 @@ function serializeLayers(layers: Layer[]): SerializedLayer[] {
   }));
 }
 
-function serializeProject(project: Project): SerializedProject {
+export function serializeProject(project: Project): SerializedProject {
   // The active frame's true state lives in `project.layers`, not the (possibly stale)
   // copy sitting in `animation.frames[currentFrameIndex]` — fold it back in before saving.
   const animation = project.animation
@@ -97,7 +97,7 @@ async function loadLayers(layers: SerializedLayer[]): Promise<Layer[]> {
   return layers.map(({ dataUrl, maskDataUrl, ...layer }) => layer);
 }
 
-async function deserializeProject(json: string, filePath?: string): Promise<Project> {
+export async function deserializeProject(json: string, filePath?: string): Promise<Project> {
   const data: SerializedProject = JSON.parse(json);
   const layers = await loadLayers(data.layers);
 

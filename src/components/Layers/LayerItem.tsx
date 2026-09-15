@@ -12,12 +12,17 @@ import {
   Folder,
   FolderOpen,
   Contrast,
+  Droplet,
   X,
   FlipHorizontal,
   FlipVertical,
   SlidersHorizontal,
   PaintBucket,
   Image as ImageIcon,
+  Sparkles,
+  Scissors,
+  Link2,
+  Grid2x2,
 } from 'lucide-react';
 import { Layer } from '@/types';
 import { BLEND_MODES } from '@/utils/constants';
@@ -27,6 +32,8 @@ import * as layerService from '@/services/layer.service';
 import { flipHorizontal, flipVertical } from '@/services/canvas.service';
 import AdjustmentEditor from './AdjustmentEditor';
 import FillEditor from './FillEditor';
+import LayerEffectsEditor from './LayerEffectsEditor';
+import { hasAnyEnabledEffect } from '@/services/layerEffects.service';
 
 interface Props {
   layer: Layer;
@@ -75,21 +82,40 @@ export default function LayerItem({
     deleteLayer,
   } = useLayers();
   const setLayerParent = useAppStore((s) => s.setLayerParent);
+  const setLayerAlphaLock = useAppStore((s) => s.setLayerAlphaLock);
   const pushHistory = useAppStore((s) => s.pushHistory);
+  const invertLayerColors = useAppStore((s) => s.invertLayerColors);
+  const desaturateLayerColors = useAppStore((s) => s.desaturateLayerColors);
+  const isolatedLayerId = useAppStore((s) => s.isolatedLayerId);
+  const toggleIsolateLayer = useAppStore((s) => s.toggleIsolateLayer);
   const addMaskToLayer = useAppStore((s) => s.addMaskToLayer);
   const removeMaskFromLayer = useAppStore((s) => s.removeMaskFromLayer);
+  const featherLayerMask = useAppStore((s) => s.featherLayerMask);
+  const invertLayerMask = useAppStore((s) => s.invertLayerMask);
   const maskEditLayerId = useAppStore((s) => s.maskEditLayerId);
   const setMaskEditLayerId = useAppStore((s) => s.setMaskEditLayerId);
+  const setLayerClipTo = useAppStore((s) => s.setLayerClipTo);
+  const createLinkedInstance = useAppStore((s) => s.createLinkedInstance);
+  const selectedLayerIds = useAppStore((s) => s.selectedLayerIds);
+  const toggleLayerSelection = useAppStore((s) => s.toggleLayerSelection);
   const [editingName, setEditingName] = useState(false);
   const [name, setName] = useState(layer.name);
+  const [showEffects, setShowEffects] = useState(false);
 
   const isGroup = layer.type === 'group';
   const isEditingMask = maskEditLayerId === layer.id;
   const otherGroups = groups.filter((g) => g.id !== layer.id);
+  const isMultiSelected = selectedLayerIds.includes(layer.id);
 
   return (
     <div
-      onClick={() => selectLayer(layer.id)}
+      onClick={(e) => {
+        if (e.shiftKey || e.ctrlKey || e.metaKey) {
+          toggleLayerSelection(layer.id, true);
+        } else {
+          selectLayer(layer.id);
+        }
+      }}
       draggable={!editingName}
       onDragStart={(e) => {
         e.dataTransfer.effectAllowed = 'move';
@@ -107,7 +133,9 @@ export default function LayerItem({
       }}
       onDragEnd={onDragEndRow}
       style={{ paddingLeft: 8 + depth * 14 }}
-      className={`p-2 pr-2 border-b cursor-move ${isDragOver ? 'border-accent bg-accent/10' : 'border-border'} ${isActive ? 'bg-panelLight' : 'hover:bg-panelLight/50'}`}
+      className={`p-2 pr-2 border-b cursor-move ${isDragOver ? 'border-accent bg-accent/10' : 'border-border'} ${
+        isMultiSelected ? 'bg-accent/20' : isActive ? 'bg-panelLight' : 'hover:bg-panelLight/50'
+      }`}
     >
       <div className="flex items-center gap-1">
         {isGroup ? (
@@ -127,9 +155,11 @@ export default function LayerItem({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            setLayerVisibility(layer.id, !layer.visible);
+            if (e.altKey) toggleIsolateLayer(layer.id);
+            else setLayerVisibility(layer.id, !layer.visible);
           }}
-          className="text-textDim hover:text-text"
+          title={isolatedLayerId === layer.id ? 'Aislada — Alt+clic para restaurar las demás' : 'Alt+clic para aislar (ver solo esta capa)'}
+          className={isolatedLayerId === layer.id ? 'text-accent' : 'text-textDim hover:text-text'}
         >
           {layer.visible ? <Eye size={14} /> : <EyeOff size={14} />}
         </button>
@@ -142,6 +172,18 @@ export default function LayerItem({
         >
           {layer.locked ? <Lock size={14} /> : <Unlock size={14} />}
         </button>
+        {layer.type === 'raster' && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setLayerAlphaLock(layer.id, !layer.lockAlpha);
+            }}
+            title={layer.lockAlpha ? 'Transparencia bloqueada — pintar solo sobre píxeles existentes' : 'Bloquear transparencia'}
+            className={`hover:text-text ${layer.lockAlpha ? 'text-accent' : 'text-textDim'}`}
+          >
+            <Grid2x2 size={13} />
+          </button>
+        )}
 
         {isGroup && (isExpanded ? <FolderOpen size={13} className="text-textDim" /> : <Folder size={13} className="text-textDim" />)}
         {layer.type === 'adjustment' && <SlidersHorizontal size={12} className="text-textDim shrink-0" />}
@@ -200,6 +242,43 @@ export default function LayerItem({
             className="text-textDim hover:text-red-400"
           >
             <X size={12} />
+          </button>
+        )}
+        {(layer.type === 'raster' || layer.type === 'fill') && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowEffects((v) => !v);
+              if (!isActive) selectLayer(layer.id);
+            }}
+            title="Efectos de capa"
+            className={`hover:text-text ${hasAnyEnabledEffect(layer.effects) ? 'text-accent' : 'text-textDim'}`}
+          >
+            <Sparkles size={13} />
+          </button>
+        )}
+        {!isGroup && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setLayerClipTo(layer.id, !layer.clipTo);
+            }}
+            title={layer.clipTo ? 'Quitar recorte a la capa de abajo' : 'Recortar a la capa de abajo'}
+            className={`hover:text-text ${layer.clipTo ? 'text-accent' : 'text-textDim'}`}
+          >
+            <Scissors size={13} />
+          </button>
+        )}
+        {layer.type === 'raster' && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              createLinkedInstance(layer.id);
+            }}
+            title="Crear instancia vinculada (comparte contenido, estilo independiente)"
+            className="text-textDim hover:text-text"
+          >
+            <Link2 size={13} />
           </button>
         )}
 
@@ -271,10 +350,43 @@ export default function LayerItem({
               >
                 <FlipVertical size={13} />
               </button>
+              <button
+                onClick={() => invertLayerColors(layer.id)}
+                title="Invertir colores (Ctrl+I) — destructivo; para un ajuste no destructivo, usá una capa de ajuste"
+                className="flex-1 flex items-center justify-center py-1 rounded bg-panel border border-border text-textDim hover:text-text"
+              >
+                <Contrast size={13} />
+              </button>
+              <button
+                onClick={() => desaturateLayerColors(layer.id)}
+                title="Desaturar (Ctrl+Shift+U) — destructivo; para un ajuste no destructivo, usá una capa de ajuste"
+                className="flex-1 flex items-center justify-center py-1 rounded bg-panel border border-border text-textDim hover:text-text"
+              >
+                <Droplet size={13} />
+              </button>
             </div>
           )}
           {layer.type === 'adjustment' && <AdjustmentEditor layer={layer} />}
           {layer.type === 'fill' && <FillEditor layer={layer} />}
+          {!isGroup && layer.hasMask && (
+            <div className="flex gap-1">
+              <button
+                onClick={() => featherLayerMask(layer.id, 4)}
+                title="Difuminar bordes de la máscara"
+                className="flex-1 text-[9px] py-1 rounded bg-panel border border-border text-textDim hover:text-text"
+              >
+                Difuminar máscara
+              </button>
+              <button
+                onClick={() => invertLayerMask(layer.id)}
+                title="Invertir la máscara"
+                className="flex-1 text-[9px] py-1 rounded bg-panel border border-border text-textDim hover:text-text"
+              >
+                Invertir máscara
+              </button>
+            </div>
+          )}
+          {showEffects && (layer.type === 'raster' || layer.type === 'fill') && <LayerEffectsEditor layer={layer} />}
           {!isGroup && otherGroups.length > 0 && (
             <select
               value={layer.parent ?? ''}

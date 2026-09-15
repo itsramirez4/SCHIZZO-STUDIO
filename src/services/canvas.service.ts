@@ -6,6 +6,28 @@ export function getPixel(ctx: CanvasRenderingContext2D, x: number, y: number): R
   return { r, g, b, a: a / 255 };
 }
 
+/**
+ * Like `getPixel`, but averages an NxN block centered on (x, y) instead of reading a single
+ * pixel — the eyedropper's "sample size" option, for picking a representative color out of
+ * textured or anti-aliased art where one exact pixel can be misleading. `sampleSize <= 1`
+ * degrades to the exact-pixel behavior. Reading past the canvas edge is well-defined (returns
+ * transparent black for the out-of-bounds portion), so no clamping is needed here.
+ */
+export function getPixelAveraged(ctx: CanvasRenderingContext2D, x: number, y: number, sampleSize: number): RGBA {
+  if (sampleSize <= 1) return getPixel(ctx, x, y);
+  const half = Math.floor(sampleSize / 2);
+  const { data } = ctx.getImageData(Math.round(x) - half, Math.round(y) - half, sampleSize, sampleSize);
+  let r = 0, g = 0, b = 0, a = 0;
+  const count = sampleSize * sampleSize;
+  for (let i = 0; i < data.length; i += 4) {
+    r += data[i];
+    g += data[i + 1];
+    b += data[i + 2];
+    a += data[i + 3];
+  }
+  return { r: Math.round(r / count), g: Math.round(g / count), b: Math.round(b / count), a: a / count / 255 };
+}
+
 export function setPixel(ctx: CanvasRenderingContext2D, x: number, y: number, color: RGBA) {
   const imageData = ctx.createImageData(1, 1);
   imageData.data.set([color.r, color.g, color.b, Math.round(color.a * 255)]);
@@ -52,14 +74,22 @@ function colorsMatch(data: Uint8ClampedArray, idx: number, target: RGBA, toleran
   return dr * dr + dg * dg + db * db + da * da <= tolerance * tolerance * 4;
 }
 
-/** Classic 4-way flood fill using a scanline-free stack approach. Confined to `bounds` when given. */
+/**
+ * Classic 4-way flood fill using a scanline-free stack approach. Confined to `bounds` when
+ * given. `lockAlpha` writes straight into the pixel array via putImageData, which bypasses
+ * globalCompositeOperation entirely (the same reason `ctx.filter` + putImageData is a no-op
+ * elsewhere in this codebase) — so "lock transparent pixels" has to be handled here directly:
+ * matched pixels that are already fully transparent are skipped, and matched pixels that DO
+ * get filled keep their own original alpha instead of taking the fill color's.
+ */
 export function floodFill(
   canvas: HTMLCanvasElement,
   startX: number,
   startY: number,
   fillColor: RGBA,
   tolerance = 32,
-  bounds?: SelectionRect
+  bounds?: SelectionRect,
+  lockAlpha = false
 ) {
   const ctx = canvas.getContext('2d')!;
   const { width, height } = canvas;
@@ -109,10 +139,12 @@ export function floodFill(
     if (!colorsMatch(data, idx, target, tolerance)) continue;
 
     visited[pos] = 1;
-    data[idx] = fillR;
-    data[idx + 1] = fillG;
-    data[idx + 2] = fillB;
-    data[idx + 3] = fillA;
+    if (!(lockAlpha && data[idx + 3] === 0)) {
+      data[idx] = fillR;
+      data[idx + 1] = fillG;
+      data[idx + 2] = fillB;
+      data[idx + 3] = lockAlpha ? data[idx + 3] : fillA;
+    }
 
     stack.push([x + 1, y]);
     stack.push([x - 1, y]);
@@ -135,6 +167,26 @@ export function withClip(ctx: CanvasRenderingContext2D, bounds: SelectionRect | 
   ctx.clip();
   fn();
   ctx.restore();
+}
+
+/**
+ * Runs `fn` (a color-adding paint operation) with the context set to Photoshop/Krita's
+ * "lock transparent pixels" behavior when `locked` is true: `source-atop` composites the
+ * new color only where the layer ALREADY has opaque pixels, and keeps the existing alpha
+ * exactly as it was — nothing paints into empty space, nothing becomes more opaque than it
+ * already was. Deliberately not used for the eraser (it only ever removes existing alpha,
+ * which the lock has no reason to prevent) or warp (it redistributes existing pixels rather
+ * than adding new color).
+ */
+export function withAlphaLock(ctx: CanvasRenderingContext2D, locked: boolean | undefined, fn: () => void) {
+  if (!locked) {
+    fn();
+    return;
+  }
+  const prevOp = ctx.globalCompositeOperation;
+  ctx.globalCompositeOperation = 'source-atop';
+  fn();
+  ctx.globalCompositeOperation = prevOp;
 }
 
 export function eraseStroke(

@@ -9,5 +9,6 @@ export function useTools() {
     setPrimaryColor: useAppStore((s) => s.setPrimaryColor),
     setSecondaryColor: useAppStore((s) => s.setSecondaryColor),
     swapColors: useAppStore((s) => s.swapColors),
+    resetColors: useAppStore((s) => s.resetColors),
   };
 }

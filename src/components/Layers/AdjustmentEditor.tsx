@@ -19,6 +19,14 @@ const SLIDERS: Record<string, SliderDef[]> = {
   ],
   posterize: [{ key: 'levels', label: 'Niveles', min: 2, max: 8 }],
   sepia: [{ key: 'intensity', label: 'Intensidad', min: 0, max: 100 }],
+  levels: [
+    { key: 'inputBlack', label: 'Entrada: negro', min: 0, max: 255 },
+    { key: 'inputWhite', label: 'Entrada: blanco', min: 0, max: 255 },
+    { key: 'gamma', label: 'Gamma', min: 10, max: 300 },
+    { key: 'outputBlack', label: 'Salida: negro', min: 0, max: 255 },
+    { key: 'outputWhite', label: 'Salida: blanco', min: 0, max: 255 },
+  ],
+  threshold: [{ key: 'level', label: 'Nivel', min: 0, max: 255 }],
   invert: [],
   desaturate: [],
 };

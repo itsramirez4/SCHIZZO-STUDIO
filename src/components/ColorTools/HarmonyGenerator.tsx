@@ -3,15 +3,25 @@ import { HarmonyType, HARMONY_LABELS } from '@/types/colorTools';
 import { generateHarmony } from '@/services/colorHarmony.service';
 import { hexToRgbaColor, rgbaColorToHex } from '@/services/colorSpace.service';
 import { useTools } from '@/hooks/useTools';
+import { useAssetLibraryStore } from '@/store/assetLibraryStore';
+import { createPalette } from '@/services/paletteLibrary.service';
 
 const TYPES = Object.keys(HARMONY_LABELS) as HarmonyType[];
 
 export default function HarmonyGenerator() {
   const { primaryColor, setPrimaryColor, setSecondaryColor } = useTools();
+  const addPalette = useAssetLibraryStore((s) => s.addPalette);
   const [type, setType] = useState<HarmonyType>('complementary');
+  const [saved, setSaved] = useState(false);
 
   const base = hexToRgbaColor(primaryColor);
   const harmony = generateHarmony(base, type);
+  const hexColors = harmony.map(rgbaColorToHex);
+
+  function saveToLibrary() {
+    addPalette(createPalette(`${HARMONY_LABELS[type]} (${primaryColor})`, hexColors));
+    setSaved(true);
+  }
 
   return (
     <div className="space-y-3">
@@ -23,7 +33,10 @@ export default function HarmonyGenerator() {
 
       <select
         value={type}
-        onChange={(e) => setType(e.target.value as HarmonyType)}
+        onChange={(e) => {
+          setType(e.target.value as HarmonyType);
+          setSaved(false);
+        }}
         className="w-full bg-panel border border-border rounded text-[11px] px-1.5 py-1"
       >
         {TYPES.map((t) => (
@@ -49,6 +62,11 @@ export default function HarmonyGenerator() {
           );
         })}
       </div>
+
+      <button onClick={saveToLibrary} className="w-full text-[11px] bg-panelLight rounded py-1.5">
+        Guardar en biblioteca
+      </button>
+      {saved && <p className="text-[9px] text-textDim">Guardada.</p>}
     </div>
   );
 }

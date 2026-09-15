@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Upload, RotateCcw, X, GripHorizontal } from 'lucide-react';
+import { Upload, RotateCcw, X, GripHorizontal, ChevronDown, ChevronUp } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
 import { Model3DViewerEngine } from '@/services/model3d.service';
 import { isElectron } from '@/utils/fileUtils';
+import LightingControls from './LightingControls';
+import PoseEditor from './PoseEditor';
 
 const PANEL_WIDTH = 300;
 const PANEL_HEIGHT = 260;
@@ -23,6 +25,8 @@ export default function Reference3DPanel() {
   const engineRef = useRef<Model3DViewerEngine | null>(null);
   const [loading, setLoading] = useState(false);
   const [modelName, setModelName] = useState<string | null>(null);
+  const [modelVersion, setModelVersion] = useState(0);
+  const [expanded, setExpanded] = useState(false);
 
   const [pos, setPos] = useState(() => ({
     x: Math.max(8, window.innerWidth - PANEL_WIDTH - 24),
@@ -51,8 +55,9 @@ export default function Reference3DPanel() {
     if (result.canceled || !result.dataUrl) return;
     setLoading(true);
     try {
-      await engineRef.current?.loadModel(result.dataUrl);
+      await engineRef.current?.loadModel(result.dataUrl, result.format as 'glb' | 'gltf' | 'obj' | undefined);
       setModelName(result.name ?? null);
+      setModelVersion((v) => v + 1);
     } catch (err) {
       toast.error('No se pudo cargar el modelo 3D');
       console.error(err);
@@ -114,7 +119,24 @@ export default function Reference3DPanel() {
         >
           <RotateCcw size={12} />
         </button>
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          title="Iluminación y pose"
+          className="bg-panelLight hover:bg-border text-textDim rounded px-2 py-1"
+        >
+          {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+        </button>
       </div>
+
+      {expanded && (
+        <div className="p-1.5 pt-0 space-y-2 max-h-64 overflow-y-auto border-t border-border">
+          <div className="pt-1.5">
+            <div className="text-[10px] text-textDim uppercase tracking-wide mb-1">Iluminación</div>
+            <LightingControls engine={engineRef.current} />
+          </div>
+          <PoseEditor engine={engineRef.current} modelVersion={modelVersion} />
+        </div>
+      )}
     </div>
   );
 }

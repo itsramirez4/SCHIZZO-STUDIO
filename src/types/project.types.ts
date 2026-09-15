@@ -1,7 +1,9 @@
 import { Layer } from './layer.types';
 import { Brush } from './brush.types';
+import { PerspectiveProjectData } from './perspective';
+import { LayerComp } from './layerEffects';
 
-export type ProjectType = 'drawing' | 'pixelart' | 'hybrid';
+export type ProjectType = 'drawing' | 'pixelart' | 'hybrid' | 'comic' | '3d';
 
 export interface ProjectSettings {
   gridVisible: boolean;
@@ -9,6 +11,9 @@ export interface ProjectSettings {
   snapToGrid: boolean;
   rulerVisible: boolean;
   transparentBg: boolean;
+  /** Solid canvas background color, used when `transparentBg` is false. Optional so projects
+   * saved before this setting existed still load fine, falling back to white. */
+  backgroundColor?: string;
 }
 
 export interface AnimationFrame {
@@ -44,6 +49,11 @@ export interface Project {
   settings: ProjectSettings;
   filePath?: string;
   animation?: ProjectAnimation;
+  /** Perspective grid, guides and symmetry setup — optional so older saved files (without this
+   * field) still load fine; consumers fall back to defaults when it's absent. */
+  perspective?: PerspectiveProjectData;
+  /** Named snapshots of per-layer visibility/opacity/blendMode/effects — "layer comps". */
+  layerComps?: LayerComp[];
 }
 
 export const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {
@@ -52,4 +62,5 @@ export const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {
   snapToGrid: false,
   rulerVisible: false,
   transparentBg: true,
+  backgroundColor: '#ffffff',
 };

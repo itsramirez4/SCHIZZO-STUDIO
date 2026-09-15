@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTools } from '@/hooks/useTools';
 import { hexToRgba, rgbaToHex, rgbaToHsv, hsvToRgba } from '@/utils/colorUtils';
+import { useRecentColorsStore } from '@/store/recentColorsStore';
 
 const SV_W = 168;
 const SV_H = 110;
@@ -8,11 +9,15 @@ const HUE_H = 12;
 
 export default function AdvancedColorPicker() {
   const { primaryColor, setPrimaryColor } = useTools();
+  const addRecentColor = useRecentColorsStore((s) => s.addColor);
   const svRef = useRef<HTMLCanvasElement>(null);
   const hueRef = useRef<HTMLCanvasElement>(null);
   const [hsv, setHsv] = useState(() => rgbaToHsv(hexToRgba(primaryColor)));
   const [hexInput, setHexInput] = useState(primaryColor);
   const draggingRef = useRef<'sv' | 'hue' | null>(null);
+  // commit() fires continuously while dragging the SV/hue canvases — only push to recent
+  // colors once, when the drag actually ends, using whatever it last settled on.
+  const lastCommittedHexRef = useRef(primaryColor);
 
   // Re-sync from external color changes (palette click, native swatch, swap) — but not
   // from our own drags, which already know the exact hsv they're producing.
@@ -73,6 +78,7 @@ export default function AdvancedColorPicker() {
     const hex = rgbaToHex(rgba);
     setPrimaryColor(hex);
     setHexInput(hex);
+    lastCommittedHexRef.current = hex;
   }
 
   function handleSvPointer(e: React.PointerEvent<HTMLCanvasElement>) {
@@ -101,6 +107,7 @@ export default function AdvancedColorPicker() {
   }
 
   function endDrag() {
+    if (draggingRef.current) addRecentColor(lastCommittedHexRef.current);
     draggingRef.current = null;
   }
 
@@ -110,11 +117,20 @@ export default function AdvancedColorPicker() {
       const hex = value.startsWith('#') ? value : `#${value}`;
       setPrimaryColor(hex);
       setHsv(rgbaToHsv(hexToRgba(hex)));
+      lastCommittedHexRef.current = hex;
+    }
+  }
+
+  // Typing fires commitHex on every keystroke — only worth remembering once the field
+  // loses focus (or Enter is pressed), not after every partial edit along the way.
+  function commitHexToRecent() {
+    if (/^#[0-9a-fA-F]{6}$/.test(lastCommittedHexRef.current)) {
+      addRecentColor(lastCommittedHexRef.current);
     }
   }
 
   return (
-    <div className="p-2 border-t border-border space-y-1.5">
+    <div className="p-2 border-t border-border space-y-1.5" title="Selector de color avanzado">
       <canvas
         ref={svRef}
         width={SV_W}
@@ -140,6 +156,8 @@ export default function AdvancedColorPicker() {
       <input
         value={hexInput}
         onChange={(e) => commitHex(e.target.value)}
+        onBlur={commitHexToRecent}
+        onKeyDown={(e) => e.key === 'Enter' && commitHexToRecent()}
         className="w-full bg-panel border border-border rounded text-[10px] px-1.5 py-1 text-center font-mono"
         maxLength={7}
       />

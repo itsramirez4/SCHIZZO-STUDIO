@@ -4,6 +4,14 @@ import { registerFileHandlers } from './handlers/fileHandler';
 import { registerBrushHandlers } from './handlers/brushHandler';
 import { registerExportHandlers } from './handlers/exportHandler';
 import { registerModel3DHandlers } from './handlers/model3dHandler';
+import { registerAssetLibraryHandlers } from './handlers/assetLibraryHandler';
+import { registerReferenceLibraryHandlers } from './handlers/referenceLibraryHandler';
+import { registerReferenceWindowHandlers } from './handlers/referenceWindowHandler';
+import { registerCloudSyncHandlers } from './handlers/cloudSyncHandler';
+import { registerCustomizationHandlers } from './handlers/customizationHandler';
+import { registerPerspectivePresetsHandlers } from './handlers/perspectivePresetsHandler';
+import { registerFilterPresetsHandlers } from './handlers/filterPresetsHandler';
+import { registerAutoSaveHandlers } from './handlers/autoSaveHandler';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -104,6 +112,14 @@ app.whenReady().then(() => {
   registerBrushHandlers(() => mainWindow);
   registerExportHandlers(() => mainWindow);
   registerModel3DHandlers(() => mainWindow);
+  registerAssetLibraryHandlers();
+  registerReferenceLibraryHandlers();
+  registerReferenceWindowHandlers(isDev);
+  registerCloudSyncHandlers();
+  registerCustomizationHandlers();
+  registerPerspectivePresetsHandlers();
+  registerFilterPresetsHandlers();
+  registerAutoSaveHandlers();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

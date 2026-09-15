@@ -2,7 +2,12 @@ import { dialog, ipcMain, BrowserWindow } from 'electron';
 import fs from 'fs';
 import path from 'path';
 
-const MODEL_FILTERS = [{ name: 'Modelos 3D', extensions: ['glb', 'gltf'] }];
+const MODEL_FILTERS = [{ name: 'Modelos 3D', extensions: ['glb', 'gltf', 'obj'] }];
+const MIME_BY_EXT: Record<string, string> = {
+  glb: 'model/gltf-binary',
+  gltf: 'model/gltf+json',
+  obj: 'model/obj',
+};
 
 export function registerModel3DHandlers(getWindow: () => BrowserWindow | null) {
   ipcMain.handle('model3d:import', async () => {
@@ -15,8 +20,8 @@ export function registerModel3DHandlers(getWindow: () => BrowserWindow | null) {
     if (result.canceled || result.filePaths.length === 0) return { canceled: true };
     const filePath = result.filePaths[0];
     const ext = path.extname(filePath).slice(1).toLowerCase();
-    const mime = ext === 'glb' ? 'model/gltf-binary' : 'model/gltf+json';
+    const mime = MIME_BY_EXT[ext] ?? 'application/octet-stream';
     const dataUrl = `data:${mime};base64,${fs.readFileSync(filePath).toString('base64')}`;
-    return { canceled: false, name: path.basename(filePath), dataUrl };
+    return { canceled: false, name: path.basename(filePath), dataUrl, format: ext };
   });
 }

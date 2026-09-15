@@ -7,6 +7,8 @@ import { useLayers } from '@/hooks/useLayers';
 import * as layerService from '@/services/layer.service';
 import { dataUrlToImage, createCanvas } from '@/utils/canvasUtils';
 import { isElectron, sanitizeFilename } from '@/utils/fileUtils';
+import { useAssetLibraryStore } from '@/store/assetLibraryStore';
+import { createPalette } from '@/services/paletteLibrary.service';
 
 type Method = 'kmeans' | 'dominant';
 type SortBy = 'hue' | 'lightness' | 'saturation';
@@ -18,10 +20,19 @@ export default function PaletteExtractor() {
   const [colorCount, setColorCount] = useState(6);
   const [sortBy, setSortBy] = useState<SortBy>('hue');
   const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const addPalette = useAssetLibraryStore((s) => s.addPalette);
+
+  function saveToLibrary() {
+    const hexColors = colors.map(rgbaColorToHex);
+    addPalette(createPalette(`Extraída (${method === 'kmeans' ? 'K-means' : 'Dominantes'})`, hexColors));
+    setSaved(true);
+  }
 
   function runExtraction(imageData: ImageData) {
     const raw = method === 'kmeans' ? extraction.extractKMeans(imageData, colorCount) : extraction.extractDominant(imageData, colorCount);
     setColors(extraction.sortColors(raw, sortBy));
+    setSaved(false);
   }
 
   function extractFromLayer() {
@@ -157,6 +168,11 @@ export default function PaletteExtractor() {
               Tailwind
             </button>
           </div>
+
+          <button onClick={saveToLibrary} className="w-full text-[11px] bg-panelLight rounded py-1.5">
+            Guardar en biblioteca
+          </button>
+          {saved && <p className="text-[9px] text-textDim">Guardada.</p>}
         </>
       )}
     </div>

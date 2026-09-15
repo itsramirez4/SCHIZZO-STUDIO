@@ -1,4 +1,4 @@
-import { dialog, ipcMain, BrowserWindow, app } from 'electron';
+import { dialog, ipcMain, BrowserWindow, app, clipboard, nativeImage } from 'electron';
 import fs from 'fs';
 import path from 'path';
 
@@ -94,6 +94,32 @@ export function registerFileHandlers(getWindow: () => BrowserWindow | null) {
       };
     });
     return { canceled: false, files };
+  });
+
+  ipcMain.handle('palette:import', async () => {
+    const win = getWindow();
+    const result = await dialog.showOpenDialog(win!, {
+      title: 'Importar paleta',
+      filters: [{ name: 'Paletas', extensions: ['gpl', 'hex', 'txt'] }],
+      properties: ['openFile'],
+    });
+    if (result.canceled || result.filePaths.length === 0) return { canceled: true };
+    const filePath = result.filePaths[0];
+    return { canceled: false, name: path.basename(filePath, path.extname(filePath)), content: fs.readFileSync(filePath, 'utf-8') };
+  });
+
+  // OS clipboard image bridge — lets Ctrl+V pick up a screenshot or image copied from outside
+  // the app (Electron's `clipboard` API, not the web `navigator.clipboard`, since it needs no
+  // permission prompt and works reliably in the renderer's sandboxed context). Writing back on
+  // copy keeps the app's own clipboard and the OS one in sync, the way every other app expects.
+  ipcMain.handle('clipboard:read-image', async () => {
+    const image = clipboard.readImage();
+    if (image.isEmpty()) return { empty: true };
+    return { empty: false, dataUrl: image.toDataURL() };
+  });
+
+  ipcMain.handle('clipboard:write-image', async (_e, dataUrl: string) => {
+    clipboard.writeImage(nativeImage.createFromDataURL(dataUrl));
   });
 
   ipcMain.handle('kra:import', async () => {

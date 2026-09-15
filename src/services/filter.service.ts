@@ -116,6 +116,126 @@ export function motionBlur(canvas: HTMLCanvasElement, distance: number, angleDeg
   ctx.putImageData(dst, 0, 0);
 }
 
+/** Spin blur: each pixel is averaged with samples at the same distance from `centerX/Y` but at
+ * slightly different angles — the classic "rotational" radial blur. */
+export function radialBlur(canvas: HTMLCanvasElement, centerX: number, centerY: number, amount: number) {
+  const ctx = canvas.getContext('2d')!;
+  const { width, height } = canvas;
+  const src = ctx.getImageData(0, 0, width, height);
+  const sd = src.data;
+  const out = ctx.createImageData(width, height);
+  const dd = out.data;
+  const samples = 12;
+  const maxAngle = (amount / 100) * 0.3; // radians of spin spread across the sample fan
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const dx = x - centerX;
+      const dy = y - centerY;
+      const dist = Math.hypot(dx, dy);
+      const baseAngle = Math.atan2(dy, dx);
+      let r_ = 0, g_ = 0, b_ = 0, a_ = 0;
+      for (let s = 0; s < samples; s++) {
+        const t = s / (samples - 1) - 0.5;
+        const angle = baseAngle + t * maxAngle;
+        const sx = Math.round(centerX + dist * Math.cos(angle));
+        const sy = Math.round(centerY + dist * Math.sin(angle));
+        const cx = Math.max(0, Math.min(width - 1, sx));
+        const cy = Math.max(0, Math.min(height - 1, sy));
+        const idx = (cy * width + cx) * 4;
+        r_ += sd[idx]; g_ += sd[idx + 1]; b_ += sd[idx + 2]; a_ += sd[idx + 3];
+      }
+      const outIdx = (y * width + x) * 4;
+      dd[outIdx] = r_ / samples;
+      dd[outIdx + 1] = g_ / samples;
+      dd[outIdx + 2] = b_ / samples;
+      dd[outIdx + 3] = a_ / samples;
+    }
+  }
+  ctx.putImageData(out, 0, 0);
+}
+
+/** Zoom blur: each pixel is averaged with samples stepped along the line from `centerX/Y`
+ * through it, at varying distances — the classic "zoom burst" look. */
+export function zoomBlur(canvas: HTMLCanvasElement, centerX: number, centerY: number, amount: number) {
+  const ctx = canvas.getContext('2d')!;
+  const { width, height } = canvas;
+  const src = ctx.getImageData(0, 0, width, height);
+  const sd = src.data;
+  const out = ctx.createImageData(width, height);
+  const dd = out.data;
+  const samples = 12;
+  const maxScale = amount / 100;
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const dx = x - centerX;
+      const dy = y - centerY;
+      let r_ = 0, g_ = 0, b_ = 0, a_ = 0;
+      for (let s = 0; s < samples; s++) {
+        const t = 1 - (s / (samples - 1)) * maxScale;
+        const sx = Math.round(centerX + dx * t);
+        const sy = Math.round(centerY + dy * t);
+        const cx = Math.max(0, Math.min(width - 1, sx));
+        const cy = Math.max(0, Math.min(height - 1, sy));
+        const idx = (cy * width + cx) * 4;
+        r_ += sd[idx]; g_ += sd[idx + 1]; b_ += sd[idx + 2]; a_ += sd[idx + 3];
+      }
+      const outIdx = (y * width + x) * 4;
+      dd[outIdx] = r_ / samples;
+      dd[outIdx + 1] = g_ / samples;
+      dd[outIdx + 2] = b_ / samples;
+      dd[outIdx + 3] = a_ / samples;
+    }
+  }
+  ctx.putImageData(out, 0, 0);
+}
+
+/** Tilt-shift: blurs everything except a band running through the canvas at `angleDeg`,
+ * `focusWidth` px wide, offset from center by `focusOffset` px along its own normal — the
+ * "miniature model" look. Composites a fully-blurred copy under the sharp original, punching a
+ * feathered hole in the blurred copy where the in-focus band is. */
+export function tiltShift(canvas: HTMLCanvasElement, angleDeg: number, focusOffset: number, focusWidth: number, blurAmount: number) {
+  const ctx = canvas.getContext('2d')!;
+  const { width, height } = canvas;
+  const sharp = ctx.getImageData(0, 0, width, height);
+
+  const blurredCanvas = createCanvas(width, height);
+  blurredCanvas.getContext('2d')!.putImageData(sharp, 0, 0);
+  gaussianBlur(blurredCanvas, blurAmount);
+  const blurred = blurredCanvas.getContext('2d')!.getImageData(0, 0, width, height);
+
+  const rad = (angleDeg * Math.PI) / 180;
+  // Unit normal to the focus band's direction — distance along this axis decides blur amount.
+  const nx = -Math.sin(rad);
+  const ny = Math.cos(rad);
+  const cx = width / 2 + nx * focusOffset;
+  const cy = height / 2 + ny * focusOffset;
+  const halfWidth = Math.max(1, focusWidth / 2);
+  const feather = halfWidth * 0.6;
+
+  const sd = sharp.data;
+  const bd = blurred.data;
+  const out = ctx.createImageData(width, height);
+  const dd = out.data;
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const dist = Math.abs((x - cx) * nx + (y - cy) * ny);
+      let blurT: number;
+      if (dist <= halfWidth) blurT = 0;
+      else if (dist >= halfWidth + feather) blurT = 1;
+      else blurT = (dist - halfWidth) / feather;
+      const idx = (y * width + x) * 4;
+      dd[idx] = sd[idx] + (bd[idx] - sd[idx]) * blurT;
+      dd[idx + 1] = sd[idx + 1] + (bd[idx + 1] - sd[idx + 1]) * blurT;
+      dd[idx + 2] = sd[idx + 2] + (bd[idx + 2] - sd[idx + 2]) * blurT;
+      dd[idx + 3] = sd[idx + 3] + (bd[idx + 3] - sd[idx + 3]) * blurT;
+    }
+  }
+  ctx.putImageData(out, 0, 0);
+}
+
 /** 3x3 convolution sharpen; `amount` in 0..1 blends between original and fully sharpened. */
 export function sharpen(canvas: HTMLCanvasElement, amount: number) {
   const ctx = canvas.getContext('2d')!;
@@ -227,7 +347,7 @@ function clamp01(v: number): number {
 }
 
 /** Sobel gradient magnitude per pixel — the shared edge-strength map behind charcoal/edge-detect/bloom. */
-function sobelEdgeMap(data: Uint8ClampedArray, width: number, height: number): Float32Array {
+export function sobelEdgeMap(data: Uint8ClampedArray, width: number, height: number): Float32Array {
   const gray = new Float32Array(width * height);
   for (let i = 0, p = 0; i < data.length; i += 4, p++) {
     gray[p] = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
@@ -259,6 +379,147 @@ export function posterize(canvas: HTMLCanvasElement, levels: number) {
       data[i] = Math.round(Math.round(data[i] / step) * step);
       data[i + 1] = Math.round(Math.round(data[i + 1] / step) * step);
       data[i + 2] = Math.round(Math.round(data[i + 2] / step) * step);
+    }
+  });
+}
+
+/** Threshold: every pixel becomes pure black or white based on whether its luminance
+ * clears `level` (0-255) — the simplest possible tone adjustment, but a distinct one from
+ * posterize (which keeps color, just fewer steps) or desaturate (which keeps a full
+ * grayscale range instead of collapsing to two values). */
+export function threshold(canvas: HTMLCanvasElement, level: number) {
+  withImageData(canvas, (data) => {
+    for (let i = 0; i < data.length; i += 4) {
+      const luminance = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+      const v = luminance >= level ? 255 : 0;
+      data[i] = data[i + 1] = data[i + 2] = v;
+    }
+  });
+}
+
+export interface LevelsParams {
+  inputBlack: number;
+  inputWhite: number;
+  /** 1 = identity; <1 darkens midtones, >1 brightens them — same convention as every other
+   * levels tool (not the raw exponent, which is its reciprocal). */
+  gamma: number;
+  outputBlack: number;
+  outputWhite: number;
+}
+
+/** Classic Levels: remaps [inputBlack, inputWhite] to [0, 255] (clipping outside that range),
+ * applies a gamma curve to the result, then remaps into [outputBlack, outputWhite]. Built as
+ * a 256-entry lookup table since the same mapping applies to every pixel — far cheaper than
+ * calling Math.pow per channel per pixel. */
+export function levels(canvas: HTMLCanvasElement, params: LevelsParams) {
+  const { inputBlack, inputWhite, gamma, outputBlack, outputWhite } = params;
+  const inRange = Math.max(1, inputWhite - inputBlack);
+  const outRange = outputWhite - outputBlack;
+  const invGamma = 1 / Math.max(0.01, gamma);
+  const lut = new Uint8ClampedArray(256);
+  for (let v = 0; v < 256; v++) {
+    let t = (v - inputBlack) / inRange;
+    t = Math.max(0, Math.min(1, t));
+    t = Math.pow(t, invGamma);
+    lut[v] = outputBlack + t * outRange;
+  }
+  withImageData(canvas, (data) => {
+    for (let i = 0; i < data.length; i += 4) {
+      data[i] = lut[data[i]];
+      data[i + 1] = lut[data[i + 1]];
+      data[i + 2] = lut[data[i + 2]];
+    }
+  });
+}
+
+/** One-click "Auto Contrast": stretches the tonal range so the darkest pixel maps to black
+ * and the brightest to white, using the SAME stretch on every channel (unlike "Auto Levels",
+ * which would stretch each channel independently and can shift the color balance) — matches
+ * Photoshop's own Auto Contrast. Fully transparent pixels are ignored when finding the
+ * min/max so an empty background canvas doesn't skew the black point to 0. A no-op on a
+ * flat-color (or fully transparent) layer, since there's no range to stretch. */
+export function autoContrast(canvas: HTMLCanvasElement) {
+  const ctx = canvas.getContext('2d')!;
+  const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  let min = 255;
+  let max = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] === 0) continue;
+    const luminance = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+    if (luminance < min) min = luminance;
+    if (luminance > max) max = luminance;
+  }
+  if (max <= min) return;
+  levels(canvas, { inputBlack: Math.round(min), inputWhite: Math.round(max), gamma: 1, outputBlack: 0, outputWhite: 255 });
+}
+
+export interface CurvePoint {
+  x: number;
+  y: number;
+}
+
+function catmullRom(p0: number, p1: number, p2: number, p3: number, t: number): number {
+  const t2 = t * t;
+  const t3 = t2 * t;
+  return 0.5 * (2 * p1 + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (-p0 + 3 * p1 - 3 * p2 + p3) * t3);
+}
+
+/** Builds a 256-entry input->output lookup table from a sparse set of (sorted-by-x) control
+ * points, via Catmull-Rom interpolation per segment — smooth through every point (unlike a
+ * plain polyline), and unlike a natural cubic spline doesn't need solving a system, just each
+ * segment's own two neighbors (clamped at the ends, where there's only one neighbor). Points
+ * are expected pre-sorted by x (the curve editor keeps them that way); x/y are both 0-255. */
+export function buildCurveLut(points: CurvePoint[]): Uint8ClampedArray {
+  const lut = new Uint8ClampedArray(256);
+  if (points.length === 0) {
+    for (let x = 0; x < 256; x++) lut[x] = x;
+    return lut;
+  }
+  if (points.length === 1) {
+    lut.fill(Math.round(points[0].y));
+    return lut;
+  }
+  // Catmull-Rom needs a neighbor on each side of the segment being evaluated; at the very
+  // first/last segment there isn't a real one. DUPLICATING the nearest endpoint there (as an
+  // earlier version of this did) makes the curve bulge into a visible S-shape even with just
+  // the two default endpoints and no user edits at all — nowhere near the identity mapping a
+  // fresh curve is supposed to be. Linearly EXTRAPOLATING a phantom point instead (mirroring
+  // the adjacent segment) fixes that: for two collinear points, Catmull-Rom through 4
+  // collinear points reproduces the line exactly, so the untouched default curve is a true
+  // identity again.
+  const first = points[0];
+  const second = points[1];
+  const phantomBefore: CurvePoint = { x: first.x - (second.x - first.x), y: first.y - (second.y - first.y) };
+  const last = points[points.length - 1];
+  const secondLast = points[points.length - 2];
+  const phantomAfter: CurvePoint = { x: last.x + (last.x - secondLast.x), y: last.y + (last.y - secondLast.y) };
+
+  for (let x = 0; x < 256; x++) {
+    let i = 0;
+    while (i < points.length - 2 && points[i + 1].x < x) i++;
+    const p1 = points[i];
+    const p2 = points[i + 1] ?? points[i];
+    const p0 = i > 0 ? points[i - 1] : phantomBefore;
+    const p3 = i + 2 < points.length ? points[i + 2] : phantomAfter;
+    const segWidth = p2.x - p1.x;
+    const t = segWidth > 0 ? Math.max(0, Math.min(1, (x - p1.x) / segWidth)) : 0;
+    lut[x] = catmullRom(p0.y, p1.y, p2.y, p3.y, t);
+  }
+  return lut;
+}
+
+/** Applies a Curves adjustment — the same tone-mapping idea as Levels, but via an arbitrary
+ * smooth curve instead of a linear ramp + gamma, so it can brighten just the midtones, crush
+ * just the shadows, create an S-curve for contrast, etc. Combined RGB only (not per-channel)
+ * for now — the most commonly used mode, and the one every other tone tool here already
+ * matches (Levels, Brightness/Contraste are combined-channel too). */
+export function applyCurve(canvas: HTMLCanvasElement, points: CurvePoint[]) {
+  const lut = buildCurveLut(points);
+  withImageData(canvas, (data) => {
+    for (let i = 0; i < data.length; i += 4) {
+      data[i] = lut[data[i]];
+      data[i + 1] = lut[data[i + 1]];
+      data[i + 2] = lut[data[i + 2]];
     }
   });
 }
@@ -487,6 +748,8 @@ export const ADJUSTMENT_DEFAULTS: Record<AdjustmentType, Record<string, number>>
   desaturate: {},
   posterize: { levels: 4 },
   sepia: { intensity: 100 },
+  levels: { inputBlack: 0, inputWhite: 255, gamma: 100, outputBlack: 0, outputWhite: 255 },
+  threshold: { level: 128 },
 };
 
 export const ADJUSTMENT_LABELS: Record<AdjustmentType, string> = {
@@ -496,6 +759,8 @@ export const ADJUSTMENT_LABELS: Record<AdjustmentType, string> = {
   desaturate: 'Desaturar',
   posterize: 'Posterizar',
   sepia: 'Sepia',
+  levels: 'Niveles',
+  threshold: 'Umbral',
 };
 
 /** Dispatches to the matching pixel operation above, used by adjustment layers' compositing. */
@@ -519,6 +784,18 @@ export function applyAdjustment(canvas: HTMLCanvasElement, type: AdjustmentType,
       break;
     case 'sepia':
       sepia(canvas, (params.intensity ?? 100) / 100);
+      break;
+    case 'levels':
+      levels(canvas, {
+        inputBlack: params.inputBlack ?? 0,
+        inputWhite: params.inputWhite ?? 255,
+        gamma: (params.gamma ?? 100) / 100,
+        outputBlack: params.outputBlack ?? 0,
+        outputWhite: params.outputWhite ?? 255,
+      });
+      break;
+    case 'threshold':
+      threshold(canvas, params.level ?? 128);
       break;
   }
 }

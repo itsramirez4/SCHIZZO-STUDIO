@@ -124,3 +124,43 @@ export function exportAsGpl(colors: RGBA[], name: string): string {
   const lines = colors.map((c, i) => `${c.r}\t${c.g}\t${c.b}\tColor ${i + 1}`);
   return `GIMP Palette\nName: ${name}\nColumns: 0\n#\n${lines.join('\n')}\n`;
 }
+
+// --- Import formats ---
+// The other direction of the export pair above — reading a palette FILE someone downloaded
+// (Lospec.com, the pixel-art community's standard palette reference, ships every palette as
+// both .hex and .gpl) rather than the app's own "paste a code" sharing format.
+
+/** Parses a GIMP/Krita/Aseprite .gpl file: a `GIMP Palette` header, optional `Name:`/`Columns:`
+ * metadata lines and `#`-prefixed comments, then one `R G B [optional name]` triple per line
+ * (whitespace-separated — real .gpl files use tabs, but plain spaces show up in the wild too). */
+export function parseGplPalette(text: string): string[] {
+  const colors: string[] = [];
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#') || line === 'GIMP Palette' || /^Name:/i.test(line) || /^Columns:/i.test(line)) continue;
+    const match = line.match(/^(\d{1,3})\s+(\d{1,3})\s+(\d{1,3})/);
+    if (!match) continue;
+    const [r, g, b] = match.slice(1, 4).map(Number);
+    if ([r, g, b].some((v) => v < 0 || v > 255)) continue;
+    colors.push(toHex({ r, g, b, a: 1 }));
+  }
+  return colors;
+}
+
+/** Parses a plain .hex palette: one hex color per line, `#` prefix optional — Lospec's other
+ * standard export alongside .gpl, and the simplest possible palette interchange format. */
+export function parseHexPalette(text: string): string[] {
+  const colors: string[] = [];
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.trim().replace(/^#/, '');
+    if (/^[0-9a-fA-F]{6}$/.test(line)) colors.push(`#${line.toLowerCase()}`);
+    else if (/^[0-9a-fA-F]{3}$/.test(line)) colors.push(`#${line.toLowerCase().split('').map((c) => c + c).join('')}`);
+  }
+  return colors;
+}
+
+/** Picks the right parser by content (a real .gpl always starts with its header line,
+ * regardless of what the file happens to be named) and falls back to the plain .hex reader. */
+export function parsePaletteFile(text: string): string[] {
+  return text.trim().startsWith('GIMP Palette') ? parseGplPalette(text) : parseHexPalette(text);
+}

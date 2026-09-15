@@ -1,5 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react';
-import { Plus, FolderPlus, Image as ImageIcon } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { Plus, FolderPlus, Image as ImageIcon, Group, GitMerge, Layers, X, Eye, EyeOff, Lock, Unlock, Camera, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { Layer, AdjustmentType, FillType } from '@/types';
 import { ADJUSTMENT_LABELS } from '@/services/filter.service';
 import { importReferenceImages } from '@/services/importImage';
@@ -13,9 +14,22 @@ export default function LayerPanel() {
   const { layers, currentLayerId, addLayer, reorderLayers, addAdjustmentLayer, addFillLayer, addReferenceLayer } = useLayers();
   const createGroup = useAppStore((s) => s.createGroup);
   const setLayerParent = useAppStore((s) => s.setLayerParent);
+  const selectedLayerIds = useAppStore((s) => s.selectedLayerIds);
+  const clearLayerSelection = useAppStore((s) => s.clearLayerSelection);
+  const groupSelectedLayers = useAppStore((s) => s.groupSelectedLayers);
+  const mergeVisibleLayers = useAppStore((s) => s.mergeVisibleLayers);
+  const flattenImage = useAppStore((s) => s.flattenImage);
+  const setSelectedLayersVisibility = useAppStore((s) => s.setSelectedLayersVisibility);
+  const setSelectedLayersLocked = useAppStore((s) => s.setSelectedLayersLocked);
+  const project = useAppStore((s) => s.project);
+  const captureLayerComp = useAppStore((s) => s.captureLayerComp);
+  const applyLayerComp = useAppStore((s) => s.applyLayerComp);
+  const deleteLayerComp = useAppStore((s) => s.deleteLayerComp);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const draggedIdRef = useRef<string | null>(null);
+  const [compsOpen, setCompsOpen] = useState(false);
+  const [newCompName, setNewCompName] = useState('');
 
   const groups = layers.filter((l) => l.type === 'group');
 
@@ -159,12 +173,101 @@ export default function LayerPanel() {
           <button onClick={() => createGroup()} className="text-textDim hover:text-text" title="Nuevo grupo">
             <FolderPlus size={15} />
           </button>
+          <button onClick={mergeVisibleLayers} className="text-textDim hover:text-text" title="Combinar todas las capas visibles">
+            <GitMerge size={14} />
+          </button>
+          <button
+            onClick={() => {
+              if (!flattenImage()) toast('Nada que aplanar — ya hay una sola capa');
+            }}
+            className="text-textDim hover:text-text"
+            title="Aplanar imagen — combina TODAS las capas (incluso ocultas) en una sola, descartando lo oculto"
+          >
+            <Layers size={14} />
+          </button>
           <button onClick={() => addLayer()} className="text-textDim hover:text-text" title="Nueva capa">
             <Plus size={16} />
           </button>
         </div>
       </div>
+      {selectedLayerIds.length > 0 && (
+        <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-border bg-accent/10 text-[10px]">
+          <span className="text-textDim">{selectedLayerIds.length} seleccionadas</span>
+          <button onClick={() => groupSelectedLayers()} title="Agrupar selección" className="text-textDim hover:text-text ml-auto">
+            <Group size={13} />
+          </button>
+          <button onClick={() => setSelectedLayersVisibility(true)} title="Mostrar todas" className="text-textDim hover:text-text">
+            <Eye size={13} />
+          </button>
+          <button onClick={() => setSelectedLayersVisibility(false)} title="Ocultar todas" className="text-textDim hover:text-text">
+            <EyeOff size={13} />
+          </button>
+          <button onClick={() => setSelectedLayersLocked(true)} title="Bloquear todas" className="text-textDim hover:text-text">
+            <Lock size={13} />
+          </button>
+          <button onClick={() => setSelectedLayersLocked(false)} title="Desbloquear todas" className="text-textDim hover:text-text">
+            <Unlock size={13} />
+          </button>
+          <button onClick={clearLayerSelection} title="Deseleccionar" className="text-textDim hover:text-red-400">
+            <X size={13} />
+          </button>
+        </div>
+      )}
       <div className="flex-1 overflow-y-auto">{siblingsOf(undefined).map((layer) => renderNode(layer, 0))}</div>
+
+      <div className="border-t border-border">
+        <button
+          onClick={() => setCompsOpen((v) => !v)}
+          className="w-full flex items-center gap-1.5 px-2 py-1.5 text-[10px] text-textDim hover:text-text"
+        >
+          {compsOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+          Escenas (composiciones de capas)
+        </button>
+        {compsOpen && (
+          <div className="px-2 pb-2 space-y-1.5">
+            <p className="text-[9px] text-textDim">Guarda una instantánea de qué capas están visibles, su opacidad, modo de fusión, efectos, y el zoom/posición del lienzo — para saltar entre distintas versiones o encuadres del proyecto.</p>
+            <div className="flex gap-1">
+              <input
+                type="text"
+                value={newCompName}
+                onChange={(e) => setNewCompName(e.target.value)}
+                placeholder="Nombre de la escena"
+                className="flex-1 bg-panel border border-border rounded text-[10px] px-1.5 py-1"
+              />
+              <button
+                onClick={() => {
+                  const name = newCompName.trim();
+                  if (!name) return;
+                  captureLayerComp(name);
+                  setNewCompName('');
+                }}
+                disabled={!newCompName.trim()}
+                title="Capturar estado actual"
+                className="text-[10px] bg-panelLight rounded px-2 disabled:opacity-40"
+              >
+                <Camera size={12} />
+              </button>
+            </div>
+            {(project?.layerComps ?? []).length === 0 ? (
+              <p className="text-[9px] text-textDim">Sin composiciones todavía.</p>
+            ) : (
+              <div className="space-y-1">
+                {project!.layerComps!.map((comp) => (
+                  <div key={comp.id} className="flex items-center gap-1.5 text-[10px] bg-panel rounded px-1.5 py-1">
+                    <span className="flex-1 truncate">{comp.name}</span>
+                    <button onClick={() => applyLayerComp(comp.id)} className="text-[9px] bg-panelLight rounded px-2 py-0.5">
+                      Aplicar
+                    </button>
+                    <button onClick={() => deleteLayerComp(comp.id)} className="text-textDim hover:text-red-400" title="Eliminar">
+                      <Trash2 size={11} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

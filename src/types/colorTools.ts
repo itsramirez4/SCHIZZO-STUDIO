@@ -5,13 +5,23 @@ import { RGBA } from './index';
 // palette functions, and a same-named object type here would collide with it everywhere
 // both are imported. Alpha is carried through but unused by anything in this module.
 
-export type ColorBlindnessType = 'protanopia' | 'deuteranopia' | 'tritanopia' | 'monochromacy';
+export type ColorBlindnessType =
+  | 'protanopia'
+  | 'deuteranopia'
+  | 'tritanopia'
+  | 'monochromacy'
+  | 'protanomaly'
+  | 'deuteranomaly'
+  | 'tritanomaly';
 
 export const COLOR_BLINDNESS_LABELS: Record<ColorBlindnessType, string> = {
   protanopia: 'Protanopia (ceguera al rojo)',
   deuteranopia: 'Deuteranopia (ceguera al verde)',
   tritanopia: 'Tritanopia (ceguera al azul)',
   monochromacy: 'Monocromacía (acromatopsia)',
+  protanomaly: 'Protanomalía (rojo débil)',
+  deuteranomaly: 'Deuteranomalía (verde débil)',
+  tritanomaly: 'Tritanomalía (azul débil)',
 };
 
 export type HarmonyType =
@@ -33,6 +43,23 @@ export const HARMONY_LABELS: Record<HarmonyType, string> = {
   shades: 'Sombras',
   tints: 'Tintes',
   monochromatic: 'Monocromática',
+};
+
+export type MoodTheme = 'warm' | 'cool' | 'vibrant' | 'muted' | 'pastel' | 'neon' | 'dark' | 'light' | 'earthy' | 'ocean' | 'sunset' | 'forest';
+
+export const MOOD_LABELS: Record<MoodTheme, string> = {
+  warm: 'Cálido',
+  cool: 'Frío',
+  vibrant: 'Vibrante',
+  muted: 'Apagado',
+  pastel: 'Pastel',
+  neon: 'Neón',
+  dark: 'Oscuro',
+  light: 'Claro',
+  earthy: 'Terroso',
+  ocean: 'Océano',
+  sunset: 'Atardecer',
+  forest: 'Bosque',
 };
 
 export interface HSLColor {

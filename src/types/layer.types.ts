@@ -1,7 +1,9 @@
+import { LayerEffects } from './layerEffects';
+
 export type LayerType = 'raster' | 'text' | 'reference' | 'group' | 'adjustment' | 'fill';
 
 /** Non-destructive color adjustments applied to everything stacked below the layer. */
-export type AdjustmentType = 'brightness-contrast' | 'hue-saturation' | 'invert' | 'desaturate' | 'posterize' | 'sepia';
+export type AdjustmentType = 'brightness-contrast' | 'hue-saturation' | 'invert' | 'desaturate' | 'posterize' | 'sepia' | 'levels' | 'threshold';
 
 export type FillType = 'solid' | 'gradient' | 'pattern';
 
@@ -30,6 +32,20 @@ export interface Layer {
   parent?: string;
   /** Whether a paint mask (in layerService's mask registry) is attached to this layer. */
   hasMask?: boolean;
+  /** Non-destructive layer styles (drop shadow, glow, bevel, overlays, stroke). */
+  effects?: LayerEffects;
+  /** Clips this layer's content to the alpha of the nearest preceding non-clipped sibling
+   * (its "clip base"), Photoshop-style — walks up the sibling list, so multiple consecutive
+   * clipTo layers all clip to the same base. */
+  clipTo?: boolean;
+  /** When set, this layer's pixel content is the SAME canvas as the layer with this id (a
+   * "linked instance") — painting on either one paints on both. Opacity/blendMode/effects/mask
+   * stay independent per instance; only the raw pixel content is shared. */
+  linkedSourceId?: string;
+  /** "Lock transparent pixels" (Photoshop/Krita) — brush/paintbucket/shapes/text only
+   * composite onto pixels that already have alpha, and can't raise that alpha, so nothing
+   * spills outside the layer's existing silhouette. Doesn't affect the eraser or warp. */
+  lockAlpha?: boolean;
 
   // --- Adjustment layers: no pixels of their own, transform everything below instead. ---
   adjustmentType?: AdjustmentType;

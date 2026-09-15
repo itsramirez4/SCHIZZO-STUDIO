@@ -1,5 +1,7 @@
 export * from './brush.types';
 export * from './layer.types';
+export * from './layerEffects';
+export * from './filterPresets';
 export * from './project.types';
 export * from './filter.types';
 
@@ -14,13 +16,22 @@ export type ToolType =
   | 'brush'
   | 'eraser'
   | 'selection'
+  | 'lasso'
+  | 'magicWand'
   | 'paintbucket'
+  | 'gradient'
   | 'text'
   | 'eyedropper'
   | 'zoom'
   | 'pan'
   | 'transform'
-  | 'pen';
+  | 'pen'
+  | 'shapeRect'
+  | 'shapeEllipse'
+  | 'shapePolygon'
+  | 'shapeStar'
+  | 'vectorText'
+  | 'warp';
 
 export interface RGBA {
   r: number;

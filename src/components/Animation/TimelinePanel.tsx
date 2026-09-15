@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Film, Play, Pause, Square, Repeat, Copy, Plus, Trash2, Eye, Download, Images } from 'lucide-react';
+import { Film, Play, Pause, Square, Repeat, Copy, Plus, Trash2, Eye, Download, Images, Clapperboard, Grid3x3 } from 'lucide-react';
 import { useAppStore, getFrameLayers } from '@/store/appStore';
 import { useHistory } from '@/hooks/useHistory';
 import { flattenLayers } from '@/services/layer.service';
 import { exportAnimationAsGif, exportAnimationAsPngSequence, exportAnimationAsApng } from '@/services/animation.service';
+import { exportAnimationAsWebm, exportAnimationAsSpritesheet } from '@/services/videoExport.service';
 import { Project } from '@/types';
+import OnionSkinSettingsPanel from './OnionSkinSettingsPanel';
+import InbetweenGenerator from './InbetweenGenerator';
 
 function FrameThumbnail({ project, frameIndex }: { project: Project; frameIndex: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -42,6 +45,8 @@ export default function TimelinePanel() {
   const [exporting, setExporting] = useState(false);
   const [exportingPng, setExportingPng] = useState(false);
   const [exportingApng, setExportingApng] = useState(false);
+  const [exportingWebm, setExportingWebm] = useState(false);
+  const [exportingSpritesheet, setExportingSpritesheet] = useState(false);
   const draggedIndexRef = useRef<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
@@ -121,6 +126,34 @@ export default function TimelinePanel() {
     }
   }
 
+  async function handleExportWebm() {
+    if (!project) return;
+    setExportingWebm(true);
+    try {
+      const result = await exportAnimationAsWebm(project);
+      if (!result.canceled) toast.success('Animación exportada como WebM');
+    } catch (err) {
+      toast.error('No se pudo exportar el WebM');
+      console.error(err);
+    } finally {
+      setExportingWebm(false);
+    }
+  }
+
+  async function handleExportSpritesheet() {
+    if (!project) return;
+    setExportingSpritesheet(true);
+    try {
+      const result = await exportAnimationAsSpritesheet(project);
+      if (!result.canceled) toast.success('Spritesheet exportado');
+    } catch (err) {
+      toast.error('No se pudo exportar el spritesheet');
+      console.error(err);
+    } finally {
+      setExportingSpritesheet(false);
+    }
+  }
+
   function handleDrop(targetIndex: number) {
     const from = draggedIndexRef.current;
     setDragOverIndex(null);
@@ -180,6 +213,8 @@ export default function TimelinePanel() {
           <Repeat size={14} />
         </button>
       </div>
+
+      {onionSkinEnabled && <OnionSkinSettingsPanel />}
 
       <div className="flex gap-1.5 overflow-x-auto pb-2 mb-2">
         {animation.frames.map((frame, i) => (
@@ -241,17 +276,19 @@ export default function TimelinePanel() {
         </button>
       </div>
 
+      <InbetweenGenerator />
+
       <div className="grid grid-cols-2 gap-1.5 mb-1.5">
         <button
           onClick={handleExportGif}
-          disabled={exporting || exportingPng || exportingApng}
+          disabled={exporting || exportingPng || exportingApng || exportingWebm || exportingSpritesheet}
           className="flex items-center justify-center gap-1.5 bg-accent text-white text-xs rounded py-1.5 disabled:opacity-50"
         >
           <Download size={13} /> {exporting ? 'Exportando…' : 'Como GIF'}
         </button>
         <button
           onClick={handleExportApng}
-          disabled={exporting || exportingPng || exportingApng}
+          disabled={exporting || exportingPng || exportingApng || exportingWebm || exportingSpritesheet}
           className="flex items-center justify-center gap-1.5 bg-panelLight text-xs rounded py-1.5 disabled:opacity-50"
           title="APNG: igual que GIF pero sin límite de paleta (color RGBA completo)"
         >
@@ -260,12 +297,31 @@ export default function TimelinePanel() {
       </div>
       <button
         onClick={handleExportPngSequence}
-        disabled={exporting || exportingPng || exportingApng}
-        className="w-full flex items-center justify-center gap-1.5 bg-panelLight text-xs rounded py-1.5 disabled:opacity-50"
+        disabled={exporting || exportingPng || exportingApng || exportingWebm || exportingSpritesheet}
+        className="w-full flex items-center justify-center gap-1.5 bg-panelLight text-xs rounded py-1.5 disabled:opacity-50 mb-1.5"
         title="Exporta cada frame como un PNG numerado en una carpeta"
       >
         <Images size={13} /> {exportingPng ? 'Exportando…' : 'Secuencia PNG'}
       </button>
+
+      <div className="grid grid-cols-2 gap-1.5">
+        <button
+          onClick={handleExportWebm}
+          disabled={exporting || exportingPng || exportingApng || exportingWebm || exportingSpritesheet}
+          className="flex items-center justify-center gap-1.5 bg-panelLight text-xs rounded py-1.5 disabled:opacity-50"
+          title="Video WebM real (MediaRecorder) — tarda tanto como dura la animación en exportarse. MP4 no está disponible: requeriría empaquetar ffmpeg.wasm (~30MB)."
+        >
+          <Clapperboard size={13} /> {exportingWebm ? 'Exportando…' : 'Como WebM'}
+        </button>
+        <button
+          onClick={handleExportSpritesheet}
+          disabled={exporting || exportingPng || exportingApng || exportingWebm || exportingSpritesheet}
+          className="flex items-center justify-center gap-1.5 bg-panelLight text-xs rounded py-1.5 disabled:opacity-50"
+          title="Todos los frames en una sola imagen en cuadrícula"
+        >
+          <Grid3x3 size={13} /> {exportingSpritesheet ? 'Exportando…' : 'Spritesheet'}
+        </button>
+      </div>
     </div>
   );
 }

@@ -17,6 +17,15 @@ interface UIState {
   showResizeDialog: boolean;
   showComicPanel: boolean;
   showColorToolsPanel: boolean;
+  showAssetLibraryPanel: boolean;
+  showBatchPanel: boolean;
+  showLearningPanel: boolean;
+  showRecordingPanel: boolean;
+  showReferencesPanel: boolean;
+  showCloudSyncPanel: boolean;
+  showCustomizationPanel: boolean;
+  showPerspectivePanel: boolean;
+  showStatsPanel: boolean;
 
   toggleLayerPanel: () => void;
   toggleBrushPanel: () => void;
@@ -40,6 +49,15 @@ interface UIState {
   closeResizeDialog: () => void;
   toggleComicPanel: () => void;
   toggleColorToolsPanel: () => void;
+  toggleAssetLibraryPanel: () => void;
+  toggleBatchPanel: () => void;
+  toggleLearningPanel: () => void;
+  toggleRecordingPanel: () => void;
+  toggleReferencesPanel: () => void;
+  toggleCloudSyncPanel: () => void;
+  toggleCustomizationPanel: () => void;
+  togglePerspectivePanel: () => void;
+  toggleStatsPanel: () => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -59,6 +77,15 @@ export const useUIStore = create<UIState>((set) => ({
   showResizeDialog: false,
   showComicPanel: false,
   showColorToolsPanel: false,
+  showAssetLibraryPanel: false,
+  showBatchPanel: false,
+  showLearningPanel: false,
+  showRecordingPanel: false,
+  showReferencesPanel: false,
+  showCloudSyncPanel: false,
+  showCustomizationPanel: false,
+  showPerspectivePanel: false,
+  showStatsPanel: false,
 
   toggleLayerPanel: () => set((s) => ({ showLayerPanel: !s.showLayerPanel })),
   toggleBrushPanel: () => set((s) => ({ showBrushPanel: !s.showBrushPanel })),
@@ -82,4 +109,13 @@ export const useUIStore = create<UIState>((set) => ({
   closeResizeDialog: () => set({ showResizeDialog: false }),
   toggleComicPanel: () => set((s) => ({ showComicPanel: !s.showComicPanel })),
   toggleColorToolsPanel: () => set((s) => ({ showColorToolsPanel: !s.showColorToolsPanel })),
+  toggleAssetLibraryPanel: () => set((s) => ({ showAssetLibraryPanel: !s.showAssetLibraryPanel })),
+  toggleBatchPanel: () => set((s) => ({ showBatchPanel: !s.showBatchPanel })),
+  toggleLearningPanel: () => set((s) => ({ showLearningPanel: !s.showLearningPanel })),
+  toggleRecordingPanel: () => set((s) => ({ showRecordingPanel: !s.showRecordingPanel })),
+  toggleReferencesPanel: () => set((s) => ({ showReferencesPanel: !s.showReferencesPanel })),
+  toggleCloudSyncPanel: () => set((s) => ({ showCloudSyncPanel: !s.showCloudSyncPanel })),
+  toggleCustomizationPanel: () => set((s) => ({ showCustomizationPanel: !s.showCustomizationPanel })),
+  togglePerspectivePanel: () => set((s) => ({ showPerspectivePanel: !s.showPerspectivePanel })),
+  toggleStatsPanel: () => set((s) => ({ showStatsPanel: !s.showStatsPanel })),
 }));

@@ -1,4 +1,4 @@
-import { RGBA, ContrastResult, AccessibilityReport, ColorBlindnessType } from '@/types/colorTools';
+import { RGBA, ContrastResult, AccessibilityReport, ColorBlindnessType, COLOR_BLINDNESS_LABELS } from '@/types/colorTools';
 import { simulateColor } from './colorBlindness.service';
 
 function relativeLuminance({ r, g, b }: RGBA): number {
@@ -35,7 +35,7 @@ function checkContrast(ratio: number): ContrastResult {
   };
 }
 
-const CB_TYPES: ColorBlindnessType[] = ['protanopia', 'deuteranopia', 'tritanopia', 'monochromacy'];
+const CB_TYPES = Object.keys(COLOR_BLINDNESS_LABELS) as ColorBlindnessType[];
 
 /** Nudges `fg` darker/lighter in fixed steps until it clears 4.5:1 against `bg`, if possible. */
 function findAlternatives(bg: RGBA, fg: RGBA): RGBA[] {

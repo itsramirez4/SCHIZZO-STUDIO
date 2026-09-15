@@ -3,7 +3,7 @@ import { simulateColor, areDistinguishable } from '@/services/colorBlindness.ser
 import { hexToRgbaColor, rgbaColorToHex } from '@/services/colorSpace.service';
 import { useTools } from '@/hooks/useTools';
 
-const TYPES: ColorBlindnessType[] = ['protanopia', 'deuteranopia', 'tritanopia', 'monochromacy'];
+const TYPES = Object.keys(COLOR_BLINDNESS_LABELS) as ColorBlindnessType[];
 
 export default function ColorBlindnessSimulator() {
   const { primaryColor, secondaryColor } = useTools();

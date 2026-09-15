@@ -3,14 +3,24 @@ import { useUIStore } from '@/store/uiStore';
 import { useAppStore } from '@/store/appStore';
 import { ProjectType } from '@/types';
 import { DEFAULT_CANVAS_WIDTH, DEFAULT_CANVAS_HEIGHT, DEFAULT_DPI } from '@/utils/constants';
+import { SIZE_PRESETS, SIZE_PRESET_CATEGORY_LABELS, SizePreset } from '@/data/sizePresets';
 
 const PRESETS: { label: string; width: number; height: number; type: ProjectType }[] = [
   { label: 'HD (1920×1080)', width: 1920, height: 1080, type: 'drawing' },
   { label: 'Cuadrado (2000×2000)', width: 2000, height: 2000, type: 'drawing' },
-  { label: 'A4 300dpi (2480×3508)', width: 2480, height: 3508, type: 'drawing' },
   { label: 'Pixel Art (64×64)', width: 64, height: 64, type: 'pixelart' },
   { label: 'Pixel Art (128×128)', width: 128, height: 128, type: 'pixelart' },
 ];
+
+const CATEGORY_ORDER: SizePreset['category'][] = ['web', 'print', 'social', 'ui'];
+
+const TYPE_LABELS: Record<ProjectType, string> = {
+  drawing: 'Dibujo digital',
+  pixelart: 'Pixel Art',
+  comic: 'Cómic / Manga',
+  '3d': '3D',
+  hybrid: 'Híbrido',
+};
 
 export default function NewProjectDialog() {
   const show = useUIStore((s) => s.showNewProjectDialog);
@@ -27,6 +37,18 @@ export default function NewProjectDialog() {
 
   function handleCreate() {
     newProject({ name: name.trim() || 'Proyecto sin título', type, width, height, dpi });
+    // Cómic y 3D ya tienen sus herramientas dedicadas en la app (panel de viñetas/globos,
+    // visor 3D con cámara/luces/pose) — al elegir ese tipo, las abrimos de una para que el
+    // proyecto arranque directo en ese flujo en vez de dejarlas escondidas en un menú.
+    if (type === 'comic') useUIStore.setState({ showComicPanel: true });
+    if (type === '3d') {
+      // El visor completo (cámara/luces/pose/importar) para configurar el modelo, más el
+      // panel de referencia flotante para que quede visible mientras se dibuja después
+      // de cerrar el visor — sin esto último, "3D" se sentía igual que "Dibujo" en cuanto
+      // cerrabas el modal la primera vez.
+      useUIStore.getState().openModel3DViewer();
+      useUIStore.setState({ showReference3DPanel: true });
+    }
     close();
   }
 
@@ -43,17 +65,23 @@ export default function NewProjectDialog() {
         />
 
         <label className="block text-xs text-textDim mb-1">Tipo</label>
-        <div className="flex gap-2 mb-3">
-          {(['drawing', 'pixelart'] as ProjectType[]).map((t) => (
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          {(['drawing', 'pixelart', 'comic', '3d'] as ProjectType[]).map((t) => (
             <button
               key={t}
               onClick={() => setType(t)}
-              className={`flex-1 py-1.5 rounded text-sm ${type === t ? 'bg-accent text-white' : 'bg-panelLight text-textDim'}`}
+              className={`py-1.5 rounded text-sm ${type === t ? 'bg-accent text-white' : 'bg-panelLight text-textDim'}`}
             >
-              {t === 'drawing' ? 'Dibujo digital' : 'Pixel Art'}
+              {TYPE_LABELS[t]}
             </button>
           ))}
         </div>
+        {type === 'comic' && (
+          <p className="text-[10px] text-textDim -mt-2 mb-3">Arranca con el panel de Cómic (viñetas y globos) abierto.</p>
+        )}
+        {type === '3d' && (
+          <p className="text-[10px] text-textDim -mt-2 mb-3">Arranca con el visor 3D (cámara, luces, pose) abierto para importar un modelo.</p>
+        )}
 
         <div className="flex gap-3 mb-3">
           <div className="flex-1">
@@ -89,7 +117,7 @@ export default function NewProjectDialog() {
         </div>
 
         <label className="block text-xs text-textDim mb-1">Presets</label>
-        <div className="flex flex-wrap gap-1.5 mb-4">
+        <div className="flex flex-wrap gap-1.5 mb-3">
           {PRESETS.map((p) => (
             <button
               key={p.label}
@@ -102,6 +130,30 @@ export default function NewProjectDialog() {
             >
               {p.label}
             </button>
+          ))}
+        </div>
+
+        <label className="block text-xs text-textDim mb-1">Plantillas de tamaño</label>
+        <div className="max-h-40 overflow-y-auto space-y-2 mb-4 border border-border rounded p-2">
+          {CATEGORY_ORDER.map((category) => (
+            <div key={category}>
+              <div className="text-[9px] text-textDim uppercase tracking-wide mb-1">{SIZE_PRESET_CATEGORY_LABELS[category]}</div>
+              <div className="flex flex-wrap gap-1.5">
+                {SIZE_PRESETS.filter((p) => p.category === category).map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => {
+                      setWidth(p.width);
+                      setHeight(p.height);
+                      setType('drawing');
+                    }}
+                    className="text-[10px] bg-panelLight hover:bg-border rounded px-2 py-1"
+                  >
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
 

@@ -1,8 +1,9 @@
 import { v4 as uuid } from 'uuid';
 import { Layer, AdjustmentType, FillType, GradientFill } from '@/types';
 import { createCanvas, cloneCanvas, canvasToDataUrl, dataUrlToCanvas } from '@/utils/canvasUtils';
-import { applyAdjustment, ADJUSTMENT_DEFAULTS } from './filter.service';
+import { applyAdjustment, ADJUSTMENT_DEFAULTS, gaussianBlur } from './filter.service';
 import { fillWithPattern } from './pattern.service';
+import { bakeLayerEffects, hasAnyEnabledEffect } from './layerEffects.service';
 
 /**
  * Layer pixel data lives here, keyed by layer id, instead of in React/Zustand state —
@@ -120,12 +121,77 @@ export function duplicateLayer(layer: Layer): Layer {
   return { ...layer, id: newId, name: `${layer.name} copia` };
 }
 
+/**
+ * A "linked instance" of a raster layer. Every layer gets its own mounted DOM `<canvas>`
+ * (required so each can be composited independently via CSS opacity/blend/mask), which rules
+ * out true same-object canvas aliasing — the mount-sync effect in Canvas2D would immediately
+ * overwrite it with the layer's own element anyway. Instead, `linkedSourceId` marks membership
+ * in a link group, and `syncLinkedInstances` (called after every committed stroke) copies the
+ * edited member's pixels into every other member's canvas — so it behaves like shared content
+ * even though each instance has its own opacity/blendMode/effects/mask.
+ */
+export function createLinkedInstance(source: Layer): Layer {
+  const newId = uuid();
+  const canvas = canvasRegistry.get(source.id);
+  canvasRegistry.set(newId, canvas ? cloneCanvas(canvas) : createCanvas(source.width, source.height));
+  return {
+    ...source,
+    id: newId,
+    name: `${source.name} (vinculada)`,
+    linkedSourceId: source.linkedSourceId ?? source.id,
+    hasMask: false,
+    effects: undefined,
+    clipTo: false,
+  };
+}
+
+/** Copies `editedLayerId`'s current pixels onto every other layer in its link group (the source
+ * plus every instance sharing the same `linkedSourceId`) — called after a stroke commits so
+ * linked instances behave like shared content. No-op for a layer with no linked siblings. */
+export function syncLinkedInstances(layers: Layer[], editedLayerId: string) {
+  const edited = layers.find((l) => l.id === editedLayerId);
+  if (!edited) return;
+  const groupSourceId = edited.linkedSourceId ?? edited.id;
+  const members = layers.filter((l) => l.id === groupSourceId || l.linkedSourceId === groupSourceId);
+  if (members.length < 2) return;
+
+  const editedCanvas = canvasRegistry.get(editedLayerId);
+  if (!editedCanvas) return;
+
+  for (const member of members) {
+    if (member.id === editedLayerId) continue;
+    const target = canvasRegistry.get(member.id);
+    if (!target) continue;
+    const tctx = target.getContext('2d')!;
+    tctx.clearRect(0, 0, target.width, target.height);
+    tctx.drawImage(editedCanvas, 0, 0);
+  }
+}
+
 export function mergeDown(top: Layer, base: Layer) {
   const topCanvas = canvasRegistry.get(top.id);
   const baseCanvas = canvasRegistry.get(base.id);
   if (!topCanvas || !baseCanvas) return;
   const ctx = baseCanvas.getContext('2d')!;
   compositeLayerOnto(ctx, top, topCanvas);
+}
+
+/** Crops a layer's registered canvas (and paint mask, if any) down to `bbox` — used by
+ * "trim to content". Non-raster layers (group/adjustment/fill) have no registry canvas and
+ * are silently skipped; the caller still updates their `width`/`height` fields to match. */
+export function trimLayerToBounds(id: string, bbox: { x: number; y: number; w: number; h: number }) {
+  const canvas = canvasRegistry.get(id);
+  if (canvas) {
+    const trimmed = createCanvas(bbox.w, bbox.h);
+    trimmed.getContext('2d')!.drawImage(canvas, -bbox.x, -bbox.y);
+    canvasRegistry.set(id, trimmed);
+  }
+  const mask = maskRegistry.get(id);
+  if (mask) {
+    const trimmedMask = createCanvas(bbox.w, bbox.h);
+    trimmedMask.getContext('2d')!.drawImage(mask, -bbox.x, -bbox.y);
+    maskRegistry.set(id, trimmedMask);
+  }
 }
 
 // --- Masks ---
@@ -140,6 +206,43 @@ export function addMask(layerId: string, width: number, height: number) {
 
 export function removeMask(layerId: string) {
   maskRegistry.delete(layerId);
+}
+
+/** Seeds a mask from an existing alpha-channel source (a selection mask) instead of blank
+ * white — reuses `alphaToLuminanceMask` (defined below) since a paint mask and a selection are
+ * different representations (luminance+opaque-alpha vs. alpha-channel) of the same idea. */
+export function addMaskFromAlpha(layerId: string, alphaSource: HTMLCanvasElement, width: number, height: number) {
+  const canvas = createCanvas(width, height);
+  canvas.getContext('2d')!.drawImage(alphaToLuminanceMask(alphaSource), 0, 0);
+  maskRegistry.set(layerId, canvas);
+}
+
+/** Softens the mask's edge by blurring it in place. Deliberately NOT `selectionMask.service`'s
+ * `featherMask` — that operates on an alpha-channel mask, while a paint mask here is grayscale
+ * luminance with opaque alpha, so blurring needs to target the RGB channels (which `gaussianBlur`
+ * does correctly since it blurs every channel uniformly and this mask's alpha is constant 255
+ * everywhere, so it stays 255 after blurring too — no edge artifacts from that channel). */
+export function featherLayerMask(layerId: string, radius: number) {
+  const mask = maskRegistry.get(layerId);
+  if (!mask || radius <= 0) return;
+  gaussianBlur(mask, radius);
+}
+
+/** Inverts the mask's grayscale value (255 - v) in place — for THIS luminance representation,
+ * that's the correct inversion; `selectionMask.service`'s `invertMask` inverts an alpha channel
+ * instead and would be a no-op here (this mask's alpha is always fully opaque). */
+export function invertLayerMask(layerId: string) {
+  const mask = maskRegistry.get(layerId);
+  if (!mask) return;
+  const ctx = mask.getContext('2d')!;
+  const imageData = ctx.getImageData(0, 0, mask.width, mask.height);
+  const d = imageData.data;
+  for (let i = 0; i < d.length; i += 4) {
+    d[i] = 255 - d[i];
+    d[i + 1] = 255 - d[i + 1];
+    d[i + 2] = 255 - d[i + 2];
+  }
+  ctx.putImageData(imageData, 0, 0);
 }
 
 export function getMaskCanvas(id: string): HTMLCanvasElement | undefined {
@@ -182,23 +285,76 @@ function luminanceMaskToAlpha(mask: HTMLCanvasElement): HTMLCanvasElement {
   return out;
 }
 
-/** Draws `canvas` onto `ctx` honoring the layer's opacity, blend mode and mask (if any). */
-function compositeLayerOnto(ctx: CanvasRenderingContext2D, layer: Layer, canvas: HTMLCanvasElement) {
-  ctx.save();
-  ctx.globalAlpha = layer.opacity;
-  ctx.globalCompositeOperation = layer.blendMode;
+/** The inverse of `luminanceMaskToAlpha`: a live-view CSS mask (opaque grayscale, RGB =
+ * source's alpha) built FROM a rendered layer's alpha channel — this is what lets "clip to layer
+ * below" reuse the exact same `WebkitMaskImage`/`mask-mode: luminance` mechanism the paint-mask
+ * preview already uses, just fed from a different source (a sibling's alpha instead of a
+ * hand-painted mask). */
+export function alphaToLuminanceMask(source: HTMLCanvasElement): HTMLCanvasElement {
+  const out = createCanvas(source.width, source.height);
+  const octx = out.getContext('2d')!;
+  const src = source.getContext('2d')!.getImageData(0, 0, source.width, source.height);
+  const dst = octx.createImageData(source.width, source.height);
+  const sd = src.data;
+  const dd = dst.data;
+  for (let i = 0; i < sd.length; i += 4) {
+    dd[i] = dd[i + 1] = dd[i + 2] = sd[i + 3];
+    dd[i + 3] = 255;
+  }
+  octx.putImageData(dst, 0, 0);
+  return out;
+}
+
+/** Draws `canvas` onto `ctx` honoring the layer's opacity, blend mode and mask (if any), plus
+ * an optional clip against `clipAlpha` (the alpha of this layer's clip base) and its own
+ * non-destructive effects (drop shadow, glow, bevel, overlays, stroke). */
+function compositeLayerOnto(ctx: CanvasRenderingContext2D, layer: Layer, canvas: HTMLCanvasElement, clipAlpha?: HTMLCanvasElement) {
+  let content = canvas;
+  if (clipAlpha) {
+    const clipped = createCanvas(canvas.width, canvas.height);
+    const cctx = clipped.getContext('2d')!;
+    cctx.drawImage(canvas, 0, 0);
+    cctx.globalCompositeOperation = 'destination-in';
+    cctx.drawImage(clipAlpha, 0, 0);
+    content = clipped;
+  }
 
   const mask = layer.hasMask ? maskRegistry.get(layer.id) : undefined;
   if (mask) {
-    const masked = createCanvas(canvas.width, canvas.height);
+    const masked = createCanvas(content.width, content.height);
     const mctx = masked.getContext('2d')!;
-    mctx.drawImage(canvas, 0, 0);
+    mctx.drawImage(content, 0, 0);
     mctx.globalCompositeOperation = 'destination-in';
     mctx.drawImage(luminanceMaskToAlpha(mask), 0, 0);
-    ctx.drawImage(masked, layer.x, layer.y);
-  } else {
-    ctx.drawImage(canvas, layer.x, layer.y);
+    content = masked;
   }
+
+  if (hasAnyEnabledEffect(layer.effects)) {
+    const { behind, front } = bakeLayerEffects(content, layer.effects);
+    if (behind) {
+      ctx.save();
+      ctx.globalAlpha = layer.opacity;
+      ctx.drawImage(behind, layer.x, layer.y);
+      ctx.restore();
+    }
+    ctx.save();
+    ctx.globalAlpha = layer.opacity;
+    ctx.globalCompositeOperation = layer.blendMode;
+    ctx.drawImage(content, layer.x, layer.y);
+    ctx.restore();
+    if (front) {
+      ctx.save();
+      ctx.globalAlpha = layer.opacity;
+      ctx.drawImage(front, layer.x, layer.y);
+      ctx.restore();
+    }
+    return;
+  }
+
+  ctx.save();
+  ctx.globalAlpha = layer.opacity;
+  ctx.globalCompositeOperation = layer.blendMode;
+  ctx.drawImage(content, layer.x, layer.y);
   ctx.restore();
 }
 
@@ -270,8 +426,20 @@ function applyAdjustmentToAccumulator(out: HTMLCanvasElement, layer: Layer) {
   octx.putImageData(result, 0, 0);
 }
 
-/** Paints one non-group layer of any type (raster/fill/adjustment) onto the accumulator. */
-function paintLayerOnto(ctx: CanvasRenderingContext2D, allLayers: Layer[], layer: Layer, width: number, height: number) {
+/** The layer's own pre-mask, pre-effect content canvas — used both to actually paint it and (for
+ * whichever layer sits just below in the same group) as the alpha source for a clipping layer
+ * above it. Adjustment/reference layers have no such canvas and can't serve as a clip base. */
+function getOwnContentCanvas(allLayers: Layer[], layer: Layer, width: number, height: number): HTMLCanvasElement | undefined {
+  if (layer.type === 'group') return flattenSubtree(allLayers, layer.id, width, height);
+  if (layer.type === 'fill') return renderFillLayer(layer, width, height);
+  if (layer.type === 'raster' || layer.type === 'text' || layer.type === 'reference') return canvasRegistry.get(layer.id);
+  return undefined;
+}
+
+/** Paints one non-group layer of any type (raster/fill/adjustment) onto the accumulator.
+ * `clipAlpha`, when given, clips this layer's content to that alpha shape first (Photoshop's
+ * "clip to layer below"). */
+function paintLayerOnto(ctx: CanvasRenderingContext2D, allLayers: Layer[], layer: Layer, width: number, height: number, clipAlpha?: HTMLCanvasElement) {
   if (layer.type === 'reference') {
     // Reference layers are a drawing aid only — visible live in the editor (Canvas2D
     // renders them like any raster layer) but deliberately excluded from every flatten
@@ -280,14 +448,14 @@ function paintLayerOnto(ctx: CanvasRenderingContext2D, allLayers: Layer[], layer
   }
   if (layer.type === 'group') {
     const groupCanvas = flattenSubtree(allLayers, layer.id, width, height);
-    compositeLayerOnto(ctx, layer, groupCanvas);
+    compositeLayerOnto(ctx, layer, groupCanvas, clipAlpha);
   } else if (layer.type === 'fill') {
-    compositeLayerOnto(ctx, layer, renderFillLayer(layer, width, height));
+    compositeLayerOnto(ctx, layer, renderFillLayer(layer, width, height), clipAlpha);
   } else if (layer.type === 'adjustment') {
     applyAdjustmentToAccumulator(ctx.canvas as HTMLCanvasElement, layer);
   } else {
     const canvas = canvasRegistry.get(layer.id);
-    if (canvas) compositeLayerOnto(ctx, layer, canvas);
+    if (canvas) compositeLayerOnto(ctx, layer, canvas, clipAlpha);
   }
 }
 
@@ -326,10 +494,15 @@ function flattenSubtree(
   // bottom-first so later (higher) layers end up drawn on top, like the live view.
   const children = allLayers.filter((l) => l.parent === parentId).reverse();
 
+  // Tracks the nearest preceding non-clipped sibling's content, so every consecutive `clipTo`
+  // layer above it clips to that SAME base (Photoshop's clipping-group semantics), not to
+  // whatever clipped layer happened to render immediately before it.
+  let clipBase: HTMLCanvasElement | undefined;
   for (const layer of children) {
     if (stopAtId && layer.id === stopAtId) break;
     if (!layer.visible) continue;
-    paintLayerOnto(ctx, allLayers, layer, width, height);
+    if (!layer.clipTo) clipBase = getOwnContentCanvas(allLayers, layer, width, height);
+    paintLayerOnto(ctx, allLayers, layer, width, height, layer.clipTo ? clipBase : undefined);
   }
 
   return out;

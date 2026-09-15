@@ -6,6 +6,7 @@ import { useAppStore } from '@/store/appStore';
 import { dataUrlToImage, createCanvas } from '@/utils/canvasUtils';
 import { base64ToUint8 } from '@/utils/binaryUtils';
 import { isElectron } from '@/utils/fileUtils';
+import { parseSvg, rasterizeSvg } from '@/services/svgImport.service';
 
 interface ImportedFile {
   name: string;
@@ -51,6 +52,27 @@ export async function importImagesAsLayers(addLayer: (name?: string) => string):
   let lastLayerId: string | null = null;
   for (const file of result.files) {
     const ext = extensionOf(file.name);
+
+    // Real vector reconstruction (path geometry parsed and rasterized at the SVG's own declared
+    // size) instead of the generic <img> decode below, which would just rasterize it at
+    // whatever intrinsic size the browser's SVG renderer happens to pick.
+    if (ext === 'svg') {
+      const base64 = file.dataUrl.split(',')[1] ?? '';
+      const svgText = decodeURIComponent(escape(atob(base64)));
+      const parsed = parseSvg(svgText);
+      if (parsed.shapes.length === 0) {
+        toast.error(`No se pudo interpretar ${file.name} como SVG`);
+        continue;
+      }
+      const rasterized = rasterizeSvg(parsed);
+      const layerId = addLayer(file.name.replace(/\.[^.]+$/, ''));
+      const canvas = layerService.getLayerCanvas(layerId);
+      if (!canvas) continue;
+      canvas.getContext('2d')!.drawImage(rasterized, 0, 0);
+      lastLayerId = layerId;
+      continue;
+    }
+
     if (ext === 'png' || ext === 'apng') {
       const base64 = file.dataUrl.split(',')[1] ?? '';
       const apng = await decodeApng(base64ToUint8(base64));
@@ -77,6 +99,26 @@ export async function importImagesAsLayers(addLayer: (name?: string) => string):
     lastLayerId = layerId;
   }
   return lastLayerId;
+}
+
+/**
+ * Checks the OS clipboard (not this app's own internal copy/paste buffer — see
+ * `appStore.pasteAsLayer` for that) for image data and, if present, draws it into a new
+ * layer at its natural size. Returns null (without any error/toast) when the clipboard has
+ * no image — that's the normal, silent case for falling back to the internal paste instead.
+ */
+export async function pasteImageFromClipboard(addLayer: (name?: string) => string): Promise<string | null> {
+  if (!isElectron()) return null;
+  const result = await window.electronAPI.readClipboardImage();
+  if (result.empty || !result.dataUrl) return null;
+
+  const img = await dataUrlToImage(result.dataUrl);
+  const layerId = addLayer('Pegado');
+  // See the identical comment in importImagesAsLayers — must re-fetch post-await.
+  const canvas = layerService.getLayerCanvas(layerId);
+  if (!canvas) return null;
+  canvas.getContext('2d')!.drawImage(img, 0, 0);
+  return layerId;
 }
 
 /**
