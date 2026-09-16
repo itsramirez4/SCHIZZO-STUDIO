@@ -7,6 +7,7 @@ const SNAP_TARGET_LABELS: Record<SnapTarget, string> = {
   guides: 'Guías',
   perspectiveGrid: 'Puntos de fuga',
   canvas: 'Bordes/centro del lienzo',
+  pixelGrid: 'Cuadrícula de píxeles',
 };
 
 export default function GuidesPanel() {

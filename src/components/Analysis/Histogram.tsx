@@ -107,7 +107,9 @@ export default function Histogram() {
   if (!currentLayer) {
     return <div className="p-3 text-xs text-textDim">Selecciona una capa para ver su histograma.</div>;
   }
-  if (!data) return null;
+  if (!data) {
+    return <div className="p-3 text-xs text-textDim">Esta capa no tiene píxeles propios — no hay histograma que mostrar.</div>;
+  }
 
   const stats = computeStats(data[channel]);
 

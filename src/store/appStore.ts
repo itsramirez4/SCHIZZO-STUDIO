@@ -226,6 +226,7 @@ interface AppState {
   setBackgroundColor: (color: string) => void;
 
   toggleGrid: () => void;
+  setGridSize: (size: number) => void;
   toggleRulerVisible: () => void;
   updatePerspectiveData: (data: import('@/types/perspective').PerspectiveProjectData) => void;
   finishContentAwareResize: (newWidth: number, newHeight: number, resizedFrames: HTMLCanvasElement[]) => void;
@@ -262,6 +263,7 @@ interface AppState {
   pushHistory: (action: string) => void;
   undo: () => Promise<void>;
   redo: () => Promise<void>;
+  jumpToHistory: (index: number) => Promise<void>;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -310,7 +312,14 @@ export const useAppStore = create<AppState>((set, get) => ({
       lastModified: new Date().toISOString(),
       layers: [baseLayer],
       brushes: [],
-      settings: { ...DEFAULT_PROJECT_SETTINGS, snapToGrid: type === 'pixelart', gridVisible: type === 'pixelart' },
+      settings: {
+        ...DEFAULT_PROJECT_SETTINGS,
+        snapToGrid: type === 'pixelart',
+        gridVisible: type === 'pixelart',
+        // A per-pixel grid is what "pixel grid overlay" means for pixel-art work (Aseprite,
+        // Piskel) — the general 32px default is for a coarser compositional/layout grid.
+        gridSize: type === 'pixelart' ? 1 : DEFAULT_PROJECT_SETTINGS.gridSize,
+      },
     };
     historyManager.pushState('Proyecto creado', project.layers);
     set({
@@ -1127,6 +1136,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ project: { ...project, settings: { ...project.settings, gridVisible: !project.settings.gridVisible } } });
   },
 
+  setGridSize: (size) => {
+    const { project } = get();
+    if (!project) return;
+    set({ project: { ...project, settings: { ...project.settings, gridSize: Math.max(1, Math.round(size)) } } });
+  },
+
   toggleRulerVisible: () => {
     const { project } = get();
     if (!project) return;
@@ -1446,6 +1461,18 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   redo: async () => {
     const snapshot = await historyManager.redo();
+    if (!snapshot || !get().project) return;
+    set((s) => ({
+      project: s.project ? { ...s.project, layers: snapshot.layers, animation: snapshot.animation } : s.project,
+      currentLayerId: snapshot.layers.some((l) => l.id === s.currentLayerId) ? s.currentLayerId : (snapshot.layers[0]?.id ?? null),
+      historyVersion: s.historyVersion + 1,
+      canUndo: historyManager.canUndo(),
+      canRedo: historyManager.canRedo(),
+    }));
+  },
+
+  jumpToHistory: async (index) => {
+    const snapshot = await historyManager.jumpTo(index);
     if (!snapshot || !get().project) return;
     set((s) => ({
       project: s.project ? { ...s.project, layers: snapshot.layers, animation: snapshot.animation } : s.project,

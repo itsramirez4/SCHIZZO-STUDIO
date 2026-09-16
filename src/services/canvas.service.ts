@@ -202,6 +202,10 @@ export function eraseStroke(
   ctx.lineWidth = size;
   ctx.beginPath();
   points.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+  // A single-point path (a plain click/tap with no drag) has only a moveTo and no segment to
+  // stroke — Canvas2D paints nothing for that even with a round cap. Close the loop back onto
+  // itself so the round cap still draws a dot at that point.
+  if (points.length === 1) ctx.lineTo(points[0].x, points[0].y);
   ctx.stroke();
   ctx.restore();
 }

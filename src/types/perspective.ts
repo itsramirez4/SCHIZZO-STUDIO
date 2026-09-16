@@ -80,7 +80,7 @@ export interface Guide {
   color: string;
 }
 
-export type SnapTarget = 'guides' | 'perspectiveGrid' | 'canvas';
+export type SnapTarget = 'guides' | 'perspectiveGrid' | 'canvas' | 'pixelGrid';
 
 export interface SnapSettings {
   enabled: boolean;

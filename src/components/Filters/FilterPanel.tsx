@@ -1,3 +1,4 @@
+import { useLayers } from '@/hooks/useLayers';
 import ColorAdjustments from './ColorAdjustments';
 import LevelsThresholdFilters from './LevelsThresholdFilters';
 import CurvesFilter from './CurvesFilter';
@@ -16,9 +17,19 @@ import DisplacementMapFilter from './DisplacementMapFilter';
 import MeshWarpFilter from './MeshWarpFilter';
 
 export default function FilterPanel() {
+  const { currentLayer } = useLayers();
+  const unsupportedLayer =
+    currentLayer && currentLayer.type !== 'raster' && currentLayer.type !== 'text' && currentLayer.type !== 'reference';
+
   return (
     <div className="p-3 overflow-y-auto">
       <h3 className="text-xs font-semibold mb-2 text-textDim uppercase tracking-wide">Filtros</h3>
+      {unsupportedLayer && (
+        <p className="text-[10px] text-amber-400 mb-2">
+          Esta capa ({currentLayer.type === 'group' ? 'grupo' : currentLayer.type === 'fill' ? 'de relleno' : 'de ajuste'}) no tiene
+          píxeles propios — los filtros no tienen efecto aquí. Elegí una capa normal o de referencia.
+        </p>
+      )}
       <ColorAdjustments />
       <CurvesFilter />
       <LevelsThresholdFilters />

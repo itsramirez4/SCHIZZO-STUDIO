@@ -83,6 +83,13 @@ export class HistoryManager {
     return this.applyCurrent();
   }
 
+  /** Jumps directly to any entry in the stack (the History panel's click-to-restore). */
+  async jumpTo(index: number): Promise<HistorySnapshot | null> {
+    if (index < 0 || index >= this.stack.length || index === this.pointer) return null;
+    this.pointer = index;
+    return this.applyCurrent();
+  }
+
   private async applyCurrent(): Promise<HistorySnapshot> {
     const snapshot = this.stack[this.pointer];
     await Promise.all(

@@ -224,7 +224,16 @@ export default function App() {
 
     function onKeyDown(e: KeyboardEvent) {
       const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
+      // Only actual text-entry controls should swallow shortcuts (so typing "g" into a layer
+      // rename field doesn't ungroup, etc.) — a non-text input (opacity slider, checkbox,
+      // color swatch...) keeping browser focus after a click shouldn't silently block every
+      // global shortcut until the user thinks to click elsewhere to blur it.
+      const NON_TEXT_INPUT_TYPES = new Set(['range', 'checkbox', 'radio', 'color', 'button', 'submit', 'reset', 'file', 'image']);
+      const isTextEntry =
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable ||
+        (target.tagName === 'INPUT' && !NON_TEXT_INPUT_TYPES.has((target as HTMLInputElement).type));
+      if (isTextEntry) return;
 
       // Photoshop/Krita convention: with the brush active, a bare digit sets its opacity —
       // 1-9 for 10%-90%, 0 for 100%. A single conventional gesture spanning 10 keys, so it

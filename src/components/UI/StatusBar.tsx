@@ -15,6 +15,7 @@ const TYPE_LABELS: Record<ProjectType, string> = {
 export default function StatusBar() {
   const project = useAppStore((s) => s.project);
   const toggleGrid = useAppStore((s) => s.toggleGrid);
+  const setGridSize = useAppStore((s) => s.setGridSize);
   const setTransparentBg = useAppStore((s) => s.setTransparentBg);
   const setBackgroundColor = useAppStore((s) => s.setBackgroundColor);
   const { zoom, setZoom, canvasRotation, setCanvasRotation, rotateBy, viewFlippedH, toggleViewFlip } = useCanvas();
@@ -34,6 +35,16 @@ export default function StatusBar() {
       >
         <Grid3x3 size={12} /> Grid
       </button>
+      {project.settings.gridVisible && (
+        <input
+          type="number"
+          min={1}
+          value={project.settings.gridSize}
+          onChange={(e) => setGridSize(Number(e.target.value))}
+          title="Tamaño de celda de la cuadrícula (px)"
+          className="w-10 bg-panelLight border border-border rounded px-1 py-0.5 text-[10px]"
+        />
+      )}
       <div className="flex items-center gap-1">
         <button
           onClick={() => setTransparentBg(true)}

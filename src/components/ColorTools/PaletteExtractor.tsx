@@ -38,10 +38,15 @@ export default function PaletteExtractor() {
   function extractFromLayer() {
     if (!currentLayer) return;
     const canvas = layerService.getLayerCanvas(currentLayer.id);
-    if (!canvas) return;
+    if (!canvas) {
+      toast.error('Esta capa no tiene píxeles propios — elegí una capa normal, de texto o de referencia');
+      return;
+    }
     const imageData = canvas.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height);
     runExtraction(imageData);
   }
+
+  const currentLayerHasPixels = !!currentLayer && !!layerService.getLayerCanvas(currentLayer.id);
 
   async function extractFromImage() {
     if (!isElectron()) {
@@ -123,7 +128,7 @@ export default function PaletteExtractor() {
       </label>
 
       <div className="grid grid-cols-2 gap-1.5">
-        <button onClick={extractFromLayer} disabled={!currentLayer} className="text-[11px] bg-panelLight rounded py-1.5 disabled:opacity-40">
+        <button onClick={extractFromLayer} disabled={!currentLayerHasPixels} className="text-[11px] bg-panelLight rounded py-1.5 disabled:opacity-40">
           Extraer de la capa actual
         </button>
         <button onClick={extractFromImage} disabled={busy} className="text-[11px] bg-panelLight rounded py-1.5 disabled:opacity-40">

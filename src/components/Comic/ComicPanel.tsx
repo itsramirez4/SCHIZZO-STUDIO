@@ -41,7 +41,13 @@ export default function ComicPanel() {
       )}
 
       <ScreentoneSection currentLayerLocked={!currentLayer || currentLayer.locked} selection={selection} withCanvas={withCanvas} />
-      <PanelSection canApply={canApplyToSelection} selection={selection} project={project} withCanvas={withCanvas} />
+      <PanelSection
+        canApply={canApplyToSelection}
+        currentLayerLocked={!currentLayer || currentLayer.locked}
+        selection={selection}
+        project={project}
+        withCanvas={withCanvas}
+      />
       <SpeedLinesSection canApply={canApplyToSelection} selection={selection} primaryColor={primaryColor} withCanvas={withCanvas} />
       <BubbleSection canApply={canApplyToSelection} selection={selection} withCanvas={withCanvas} />
     </div>
@@ -142,11 +148,13 @@ function ScreentoneSection({
 
 function PanelSection({
   canApply,
+  currentLayerLocked,
   selection,
   project,
   withCanvas,
 }: {
   canApply: boolean;
+  currentLayerLocked: boolean;
   selection: { x: number; y: number; w: number; h: number } | null;
   project: { width: number; height: number } | null;
   withCanvas: WithCanvas;
@@ -197,7 +205,7 @@ function PanelSection({
           <button
             key={t}
             onClick={() => project && withCanvas((canvas) => comicService.applyPanelTemplate(canvas, t, style), 'Plantilla de página')}
-            disabled={!project}
+            disabled={!project || currentLayerLocked}
             className="text-[10px] bg-panel border border-border rounded py-1 disabled:opacity-40 hover:bg-panelLight"
           >
             {PANEL_TEMPLATE_LABELS[t]}

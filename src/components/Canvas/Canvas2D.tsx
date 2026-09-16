@@ -868,7 +868,14 @@ export default function Canvas2D() {
    * freehand brush/eraser strokes (which would feel broken if they kept jumping to a grid). */
   function snapPos(pos: Point): Point {
     if (!project) return pos;
-    const snapped = findSnapPoint(pos.x, pos.y, snapSettings, guides, perspectiveGrid, project.width, project.height);
+    // Pixel-art projects snap automatically (that's what the per-project flag is for); any
+    // other project can opt in via the same "Cuadrícula de píxeles" checkbox as the other
+    // snap targets in the Guides panel.
+    const pixelGrid = {
+      enabled: project.settings.snapToGrid || snapSettings.targets.includes('pixelGrid'),
+      size: project.settings.gridSize,
+    };
+    const snapped = findSnapPoint(pos.x, pos.y, snapSettings, guides, perspectiveGrid, project.width, project.height, pixelGrid);
     return snapped ? { x: snapped.x, y: snapped.y } : pos;
   }
 
@@ -1523,7 +1530,7 @@ export default function Canvas2D() {
         <MeshWarpOverlay canvasWidth={project.width} canvasHeight={project.height} zoom={zoom} getProjectPoint={getProjectPoint} />
         <GestureDetector targetRef={stageRef} onZoomBy={zoomBy} />
 
-        {selection && currentTool === 'selection' && !selectionMask && (
+        {selection && !selectionMask && (
           <div
             style={{
               position: 'absolute',

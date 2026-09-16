@@ -38,7 +38,8 @@ export function findSnapPoint(
   guides: Guide[],
   grid: PerspectiveGridSettings,
   canvasWidth: number,
-  canvasHeight: number
+  canvasHeight: number,
+  pixelGrid?: { enabled: boolean; size: number }
 ): SnapPoint | null {
   if (!settings.enabled) return null;
   const tolerance = settings.tolerance;
@@ -88,6 +89,13 @@ export function findSnapPoint(
       { x: canvasWidth, y: canvasHeight / 2 },
     ];
     for (const c of candidates) consider(c.x, c.y, 'canvas');
+  }
+
+  // Pixel-art snapping: pulls the point to the nearest pixel-grid intersection so shape/
+  // selection/transform anchors land on exact pixel boundaries instead of sub-pixel positions.
+  if (pixelGrid?.enabled && pixelGrid.size > 0) {
+    const size = pixelGrid.size;
+    consider(Math.round(x / size) * size, Math.round(y / size) * size, 'pixelGrid');
   }
 
   return best;
