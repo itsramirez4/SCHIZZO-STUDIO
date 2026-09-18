@@ -1,21 +1,27 @@
+import { lazy, Suspense } from 'react';
 import { Layers, SlidersHorizontal, History, BarChart3, Film, MessageSquareText, Palette, LibraryBig, ListChecks, GraduationCap, Video, Image, Cloud, Keyboard, Triangle, Gauge } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
 import LayerPanel from '@/components/Layers/LayerPanel';
-import FilterPanel from '@/components/Filters/FilterPanel';
-import HistoryPanel from '@/components/History/HistoryPanel';
-import Histogram from '@/components/Analysis/Histogram';
-import TimelinePanel from '@/components/Animation/TimelinePanel';
-import ComicPanel from '@/components/Comic/ComicPanel';
-import ColorToolsPanel from '@/components/ColorTools/ColorToolsPanel';
-import AssetLibraryPanel from '@/components/AssetLibrary/AssetLibraryPanel';
-import BatchPanel from '@/components/BatchOperations/BatchPanel';
-import LearningPanel from '@/components/Learning/LearningPanel';
-import RecordingPanel from '@/components/Recording/RecordingPanel';
-import ReferencesPanel from '@/components/References/ReferencesPanel';
-import CloudSyncPanel from '@/components/CloudSync/CloudSyncPanel';
-import CustomizationPanel from '@/components/Customization/CustomizationPanel';
-import PerspectivePanel from '@/components/Perspective/PerspectivePanel';
-import ProjectStatsPanel from '@/components/UI/ProjectStatsPanel';
+
+// Every other panel here starts closed (only the layer panel is open by default) — loading
+// their JS lazily, on first actual toggle, keeps their combined weight (the bulk of the app's
+// main bundle) out of the code every session pays for on startup regardless of which of these
+// 15 panels, if any, get opened that session.
+const FilterPanel = lazy(() => import('@/components/Filters/FilterPanel'));
+const HistoryPanel = lazy(() => import('@/components/History/HistoryPanel'));
+const Histogram = lazy(() => import('@/components/Analysis/Histogram'));
+const TimelinePanel = lazy(() => import('@/components/Animation/TimelinePanel'));
+const ComicPanel = lazy(() => import('@/components/Comic/ComicPanel'));
+const ColorToolsPanel = lazy(() => import('@/components/ColorTools/ColorToolsPanel'));
+const AssetLibraryPanel = lazy(() => import('@/components/AssetLibrary/AssetLibraryPanel'));
+const BatchPanel = lazy(() => import('@/components/BatchOperations/BatchPanel'));
+const LearningPanel = lazy(() => import('@/components/Learning/LearningPanel'));
+const RecordingPanel = lazy(() => import('@/components/Recording/RecordingPanel'));
+const ReferencesPanel = lazy(() => import('@/components/References/ReferencesPanel'));
+const CloudSyncPanel = lazy(() => import('@/components/CloudSync/CloudSyncPanel'));
+const CustomizationPanel = lazy(() => import('@/components/Customization/CustomizationPanel'));
+const PerspectivePanel = lazy(() => import('@/components/Perspective/PerspectivePanel'));
+const ProjectStatsPanel = lazy(() => import('@/components/UI/ProjectStatsPanel'));
 
 type Tab = 'layers' | 'filters' | 'history' | 'histogram' | 'animation' | 'comic' | 'colorTools' | 'assetLibrary' | 'batch' | 'learning' | 'recording' | 'references' | 'cloudSync' | 'customization' | 'perspective' | 'stats';
 
@@ -94,6 +100,7 @@ export default function Sidebar() {
     <div className="flex border-l border-border bg-panel">
       {anyOpen && (
         <div className="w-64 border-r border-border flex flex-col">
+        <Suspense fallback={<div className="p-3 text-xs text-textDim">Cargando…</div>}>
           {showLayerPanel && (
             <div className="flex-1 min-h-0 border-b border-border overflow-y-auto">
               <LayerPanel />
@@ -174,6 +181,7 @@ export default function Sidebar() {
               <ProjectStatsPanel />
             </div>
           )}
+        </Suspense>
         </div>
       )}
       <div className="w-10 flex flex-col items-center py-2 gap-2">

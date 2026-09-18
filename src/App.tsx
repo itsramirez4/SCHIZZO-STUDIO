@@ -24,13 +24,16 @@ import NewProjectDialog from '@/components/Dialogs/NewProjectDialog';
 import ExportDialog from '@/components/Dialogs/ExportDialog';
 import AutoSaveDialog from '@/components/Dialogs/AutoSaveDialog';
 import BrushEditor from '@/components/Brushes/BrushEditor';
-import WorkspaceShell from '@/components/Workspace/WorkspaceShell';
 import TourOverlay from '@/components/Learning/TourOverlay';
 
 // three.js pulls in a large bundle — only load it once the 3D dialog is actually opened.
 const Model3DViewer = lazy(() => import('@/components/Models3D/Model3DViewer'));
 const Reference3DPanel = lazy(() => import('@/components/Models3D/Reference3DPanel'));
 const ResizeDialog = lazy(() => import('@/components/Dialogs/ResizeDialog'));
+// The floating workspace is an opt-in alternate to the classic layout below (most sessions
+// never touch it) — it also drags in its own copies of Filters/Comic/Animation/Histogram/
+// History, so keeping it lazy keeps all of that out of the classic layout's startup cost too.
+const WorkspaceShell = lazy(() => import('@/components/Workspace/WorkspaceShell'));
 
 export default function App() {
   const project = useAppStore((s) => s.project);
@@ -342,7 +345,9 @@ export default function App() {
       <Toaster position="bottom-center" toastOptions={{ style: { background: '#2a2a2a', color: '#fff' } }} />
       {project ? (
         workspaceMode === 'floating' ? (
-          <WorkspaceShell />
+          <Suspense fallback={null}>
+            <WorkspaceShell />
+          </Suspense>
         ) : (
           <>
             <Header />

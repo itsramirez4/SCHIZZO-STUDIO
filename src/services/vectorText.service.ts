@@ -1,17 +1,22 @@
-import * as opentype from 'opentype.js';
+// Type-only import — erased at compile time, so it doesn't drag the real opentype.js (a
+// ~480KB chunk of this app's entire bundle) into whatever imports this file just for
+// paintTextDraft, which never touches it. The actual library is loaded on demand below,
+// only once someone calls textToPath2D (i.e. only once the vector-text tool is actually used).
+import type * as OpenType from 'opentype.js';
 import { VectorStrokeStyle, VectorFillStyle } from '@/types/vectorShapes';
 
-let fontPromise: Promise<opentype.Font> | null = null;
+let fontPromise: Promise<OpenType.Font> | null = null;
 
-/** Lazily fetches and parses the bundled Inter font (OFL-licensed, src/assets/fonts) once per
- * session — this is the only font vector text supports right now; picking a system font would
- * need per-platform font-file access, which isn't available from a browser-sandboxed renderer. */
-function loadFont(): Promise<opentype.Font> {
+/** Lazily fetches+parses the bundled Inter font (OFL-licensed, src/assets/fonts) AND loads the
+ * opentype.js parser itself, both once per session — this is the only font vector text supports
+ * right now; picking a system font would need per-platform font-file access, which isn't
+ * available from a browser-sandboxed renderer. */
+function loadFont(): Promise<OpenType.Font> {
   if (!fontPromise) {
     const url = new URL('../assets/fonts/Inter-Regular.woff', import.meta.url).href;
-    fontPromise = fetch(url)
-      .then((r) => r.arrayBuffer())
-      .then((buf) => opentype.parse(buf));
+    fontPromise = Promise.all([fetch(url).then((r) => r.arrayBuffer()), import('opentype.js')]).then(([buf, opentype]) =>
+      opentype.parse(buf)
+    );
   }
   return fontPromise;
 }

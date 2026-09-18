@@ -7,7 +7,6 @@ import { useAppStore } from '@/store/appStore';
 import { useWorkspaceStore } from '@/store/workspaceStore';
 import { useAutoSaveStore } from '@/store/autoSaveStore';
 import { importImagesAsLayers } from '@/services/importImage';
-import { importKraAsLayer } from '@/services/kraImport.service';
 
 export default function Header() {
   const { project, save, open } = useProject();
@@ -31,6 +30,9 @@ export default function Header() {
 
   async function handleImportKra() {
     try {
+      // jszip (this import's only real dependency) is a big chunk of the bundle for a rarely
+      // used action — load it on demand instead of paying for it on every app start.
+      const { importKraAsLayer } = await import('@/services/kraImport.service');
       const layerId = await importKraAsLayer(addLayer);
       if (layerId) pushHistory('Importar Krita');
     } catch (err) {
