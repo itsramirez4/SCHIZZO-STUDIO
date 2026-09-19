@@ -1,4 +1,4 @@
-import { DocPage } from '@/types/learning';
+﻿import { DocPage } from '@/types/learning';
 
 /** Written from the actual, verified feature set of this app — not generic placeholder
  * documentation. Every claim here matches real, working functionality. */
@@ -225,4 +225,75 @@ export const DOC_PAGES: DocPage[] = [
       'Solo en el espacio de trabajo flotante: Alt+1 a Alt+6 cargan cada preset de layout, Ctrl+\` cicla el zoom de la interfaz, Ctrl+Shift+T cicla el tema (oscuro/claro/auto).',
     ],
   },
+  {
+    id: 'art-brushes',
+    title: 'Pinceles de arte y texturas',
+    category: 'Estudio',
+    content: [
+      'El selector de pinceles se organiza por categorías: Dibujo (lápices, carboncillo, grafito, Conté), Tinta, Pintura (acuarela, óleo, gouache, acrílico), Medios secos (pastel, tiza, crayón), Digital (aerógrafo, marcadores) y Textura (esponja, punteado, sombreado, follaje).',
+      'Las texturas de estos pinceles se generan por código: imitan el aspecto de cada medio, pero no son simulaciones físicas (no hay difusión de pigmento ni mezcla en húmedo).',
+      'Los pinceles de medios secos giran según la dirección del trazo y reaccionan a la presión de la tableta. Puedes ajustarlos, guardarlos como propios o importar/exportar pinceles .brush desde el editor de pinceles.',
+    ],
+  },
+  {
+    id: 'mannequin',
+    title: 'Maniquí 3D, animales y objetos',
+    category: 'Estudio',
+    content: [
+      'En el visor 3D y en la ventana de Referencia 3D encontrarás la sección «Maniquí de referencia»: figura humana de 8 tipos de cuerpo, perro, gato y caballo.',
+      'Cada articulación tiene sus tres giros con los rangos de una articulación real. Puedes elegir poses predefinidas, una pose aleatoria plausible o espejar la pose. Las manos tienen posiciones predefinidas y un control por dedo; el rostro tiene expresiones y sliders de cejas, ojos y boca.',
+      'La ropa (camiseta, pantalón, sombrero, gafas, mochila, capa) y los objetos de escena (muebles, coche, casa, espada, guitarra…) son volúmenes simplificados para estudiar proporciones y perspectiva, no modelos detallados. También puedes importar tus propios .glb, .gltf u .obj.',
+      'La iluminación admite dirección, intensidad, temperatura de color en Kelvin, contraluz, sombras proyectadas y una vista de valores en gris para estudiar luz y sombra. La perspectiva de cámara se controla con el ángulo de visión y presets de vista.',
+    ],
+  },
+  {
+    id: 'study-panel',
+    title: 'Panel Estudio: guías, tutor y academia',
+    category: 'Estudio',
+    content: [
+      'Guías: superpone al lienzo, sin tocar tus capas, proporciones de rostro (frente y perfil), figura en cabezas, asistente de elipses, mano, perspectiva curvilínea, habitación y edificio. Incluye una regla para medir distancias y ángulos (con conversión a cabezas si hay una guía de figura) y acceso a las cuadrículas de composición y a la perspectiva.',
+      'Analizar («¿Por qué no funciona?»): mide valores, reparto del peso visual, simetría, inclinación de las líneas dominantes y dispersión del color, y explica lo que ve con una sugerencia. Nunca modifica el dibujo. Es un análisis de la imagen: no reconoce anatomía ni rostros.',
+      'Academia: ejercicio del día, plan de estudio por tema (el asistente interpreta frases como «retrato durante este mes»), práctica de poses aleatorias con temporizador, ejercicios de memoria visual, retos y progreso. La dificultad se ajusta según cómo valores cada ejercicio; la app no puntúa tus dibujos.',
+      'Estilos: biblioteca de tradiciones visuales (japonesa, china, coreana, renacentista, barroca, impresionismo, cómic, manga, concept art…) con los recursos que conviene observar y un ejercicio de práctica. Sirve para estudiar, no para convertir tu dibujo a un estilo.',
+    ],
+  },
+  {
+    id: 'pigments',
+    title: 'Mezcla de pigmentos',
+    category: 'Color',
+    content: [
+      'En Herramientas de color → Pigmentos, dos colores se mezclan como pintura: azul con amarillo da verde, rojo con amarillo da naranja. Junto a la mezcla verás el resultado de mezclar luz (RGB) para comparar.',
+      'Es una aproximación en espacio RYB, con blancos, negros y grises mezclados de forma neutra; no simula el comportamiento espectral de pigmentos concretos.',
+    ],
+  },
+  {
+    id: 'smart-fill-smudge',
+    title: 'Relleno inteligente y mezclador de color',
+    category: 'Herramientas',
+    content: [
+      'Bote de pintura → «Relleno inteligente»: detecta el área en todas las capas (para colorear en una capa bajo el line art), cierra huecos del contorno de hasta unos 2× el valor de «Cerrar huecos» y expande el color bajo la línea para no dejar un halo claro.',
+      'Mezclador de color (tecla N): arrastra el color como pintura fresca. «Fuerza de arrastre» controla cuánto se arrastra y «Carga de color» va añadiendo el color principal mientras mezclas.',
+      'Los pinceles admiten sensibilidad a la presión, inclinación del lápiz (ancho de la punta), giro según la dirección del trazo y estabilizador (suavizado). Puedes importar varias imágenes PNG/JPG a la vez como puntas de pincel. Las librerías .abr de Photoshop (CS y posterior) se importan desde el editor de pinceles: puntas, tamaño, espaciado, dispersión y dinámicas de presión; la textura de papel y el pincel dual se integran de forma aproximada en la punta, y los bordes húmedos y el ruido no se importan.',
+    ],
+  },
+  {
+    id: 'perspective-tools',
+    title: 'Perspectiva: guías, generador y detección automática',
+    category: 'Estudio',
+    content: [
+      'En Estudio → Guías hay perspectiva curvilínea de 5 puntos, un generador de habitación de 1 punto con suelo y techo en baldosas, y un asistente de edificio de 2 puntos con plantas y columnas. Se mueven, giran y escalan; se guardan con el proyecto.',
+      'En Estudio → Analizar, «Detectar puntos de fuga» busca líneas rectas que convergen y propone hasta dos puntos, que puedes colocar en la cuadrícula de perspectiva. Necesita líneas de construcción claras (edificios, habitaciones, calles): en dibujos orgánicos no encontrará nada.',
+    ],
+  },
+  {
+    id: 'modes-export',
+    title: 'Modos de estudio, referencias en internet y PSD',
+    category: 'Estudio',
+    content: [
+      'Estudio → Modos: mesa de artista (abre lienzo, referencias, paleta, modelo 3D y capas), modelo vivo (la cámara orbita el modelo mientras dibujas), estudio de anatomía (piel, músculos y esqueleto simplificados), pose aleatoria con temporizador y modo espejo automático (voltea el lienzo cada cierto tiempo).',
+      'Referencias → «Buscar referencias en internet» busca imágenes libres en Wikimedia Commons y las guarda con su licencia como etiqueta. Requiere conexión.',
+      'Exportar → PSD guarda las capas de píxeles (nombre, posición, opacidad, visibilidad y modo de fusión) más la imagen combinada. No incluye máscaras, capas de ajuste ni estilos de capa.',
+    ],
+  },
 ];
+
