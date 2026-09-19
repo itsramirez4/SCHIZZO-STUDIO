@@ -8,6 +8,8 @@ import * as layerService from '@/services/layer.service';
 import { isElectron } from '@/utils/fileUtils';
 import LightingControls from './LightingControls';
 import PoseEditor from './PoseEditor';
+import MannequinControls from './MannequinControls';
+import NumberSlider from './NumberSlider';
 
 const VIEWER_WIDTH = 720;
 const VIEWER_HEIGHT = 480;
@@ -15,6 +17,9 @@ const CAMERA_PRESETS: { id: CameraPreset; label: string }[] = [
   { id: 'front', label: 'Frente' },
   { id: 'side', label: 'Perfil' },
   { id: 'threeQuarter', label: '3/4' },
+  { id: 'back', label: 'Espalda' },
+  { id: 'top', label: 'Cenital' },
+  { id: 'lowAngle', label: 'Contrapicado' },
 ];
 
 export default function Model3DViewer() {
@@ -31,6 +36,7 @@ export default function Model3DViewer() {
   const [hasModel, setHasModel] = useState(false);
   const [modelVersion, setModelVersion] = useState(0);
   const [wireframe, setWireframe] = useState(false);
+  const [fov, setFov] = useState(45);
 
   useEffect(() => {
     if (!show || !canvasRef.current) return;
@@ -123,25 +129,36 @@ export default function Model3DViewer() {
               <canvas ref={canvasRef} width={VIEWER_WIDTH} height={VIEWER_HEIGHT} />
             </div>
             <p className="text-[11px] text-textDim mt-2">
-              Arrastra para orbitar, rueda para zoom. Formatos soportados: .glb, .gltf, .obj.
+              Arrastra para orbitar, rueda para zoom. Formatos soportados: .glb, .gltf, .obj. También puedes usar el maniquí integrado y objetos de escena (panel derecho).
             </p>
           </div>
 
           <div className="w-64 shrink-0 space-y-3 overflow-y-auto max-h-[480px]">
             <div className="space-y-1.5">
               <div className="text-[10px] text-textDim uppercase tracking-wide">Cámara</div>
-              <div className="flex gap-1">
+              <div className="grid grid-cols-3 gap-1">
                 {CAMERA_PRESETS.map((p) => (
                   <button
                     key={p.id}
                     onClick={() => engineRef.current?.setCameraPreset(p.id)}
                     disabled={!hasModel}
-                    className="flex-1 bg-panelLight text-[10px] rounded py-1 disabled:opacity-40"
+                    className="bg-panelLight text-[10px] rounded py-1 disabled:opacity-40"
                   >
                     {p.label}
                   </button>
                 ))}
               </div>
+              <NumberSlider
+                label="Perspectiva"
+                value={fov}
+                min={12}
+                max={110}
+                onChange={(v) => {
+                  setFov(v);
+                  engineRef.current?.setFov(v);
+                }}
+              />
+              <p className="text-[9px] text-textDim">Ángulo bajo = lente larga (perspectiva plana). Alto = gran angular (perspectiva exagerada).</p>
               <label className="flex items-center gap-1.5 text-[10px] text-textDim">
                 <input
                   type="checkbox"
@@ -162,6 +179,13 @@ export default function Model3DViewer() {
             </div>
 
             <PoseEditor engine={engineRef.current} modelVersion={modelVersion} />
+            <MannequinControls
+              engine={engineRef.current}
+              onSceneChange={() => {
+                setHasModel(engineRef.current?.hasModel() ?? false);
+                setModelVersion((v) => v + 1);
+              }}
+            />
           </div>
         </div>
 
