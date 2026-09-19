@@ -46,3 +46,23 @@ body {
     @apply w-8 h-8 flex items-center justify-center rounded text-textDim hover:bg-panelLight hover:text-white transition-colors;
   }
 }
+
+/* Two logo variants (white for dark theme, black for light) — swapped in CSS rather than JS
+   so it follows the same rules as variables.css, including the system-preference fallback. */
+.logo-on-light {
+  display: none;
+}
+:root[data-theme='light'] .logo-on-dark {
+  display: none;
+}
+:root[data-theme='light'] .logo-on-light {
+  display: block;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) .logo-on-dark {
+    display: none;
+  }
+  :root:not([data-theme='dark']) .logo-on-light {
+    display: block;
+  }
+}

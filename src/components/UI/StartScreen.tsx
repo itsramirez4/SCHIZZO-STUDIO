@@ -5,6 +5,7 @@ import { useProject } from '@/hooks/useProject';
 import { useProjectStore } from '@/store/projectStore';
 import { useAutoSaveStore } from '@/store/autoSaveStore';
 import { isElectron } from '@/utils/fileUtils';
+import Logo from '@/components/UI/Logo';
 
 interface ActionCard {
   title: string;
@@ -55,6 +56,7 @@ export default function StartScreen() {
   return (
     <div className="flex-1 flex flex-col items-center justify-center gap-8 overflow-y-auto py-10 px-4">
       <div className="text-center">
+        <Logo size={112} className="mx-auto mb-3" />
         <h1 className="text-4xl font-bold text-accent mb-2">SCHIZZO STUDIO</h1>
         <p className="text-textDim text-sm">Dibujo digital y pixel art, sin límites.</p>
       </div>

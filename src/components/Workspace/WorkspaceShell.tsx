@@ -11,6 +11,7 @@ import TimelinePanel from '@/components/Animation/TimelinePanel';
 import Histogram from '@/components/Analysis/Histogram';
 import HistoryPanel from '@/components/History/HistoryPanel';
 import StatusBar from '@/components/UI/StatusBar';
+import Logo from '@/components/UI/Logo';
 
 const PANEL_REGISTRY: Record<PanelId, { title: string; closable: boolean; Component: React.ComponentType }> = {
   toolbox: { title: 'Herramientas', closable: true, Component: Toolbox },
@@ -58,6 +59,7 @@ function WorkspaceToolbar() {
 
   return (
     <div className="h-10 shrink-0 bg-panel border-b border-border flex items-center px-2 gap-2">
+      <Logo size={22} />
       <span className="text-sm font-semibold text-accent px-1">SCHIZZO STUDIO</span>
       <span className="text-[11px] text-textDim">Workspace flotante</span>
       <div className="ml-auto flex items-center gap-2">

@@ -24,6 +24,9 @@ function createWindow() {
     minWidth: 1024,
     minHeight: 700,
     backgroundColor: '#1e1e1e',
+    // Packaged builds get their icon embedded in the .exe by electron-builder; this covers
+    // `npm run dev`, where there's no embedded icon and the taskbar would show Electron's default.
+    icon: path.join(__dirname, '../public/icon.png'),
     autoHideMenuBar: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),

@@ -7,8 +7,11 @@ files:
   - dist/**/*
   - dist-electron/**/*
   - package.json
+  - public/icon.png
 win:
-  target: nsis
+  target:
+    - nsis
+    - portable
   icon: public/icon.png
 mac:
   target: dmg
@@ -19,5 +22,8 @@ linux:
   icon: public/icon.png
   category: Graphics
 nsis:
+  artifactName: SCHIZZO-STUDIO-Setup-${version}.${ext}
   oneClick: false
   allowToChangeInstallationDirectory: true
+portable:
+  artifactName: SCHIZZO-STUDIO-Portable-${version}.${ext}

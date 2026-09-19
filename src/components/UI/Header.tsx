@@ -1,5 +1,6 @@
 import { FilePlus, FolderOpen, Save, Download, Undo2, Redo2, ImagePlus, Boxes, View, Scaling, Crop, PackageOpen, LayoutGrid, History as HistoryIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
+import Logo from '@/components/UI/Logo';
 import { useProject } from '@/hooks/useProject';
 import { useHistory } from '@/hooks/useHistory';
 import { useUIStore } from '@/store/uiStore';
@@ -47,7 +48,10 @@ export default function Header() {
 
   return (
     <div className="h-11 bg-panel border-b border-border flex items-center px-2 gap-1">
-      <span className="text-sm font-semibold px-2 text-accent">SCHIZZO STUDIO</span>
+      <div className="flex items-center gap-2 px-2">
+        <Logo size={26} />
+        <span className="text-sm font-semibold text-accent">SCHIZZO STUDIO</span>
+      </div>
       <div className="w-px h-5 bg-border mx-1" />
       <button onClick={openNewProjectDialog} title="Nuevo proyecto (Ctrl+N)" className="icon-btn">
         <FilePlus size={16} />
