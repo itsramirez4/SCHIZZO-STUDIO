@@ -26,6 +26,7 @@ interface UIState {
   showCustomizationPanel: boolean;
   showPerspectivePanel: boolean;
   showStatsPanel: boolean;
+  showStudyPanel: boolean;
 
   toggleLayerPanel: () => void;
   toggleBrushPanel: () => void;
@@ -58,6 +59,7 @@ interface UIState {
   toggleCustomizationPanel: () => void;
   togglePerspectivePanel: () => void;
   toggleStatsPanel: () => void;
+  toggleStudyPanel: () => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -86,6 +88,7 @@ export const useUIStore = create<UIState>((set) => ({
   showCustomizationPanel: false,
   showPerspectivePanel: false,
   showStatsPanel: false,
+  showStudyPanel: false,
 
   toggleLayerPanel: () => set((s) => ({ showLayerPanel: !s.showLayerPanel })),
   toggleBrushPanel: () => set((s) => ({ showBrushPanel: !s.showBrushPanel })),
@@ -118,4 +121,5 @@ export const useUIStore = create<UIState>((set) => ({
   toggleCustomizationPanel: () => set((s) => ({ showCustomizationPanel: !s.showCustomizationPanel })),
   togglePerspectivePanel: () => set((s) => ({ showPerspectivePanel: !s.showPerspectivePanel })),
   toggleStatsPanel: () => set((s) => ({ showStatsPanel: !s.showStatsPanel })),
+  toggleStudyPanel: () => set((s) => ({ showStudyPanel: !s.showStudyPanel })),
 }));

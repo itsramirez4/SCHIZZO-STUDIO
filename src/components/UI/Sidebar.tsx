@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { Layers, SlidersHorizontal, History, BarChart3, Film, MessageSquareText, Palette, LibraryBig, ListChecks, GraduationCap, Video, Image, Cloud, Keyboard, Triangle, Gauge } from 'lucide-react';
+import { Layers, SlidersHorizontal, History, BarChart3, Film, MessageSquareText, Palette, LibraryBig, ListChecks, GraduationCap, Video, Image, Cloud, Keyboard, Triangle, Gauge, PencilRuler } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
 import LayerPanel from '@/components/Layers/LayerPanel';
 
@@ -22,8 +22,9 @@ const CloudSyncPanel = lazy(() => import('@/components/CloudSync/CloudSyncPanel'
 const CustomizationPanel = lazy(() => import('@/components/Customization/CustomizationPanel'));
 const PerspectivePanel = lazy(() => import('@/components/Perspective/PerspectivePanel'));
 const ProjectStatsPanel = lazy(() => import('@/components/UI/ProjectStatsPanel'));
+const StudyPanel = lazy(() => import('@/components/Study/StudyPanel'));
 
-type Tab = 'layers' | 'filters' | 'history' | 'histogram' | 'animation' | 'comic' | 'colorTools' | 'assetLibrary' | 'batch' | 'learning' | 'recording' | 'references' | 'cloudSync' | 'customization' | 'perspective' | 'stats';
+type Tab = 'layers' | 'filters' | 'history' | 'histogram' | 'animation' | 'comic' | 'colorTools' | 'assetLibrary' | 'batch' | 'learning' | 'recording' | 'references' | 'cloudSync' | 'customization' | 'perspective' | 'stats' | 'study';
 
 export default function Sidebar() {
   const showLayerPanel = useUIStore((s) => s.showLayerPanel);
@@ -58,11 +59,14 @@ export default function Sidebar() {
   const togglePerspectivePanel = useUIStore((s) => s.togglePerspectivePanel);
   const showStatsPanel = useUIStore((s) => s.showStatsPanel);
   const toggleStatsPanel = useUIStore((s) => s.toggleStatsPanel);
+  const showStudyPanel = useUIStore((s) => s.showStudyPanel);
+  const toggleStudyPanel = useUIStore((s) => s.toggleStudyPanel);
 
   const tabs: { id: Tab; icon: typeof Layers; label: string; active: boolean; toggle: () => void }[] = [
     { id: 'layers', icon: Layers, label: 'Capas', active: showLayerPanel, toggle: toggleLayerPanel },
     { id: 'filters', icon: SlidersHorizontal, label: 'Filtros', active: showFilterPanel, toggle: toggleFilterPanel },
     { id: 'colorTools', icon: Palette, label: 'Herramientas de color', active: showColorToolsPanel, toggle: toggleColorToolsPanel },
+    { id: 'study', icon: PencilRuler, label: 'Estudio: guías, tutor y academia', active: showStudyPanel, toggle: toggleStudyPanel },
     { id: 'perspective', icon: Triangle, label: 'Perspectiva y simetría', active: showPerspectivePanel, toggle: togglePerspectivePanel },
     { id: 'assetLibrary', icon: LibraryBig, label: 'Biblioteca de assets', active: showAssetLibraryPanel, toggle: toggleAssetLibraryPanel },
     { id: 'references', icon: Image, label: 'Referencias', active: showReferencesPanel, toggle: toggleReferencesPanel },
@@ -94,7 +98,8 @@ export default function Sidebar() {
     showCloudSyncPanel ||
     showCustomizationPanel ||
     showPerspectivePanel ||
-    showStatsPanel;
+    showStatsPanel ||
+    showStudyPanel;
 
   return (
     <div className="flex border-l border-border bg-panel">
@@ -149,6 +154,11 @@ export default function Sidebar() {
           {showPerspectivePanel && (
             <div className="border-b border-border overflow-y-auto max-h-[32rem]">
               <PerspectivePanel />
+            </div>
+          )}
+          {showStudyPanel && (
+            <div className="border-b border-border overflow-y-auto max-h-[40rem]">
+              <StudyPanel />
             </div>
           )}
           {showBatchPanel && (
