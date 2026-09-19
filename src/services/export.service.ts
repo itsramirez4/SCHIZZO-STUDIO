@@ -1,5 +1,6 @@
 import { Project } from '@/types';
-import { flattenLayers } from './layer.service';
+import { flattenLayers, getLayerCanvas, renderFillLayer } from './layer.service';
+import { encodePsd, PsdLayerInput } from './psd.service';
 import { encodeBmp } from './bmp.service';
 import { encodeTiff } from './tiff.service';
 import { canvasToDataUrl } from '@/utils/canvasUtils';
@@ -91,6 +92,50 @@ export async function exportTIFF(project: Project): Promise<{ canceled: boolean;
     return window.electronAPI.exportImage(dataUrl, 'tiff', filename);
   }
   downloadDataUrl(dataUrl, `${filename}.tiff`);
+  return { canceled: false };
+}
+
+/**
+ * Layered PSD: raster, text and fill layers become PSD layers (name, position, opacity,
+ * visibility, blend mode). Groups are flattened into the list — a layer hidden by its group is
+ * exported hidden — while adjustment layers, masks and layer styles are not carried over.
+ */
+export async function exportPSD(project: Project): Promise<{ canceled: boolean; filePath?: string }> {
+  const byId = new Map(project.layers.map((l) => [l.id, l]));
+  const visibleThroughParents = (l: (typeof project.layers)[number]): boolean => {
+    let cur = l.parent ? byId.get(l.parent) : undefined;
+    while (cur) {
+      if (!cur.visible) return false;
+      cur = cur.parent ? byId.get(cur.parent) : undefined;
+    }
+    return l.visible;
+  };
+  const layers: PsdLayerInput[] = [];
+  for (const l of project.layers) {
+    if (l.type === 'group' || l.type === 'adjustment' || l.type === 'reference') continue;
+    const canvas = l.type === 'fill' ? renderFillLayer(l, project.width, project.height) : getLayerCanvas(l.linkedSourceId ?? l.id);
+    if (!canvas) continue;
+    layers.push({ name: l.name, canvas, opacity: l.opacity, visible: visibleThroughParents(l), blendMode: l.blendMode, x: l.x, y: l.y });
+  }
+
+  // Merged image: the flattened project over its background (white when the canvas is transparent).
+  const flat = flattenLayers(project.layers, project.width, project.height);
+  const bgCanvas = document.createElement('canvas');
+  bgCanvas.width = project.width;
+  bgCanvas.height = project.height;
+  const bctx = bgCanvas.getContext('2d')!;
+  bctx.fillStyle = project.settings.transparentBg ? '#ffffff' : (project.settings.backgroundColor ?? '#ffffff');
+  bctx.fillRect(0, 0, project.width, project.height);
+  bctx.drawImage(flat, 0, 0);
+  const composite = bctx.getImageData(0, 0, project.width, project.height);
+
+  const bytes = encodePsd(project.width, project.height, layers, composite);
+  const dataUrl = `data:image/vnd.adobe.photoshop;base64,${uint8ToBase64(bytes)}`;
+  const filename = sanitizeFilename(project.name);
+  if (isElectron()) {
+    return window.electronAPI.exportImage(dataUrl, 'psd', filename);
+  }
+  downloadDataUrl(dataUrl, `${filename}.psd`);
   return { canceled: false };
 }
 

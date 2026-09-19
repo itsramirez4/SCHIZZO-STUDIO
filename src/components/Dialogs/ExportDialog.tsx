@@ -4,7 +4,7 @@ import { useUIStore } from '@/store/uiStore';
 import { useAppStore } from '@/store/appStore';
 import * as exportService from '@/services/export.service';
 
-type Format = 'png' | 'jpg' | 'webp' | 'avif' | 'bmp' | 'tiff' | 'svg';
+type Format = 'png' | 'jpg' | 'webp' | 'avif' | 'bmp' | 'tiff' | 'svg' | 'psd';
 
 const FORMAT_INFO: Record<Format, { label: string; lossy: boolean; note?: string }> = {
   png: { label: 'PNG', lossy: false },
@@ -13,6 +13,7 @@ const FORMAT_INFO: Record<Format, { label: string; lossy: boolean; note?: string
   avif: { label: 'AVIF', lossy: true, note: 'Suele pesar ~50% menos que PNG. Formato más nuevo, menos compatible.' },
   bmp: { label: 'BMP', lossy: false, note: 'Sin compresión — pensado para compatibilidad con software legacy.' },
   tiff: { label: 'TIFF', lossy: false, note: 'Sin compresión, con canal alfa — para impresión profesional.' },
+  psd: { label: 'PSD', lossy: false, note: 'Con capas (nombre, opacidad, visibilidad y modo de fusión) para abrir en Photoshop, Krita o Clip Studio. No incluye máscaras, ajustes ni estilos de capa.' },
   svg: { label: 'SVG', lossy: false, note: 'La imagen aplanada envuelta en un SVG — no es vectorial editable, esta app trabaja en píxeles.' },
 };
 
@@ -51,6 +52,9 @@ export default function ExportDialog() {
           break;
         case 'svg':
           result = await exportService.exportSVG(project!);
+          break;
+        case 'psd':
+          result = await exportService.exportPSD(project!);
           break;
       }
       if (!result.canceled) {
