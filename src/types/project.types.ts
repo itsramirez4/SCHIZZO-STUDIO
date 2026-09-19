@@ -52,6 +52,8 @@ export interface Project {
   /** Perspective grid, guides and symmetry setup — optional so older saved files (without this
    * field) still load fine; consumers fall back to defaults when it's absent. */
   perspective?: PerspectiveProjectData;
+  /** Construction guides (face, figure, room...) placed over the canvas; saved with the project. */
+  studyGuides?: import('@/services/studyGuides.service').StudyGuide[];
   /** Named snapshots of per-layer visibility/opacity/blendMode/effects — "layer comps". */
   layerComps?: LayerComp[];
 }

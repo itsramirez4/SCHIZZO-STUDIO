@@ -229,6 +229,7 @@ interface AppState {
   setGridSize: (size: number) => void;
   toggleRulerVisible: () => void;
   updatePerspectiveData: (data: import('@/types/perspective').PerspectiveProjectData) => void;
+  updateStudyGuides: (guides: import('@/services/studyGuides.service').StudyGuide[]) => void;
   finishContentAwareResize: (newWidth: number, newHeight: number, resizedFrames: HTMLCanvasElement[]) => void;
 
   enableAnimation: () => void;
@@ -1156,6 +1157,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     const { project } = get();
     if (!project) return;
     set({ project: { ...project, perspective: data } });
+  },
+
+  // Same reasoning as updatePerspectiveData: saved with the project, not part of undo history.
+  updateStudyGuides: (guides) => {
+    const { project } = get();
+    if (!project) return;
+    set({ project: { ...project, studyGuides: guides } });
   },
 
   // Content-aware (seam-carve) resize is destructive by nature — a seam path threads
