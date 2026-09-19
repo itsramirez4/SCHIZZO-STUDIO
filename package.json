@@ -19,6 +19,7 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "ag-psd": "^31.0.2",
     "jszip": "^3.10.1",
     "konva": "^9.3.6",
     "lucide-react": "^0.400.0",

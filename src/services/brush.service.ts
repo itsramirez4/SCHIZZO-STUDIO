@@ -1,9 +1,15 @@
 import { v4 as uuid } from 'uuid';
 import { Brush } from '@/types';
 import presetsJson from '@/assets/brushes/presets.json';
+import { buildArtPresets } from './brushPresets.service';
 
 export function loadPresets(): Brush[] {
-  return (presetsJson.presets as Brush[]).map((b) => ({ ...b }));
+  const basic = (presetsJson.presets as Brush[]).map((b) => ({ ...b, category: b.category ?? 'Básicos' }));
+  const art = buildArtPresets();
+  // Decode every stamp texture up front: decoding is async, and a brush's very first stroke
+  // would otherwise be stamped with the plain-circle fallback until the image finishes loading.
+  art.forEach((b) => b.texture && getTextureAlphaCanvas(b.texture));
+  return [...basic, ...art];
 }
 
 export function createBrush(overrides: Partial<Brush> = {}): Brush {
@@ -26,6 +32,8 @@ interface Point {
   x: number;
   y: number;
   pressure?: number;
+  /** Stylus tilt, 0 (upright) .. 1 (flat on the surface). */
+  tilt?: number;
 }
 
 // --- Brush texture (a custom stamp image, e.g. paper/chalk/leaf) ---
@@ -68,6 +76,11 @@ function getTextureAlphaCanvas(dataUrl: string): HTMLCanvasElement | undefined {
     img.src = dataUrl;
   }
   return undefined;
+}
+
+/** Starts decoding a brush's stamp texture now, so its first stroke doesn't fall back to the plain circle. */
+export function preloadBrushTexture(dataUrl: string | undefined) {
+  if (dataUrl) getTextureAlphaCanvas(dataUrl);
 }
 
 /** Recolors the (cached, shape-only) texture alpha mask with the brush's current color —
@@ -113,11 +126,14 @@ export function applyBrushStamp(
   brush: Brush,
   color: string,
   square = false,
-  pressure = 1
+  pressure = 1,
+  direction = 0,
+  tilt = 0
 ) {
   const jitterScale = 1 + ((Math.random() * 2 - 1) * brush.sizeJitter) / 100;
   const sizePressureScale = brush.dynamics?.sizeToPressure ? Math.max(0.05, pressure) : 1;
-  const radius = Math.max(0.5, (brush.size / 2) * jitterScale * sizePressureScale);
+  const tiltScale = brush.dynamics?.tiltToSize ? 1 + Math.max(0, Math.min(1, tilt)) * 1.6 : 1;
+  const radius = Math.max(0.5, (brush.size / 2) * jitterScale * sizePressureScale * tiltScale);
   const scatterOffset = brush.scatter * brush.size * (Math.random() - 0.5);
   const angle = Math.random() * Math.PI * 2;
   const sx = x + Math.cos(angle) * scatterOffset;
@@ -130,7 +146,16 @@ export function applyBrushStamp(
   if (brush.texture) {
     const stamp = getColoredTextureStamp(brush.texture, color);
     if (stamp) {
-      ctx.drawImage(stamp, sx - radius, sy - radius, radius * 2, radius * 2);
+      // Rotation: follow the stroke direction if the brush opts in, plus a random spin up to
+      // `angleJitter` degrees (dry media use it so repeated stamps don't visibly tile).
+      const rotation = (brush.dynamics?.angleToDirection ? direction : 0) + ((Math.random() * 2 - 1) * brush.angleJitter * Math.PI) / 360;
+      if (rotation !== 0) {
+        ctx.translate(sx, sy);
+        ctx.rotate(rotation);
+        ctx.drawImage(stamp, -radius, -radius, radius * 2, radius * 2);
+      } else {
+        ctx.drawImage(stamp, sx - radius, sy - radius, radius * 2, radius * 2);
+      }
       ctx.restore();
       return;
     }
@@ -191,7 +216,7 @@ export function strokeBrush(
 ) {
   if (points.length === 0) return;
   if (points.length === 1) {
-    applyBrushStamp(ctx, points[0].x, points[0].y, brush, color, square, points[0].pressure ?? 1);
+    applyBrushStamp(ctx, points[0].x, points[0].y, brush, color, square, points[0].pressure ?? 1, 0, points[0].tilt ?? 0);
     return;
   }
 
@@ -205,13 +230,16 @@ export function strokeBrush(
     const dy = curr.y - prev.y;
     const dist = Math.hypot(dx, dy);
     const steps = Math.max(1, Math.floor(dist / step));
+    const direction = Math.atan2(dy, dx);
+    const prevTilt = prev.tilt ?? 0;
+    const currTilt = curr.tilt ?? 0;
     const prevPressure = prev.pressure ?? 1;
     const currPressure = curr.pressure ?? 1;
 
     for (let s = 1; s <= steps; s++) {
       const t = s / steps;
       const pressure = prevPressure + (currPressure - prevPressure) * t;
-      applyBrushStamp(ctx, prev.x + dx * t, prev.y + dy * t, brush, color, square, pressure);
+      applyBrushStamp(ctx, prev.x + dx * t, prev.y + dy * t, brush, color, square, pressure, direction, prevTilt + (currTilt - prevTilt) * t);
     }
     prev = curr;
   }

@@ -3,10 +3,11 @@ import toast from 'react-hot-toast';
 import { useUIStore } from '@/store/uiStore';
 import { useBrush } from '@/hooks/useBrush';
 import { useTools } from '@/hooks/useTools';
-import { createBrush } from '@/services/brush.service';
+import { createBrush, preloadBrushTexture } from '@/services/brush.service';
 import { isElectron } from '@/utils/fileUtils';
 import { Brush, BrushDynamics } from '@/types';
 import BrushPreview from './BrushPreview';
+import { importAbr } from '@/services/abrImport.service';
 
 const SLIDERS: { key: keyof Brush; label: string; min: number; max: number; pct?: boolean }[] = [
   { key: 'size', label: 'Tamaño', min: 1, max: 300 },
@@ -25,6 +26,8 @@ export default function BrushEditor() {
   const { primaryColor } = useTools();
   const [name, setName] = useState(currentBrush.name);
   const textureInputRef = useRef<HTMLInputElement>(null);
+  const tipsInputRef = useRef<HTMLInputElement>(null);
+  const abrInputRef = useRef<HTMLInputElement>(null);
 
   if (!show) return null;
 
@@ -53,9 +56,63 @@ export default function BrushEditor() {
     e.target.value = ''; // lets picking the exact same file again still fire onChange
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => updateCurrentBrush({ texture: reader.result as string });
+    reader.onload = () => {
+      preloadBrushTexture(reader.result as string);
+      updateCurrentBrush({ texture: reader.result as string });
+    };
     reader.onerror = () => toast.error('No se pudo leer la imagen');
     reader.readAsDataURL(file);
+  }
+
+  /** Imports one or many PNG/JPG images as brush tips (one brush per image). */
+  function handleTipFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = '';
+    if (files.length === 0) return;
+    let done = 0;
+    files.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const brush = createBrush({
+          name: file.name.replace(/\.[^.]+$/, ''),
+          texture: reader.result as string,
+          size: 48,
+          hardness: 1,
+          spacing: 0.18,
+          category: 'Importados',
+          dynamics: { sizeToPressure: true, opacityToPressure: false, angleToDirection: false },
+        });
+        preloadBrushTexture(brush.texture);
+        addBrushToLibrary(brush);
+        if (++done === files.length) {
+          setCurrentBrush(brush);
+          toast.success(`${done} pincel(es) importado(s) como puntas`);
+        }
+      };
+      reader.onerror = () => toast.error(`No se pudo leer ${file.name}`);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handleAbrFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = '';
+    for (const file of files) {
+      try {
+        const { brushes, lostFeatures, bakedFeatures, skipped, skippedPatterns } = await importAbr(await file.arrayBuffer());
+        brushes.forEach((b) => addBrushToLibrary(b));
+        if (brushes.length) setCurrentBrush(brushes[0]);
+        const lost = Object.entries(lostFeatures).map(([k, n]) => `${k} (${n})`).join(', ');
+        toast.success(`${file.name}: ${brushes.length} pincel(es) importado(s)${skipped ? `, ${skipped} sin punta legible` : ''}`);
+        if (skippedPatterns) toast(`${skippedPatterns} textura(s) de papel con un formato no compatible: esos pinceles se importan sin ella`, { icon: 'ℹ️', duration: 7000 });
+        const baked = Object.keys(bakedFeatures).join(' y ');
+        if (baked) toast(`Aproximado dentro de la punta: ${baked} (el grano no queda fijo al lienzo como en Photoshop)`, { icon: 'ℹ️', duration: 8000 });
+        if (lost) toast(`No se importa: ${lost}`, { icon: 'ℹ️', duration: 7000 });
+      } catch (err) {
+        console.error(err);
+        toast.error(`${file.name}: no es un .abr compatible (se admite Photoshop CS y posterior)`);
+      }
+    }
   }
 
   function saveAsNew() {
@@ -150,7 +207,15 @@ export default function BrushEditor() {
             />
             Opacidad según presión
           </label>
-          <p className="text-[10px] text-textDim">Con mouse o un lápiz sin sensor de presión, el efecto queda parejo (no varía).</p>
+          <label className="flex items-center gap-2 text-xs">
+            <input type="checkbox" checked={currentBrush.dynamics?.tiltToSize ?? false} onChange={(e) => setDynamic('tiltToSize', e.target.checked)} />
+            Tamaño según inclinación del lápiz
+          </label>
+          <label className="flex items-center gap-2 text-xs">
+            <input type="checkbox" checked={currentBrush.dynamics?.angleToDirection ?? false} onChange={(e) => setDynamic('angleToDirection', e.target.checked)} />
+            Girar la punta según la dirección del trazo
+          </label>
+          <p className="text-[10px] text-textDim">Con mouse o un lápiz sin sensor de presión ni inclinación, el efecto queda parejo (no varía).</p>
         </div>
 
         <div className="mt-3 space-y-1.5">
@@ -170,6 +235,19 @@ export default function BrushEditor() {
             )}
           </div>
           <p className="text-[10px] text-textDim">Lo claro de la imagen pinta más opaco y lo oscuro menos — como un papel, tiza o estampa real, teñida con el color actual.</p>
+        </div>
+
+        <div className="mt-3">
+          <input ref={tipsInputRef} type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden" onChange={handleTipFiles} />
+          <button onClick={() => tipsInputRef.current?.click()} className="w-full bg-panelLight text-xs rounded py-1.5">
+            Importar imágenes como pinceles (PNG/JPG, varias a la vez)…
+          </button>
+          <p className="text-[10px] text-textDim mt-1">Cada imagen se convierte en una punta: lo claro pinta y lo oscuro no.</p>
+          <input ref={abrInputRef} type="file" accept=".abr" multiple className="hidden" onChange={handleAbrFiles} />
+          <button onClick={() => abrInputRef.current?.click()} className="w-full bg-panelLight text-xs rounded py-1.5 mt-2">
+            Importar librería de Photoshop (.abr)…
+          </button>
+          <p className="text-[10px] text-textDim mt-1">Se importan puntas, tamaño, espaciado, dispersión y dinámicas de presión. La textura de papel y el pincel dual se integran de forma aproximada en la punta; los bordes húmedos y el ruido no se importan.</p>
         </div>
 
         <div className="flex gap-2 mt-4">

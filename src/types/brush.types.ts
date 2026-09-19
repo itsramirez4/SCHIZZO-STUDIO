@@ -2,6 +2,8 @@ export interface BrushDynamics {
   sizeToPressure: boolean;
   opacityToPressure: boolean;
   angleToDirection: boolean;
+  /** Stylus tilt widens the stamp (a pencil held on its side lays down a broader mark). */
+  tiltToSize?: boolean;
 }
 
 export interface Brush {
@@ -26,4 +28,6 @@ export interface Brush {
   // Asset Library metadata (optional so existing presets/exported .brush files stay valid).
   tags?: string[];
   favorite?: boolean;
+  /** Grouping shown in the brush picker (pencil, ink, paint, dry media, texture, ...). */
+  category?: string;
 }
