@@ -8,12 +8,14 @@ import PrintWorkspace from './PrintWorkspace';
 import ColorNamePanel from './ColorNamePanel';
 import MoodPaletteGenerator from './MoodPaletteGenerator';
 import PaletteLibraryPanel from './PaletteLibraryPanel';
+import PigmentMixer from './PigmentMixer';
 import { useAssetLibraryStore } from '@/store/assetLibraryStore';
 
-type Tab = 'blindness' | 'harmony' | 'extraction' | 'converter' | 'accessibility' | 'print' | 'naming' | 'mood' | 'library';
+type Tab = 'blindness' | 'harmony' | 'extraction' | 'converter' | 'accessibility' | 'print' | 'naming' | 'mood' | 'library' | 'pigment';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'blindness', label: 'Daltonismo' },
+  { id: 'pigment', label: 'Pigmentos' },
   { id: 'harmony', label: 'Armonía' },
   { id: 'extraction', label: 'Paleta' },
   { id: 'mood', label: 'Generador' },
@@ -56,6 +58,7 @@ export default function ColorToolsPanel() {
       </div>
       <div className="flex-1 overflow-y-auto p-3">
         {tab === 'blindness' && <ColorBlindnessSimulator />}
+        {tab === 'pigment' && <PigmentMixer />}
         {tab === 'harmony' && <HarmonyGenerator />}
         {tab === 'extraction' && <PaletteExtractor />}
         {tab === 'mood' && <MoodPaletteGenerator />}
