@@ -1,4 +1,4 @@
-import { Paintbrush, Eraser, BoxSelect, Lasso, Wand, PaintBucket, Blend, Type, Pipette, ZoomIn, Hand, Move3d, PenTool, Square, Circle, Hexagon, Star, CaseSensitive, Waves } from 'lucide-react';
+import { Paintbrush, Eraser, BoxSelect, Lasso, Wand, PaintBucket, Blend, Type, Pipette, ZoomIn, Hand, Move3d, PenTool, Square, Circle, Hexagon, Star, CaseSensitive, Waves, Droplets } from 'lucide-react';
 import { useTools } from '@/hooks/useTools';
 import { useAppStore } from '@/store/appStore';
 import { ToolType, ProjectType } from '@/types';
@@ -34,6 +34,7 @@ const TOOLS: { id: ToolType; label: string; icon: typeof Paintbrush }[] = [
   { id: 'zoom', label: 'Zoom', icon: ZoomIn },
   { id: 'pan', label: 'Mano', icon: Hand },
   { id: 'warp', label: 'Deformar (liquify)', icon: Waves },
+  { id: 'smudge', label: 'Mezclador de color (difuminar)', icon: Droplets },
 ];
 
 // Pixel art doesn't use vector-path tools (bezier pen, vector text) or the liquify/warp
@@ -42,7 +43,7 @@ const TOOLS: { id: ToolType; label: string; icon: typeof Paintbrush }[] = [
 // the full general-purpose toolset, since brush/shapes/selection work the same regardless
 // of whether you're inking a comic, tracing a 3D reference, or drawing freely.
 const HIDDEN_TOOLS_BY_TYPE: Partial<Record<ProjectType, ToolType[]>> = {
-  pixelart: ['pen', 'vectorText', 'warp'],
+  pixelart: ['pen', 'vectorText', 'warp', 'smudge'],
 };
 
 // Reverse of TOOL_SHORTCUT_ACTIONS — which action id (if any) currently activates each tool.

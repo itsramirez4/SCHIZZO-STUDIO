@@ -41,12 +41,19 @@ import { findSnapPoint } from '@/services/snapEngine.service';
 import { warpImagePerspective } from '@/services/perspectiveTransform.service';
 import PerspectiveGridOverlay from '../PerspectiveTools/PerspectiveGridOverlay';
 import SymmetryOverlay from '../PerspectiveTools/SymmetryOverlay';
+import StudyGuidesOverlay from './StudyGuidesOverlay';
+import { useStudyGuidesStore } from '@/store/studyGuidesStore';
+import { smartFill } from '@/services/smartFill.service';
+import { beginSmudge, smudgeSegment, SmudgeState } from '@/services/smudge.service';
+import { useFillOptionsStore, useSmudgeStore } from '@/store/fillOptionsStore';
 import GuideLines from '../PerspectiveTools/GuideLines';
 import RulerBars from '../PerspectiveTools/RulerBars';
 
 interface Point {
   x: number;
   y: number;
+  /** Stylus tilt 0-1 at this point (only for brush strokes). */
+  tilt?: number;
   /** Stylus pressure (0-1) at this point, for pressure-sensitive brush dynamics — only ever
    * set on points headed into a brush stroke; every other tool leaves it undefined. */
   pressure?: number;
@@ -140,6 +147,7 @@ export default function Canvas2D() {
   // here that's keyed on project.id.
   useEffect(() => {
     usePerspectiveStore.getState().hydrateFromProject(project);
+    useStudyGuidesStore.getState().hydrateFromProject(project);
   }, [project]);
 
   // React's synthetic onWheel is attached as a passive listener (same as the browser's own
@@ -239,7 +247,10 @@ export default function Canvas2D() {
     };
   }, []);
 
+  /** 0 (pen upright) .. 1 (pen flat) from the pointer event's tilt angles; 0 for a mouse. */
+  const stylusTilt = (e: { tiltX?: number; tiltY?: number }) => Math.min(1, Math.hypot(e.tiltX ?? 0, e.tiltY ?? 0) / 90);
   const lastPointRef = useRef<Point | null>(null);
+  const smudgeRef = useRef<SmudgeState | null>(null);
   // Unlike `lastPointRef` (cleared on every pointer-up), this survives across separate clicks —
   // it's the anchor for Shift+click straight lines (Photoshop/Krita/CSP convention): click once
   // to lay down a point, then Shift+click elsewhere to stroke a straight line from that point to
@@ -934,7 +945,7 @@ export default function Canvas2D() {
     // same reflex Photoshop/Krita/Clip Studio support, so switching to the Eyedropper tool
     // and back isn't needed just to grab a color mid-stroke. Returns before beginDrawing(),
     // so the following pointermove/up (still holding the mouse down) never paints either.
-    if (e.altKey && (currentTool === 'brush' || currentTool === 'eraser' || currentTool === 'paintbucket' || currentTool === 'warp')) {
+    if (e.altKey && (currentTool === 'brush' || currentTool === 'eraser' || currentTool === 'paintbucket' || currentTool === 'warp' || currentTool === 'smudge')) {
       const color = sampleEyedropperColor(canvasEl, pos.x, pos.y);
       const hex = rgbaToHex(color);
       setPrimaryColor(hex);
@@ -949,7 +960,7 @@ export default function Canvas2D() {
         // A mouse (or a pen without a pressure sensor) reports a constant 0.5 while a button
         // is held — only a real stylus varies this — but `applyBrushStamp` only lets it affect
         // anything when the brush's own dynamics opt in, so this is harmless either way.
-        const posP = { ...pos, pressure: e.pressure };
+        const posP = { ...pos, pressure: e.pressure, tilt: stylusTilt(e) };
         // Shift+click straight line (Photoshop/Krita/Clip Studio convention): strokes a
         // straight segment from wherever the last stroke ended to this new click, instead of
         // starting a fresh dot — lets an artist lay down clean straight edges without switching
@@ -999,8 +1010,27 @@ export default function Canvas2D() {
         applyLiquifyDab(canvasEl, pos.x, pos.y, warpRadius, warpStrength / 100, warpMode, 0, 0);
         break;
       }
+      case 'smudge': {
+        const sm = useSmudgeStore.getState();
+        lastPointRef.current = pos;
+        smudgeRef.current = beginSmudge(canvasEl, pos.x, pos.y, { size: sm.size, strength: sm.strength, paintLoad: sm.paintLoad, color: primaryColor });
+        break;
+      }
       case 'paintbucket': {
-        const fill = () => floodFill(canvasEl, pos.x, pos.y, hexToRgba(primaryColor), 32, selection ?? undefined, currentLayer.lockAlpha);
+        const fo = useFillOptionsStore.getState();
+        const fill = fo.smart
+          ? () =>
+              smartFill(
+                canvasEl,
+                fo.sampleAllLayers ? layerService.flattenLayers(layers, project.width, project.height) : canvasEl,
+                pos.x,
+                pos.y,
+                hexToRgba(primaryColor),
+                { tolerance: fo.tolerance, gapClose: fo.gapClose, grow: fo.grow },
+                selection ?? undefined,
+                currentLayer.lockAlpha
+              )
+          : () => floodFill(canvasEl, pos.x, pos.y, hexToRgba(primaryColor), 32, selection ?? undefined, currentLayer.lockAlpha);
         if (selectionMask) {
           applyMaskedOperation(canvasEl, selectionMask, fill);
         } else {
@@ -1118,7 +1148,7 @@ export default function Canvas2D() {
     if (!canvasEl) return;
 
     if (currentTool === 'brush' && lastPointRef.current) {
-      const smoothedPos = { ...applySmoothing(lastPointRef.current, pos, currentBrush.smoothing ?? 0), pressure: e.pressure };
+      const smoothedPos = { ...applySmoothing(lastPointRef.current, pos, currentBrush.smoothing ?? 0), pressure: e.pressure, tilt: stylusTilt(e) };
       withAlphaLock(canvasEl.getContext('2d')!, currentLayer.lockAlpha, () => {
         withClip(canvasEl.getContext('2d')!, selection, () => {
           strokeWithSymmetry((pts) => strokeBrush(canvasEl.getContext('2d')!, pts, currentBrush, primaryColor, project?.type === 'pixelart'), [lastPointRef.current!, smoothedPos]);
@@ -1131,6 +1161,12 @@ export default function Canvas2D() {
         strokeWithSymmetry((pts) => eraseStroke(canvasEl, pts, eraserSize), [lastPointRef.current!, smoothedPos]);
       });
       lastPointRef.current = smoothedPos;
+    } else if (currentTool === 'smudge' && lastPointRef.current && smudgeRef.current) {
+      const sm = useSmudgeStore.getState();
+      withClip(canvasEl.getContext('2d')!, selection, () => {
+        smudgeSegment(canvasEl, smudgeRef.current!, lastPointRef.current!, pos, { size: sm.size, strength: sm.strength, paintLoad: sm.paintLoad, color: primaryColor });
+      });
+      lastPointRef.current = pos;
     } else if (currentTool === 'warp' && lastPointRef.current) {
       const dragDx = pos.x - lastPointRef.current.x;
       const dragDy = pos.y - lastPointRef.current.y;
@@ -1183,6 +1219,11 @@ export default function Canvas2D() {
       pushHistory(currentTool === 'brush' ? 'Trazo de pincel' : 'Borrador');
       // Anchors the next Shift+click straight line to wherever this (freehand) stroke ended.
       if (lastPointRef.current) lastStrokeEndRef.current = lastPointRef.current;
+    }
+    if (isDrawingRef.current && currentTool === 'smudge' && currentLayer) {
+      smudgeRef.current = null;
+      layerService.syncLinkedInstances(layers, currentLayer.id);
+      pushHistory('Mezclador de color');
     }
     if (isDrawingRef.current && currentTool === 'warp' && currentLayer) {
       layerService.syncLinkedInstances(layers, currentLayer.id);
@@ -1435,8 +1476,8 @@ export default function Canvas2D() {
   if (!project) return null;
 
   const topLevelLayers = layers.filter((l) => !l.parent).reverse();
-  const brushCursorActive = !isSpacePanning && (currentTool === 'brush' || currentTool === 'eraser' || currentTool === 'warp');
-  const brushCursorDiameter = currentTool === 'warp' ? warpRadius * 2 * zoom : currentBrush.size * zoom;
+  const brushCursorActive = !isSpacePanning && (currentTool === 'brush' || currentTool === 'eraser' || currentTool === 'warp' || currentTool === 'smudge');
+  const brushCursorDiameter = currentTool === 'warp' ? warpRadius * 2 * zoom : currentTool === 'smudge' ? useSmudgeStore.getState().size * zoom : currentBrush.size * zoom;
   const brushCursorSquare = currentTool === 'brush' && project.type === 'pixelart';
 
   return (
@@ -1491,7 +1532,7 @@ export default function Canvas2D() {
                 ? 'zoom-in'
                 : currentTool === 'transform' || currentTool === 'pen'
                   ? 'default'
-                  : currentTool === 'brush' || currentTool === 'eraser' || currentTool === 'warp'
+                  : currentTool === 'brush' || currentTool === 'eraser' || currentTool === 'warp' || currentTool === 'smudge'
                     ? 'none' // the size-accurate BrushCursor ring replaces the native pointer here
                     : 'crosshair',
         }}
@@ -1526,6 +1567,7 @@ export default function Canvas2D() {
         <GridOverlay canvasWidth={project.width} canvasHeight={project.height} zoom={zoom} />
         <PerspectiveGridOverlay canvasWidth={project.width} canvasHeight={project.height} zoom={zoom} getProjectPoint={getProjectPoint} />
         <SymmetryOverlay canvasWidth={project.width} canvasHeight={project.height} zoom={zoom} getProjectPoint={getProjectPoint} />
+        <StudyGuidesOverlay canvasWidth={project.width} canvasHeight={project.height} zoom={zoom} getProjectPoint={getProjectPoint} />
         <GuideLines canvasWidth={project.width} canvasHeight={project.height} zoom={zoom} getProjectPoint={getProjectPoint} />
         <MeshWarpOverlay canvasWidth={project.width} canvasHeight={project.height} zoom={zoom} getProjectPoint={getProjectPoint} />
         <GestureDetector targetRef={stageRef} onZoomBy={zoomBy} />

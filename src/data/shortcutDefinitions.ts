@@ -23,6 +23,7 @@ export const TOOL_SHORTCUT_ACTIONS: Record<string, ToolType> = {
   'tool.zoom': 'zoom',
   'tool.pan': 'pan',
   'tool.warp': 'warp',
+  'tool.smudge': 'smudge',
 };
 
 /**
@@ -52,6 +53,7 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
   { id: 'tool.zoom', label: 'Zoom', category: 'Herramientas', defaultKey: 'z', defaultModifiers: [], preventDefault: false },
   { id: 'tool.pan', label: 'Mano', category: 'Herramientas', defaultKey: 'h', defaultModifiers: [], preventDefault: false },
   { id: 'tool.warp', label: 'Deformar (liquify)', category: 'Herramientas', defaultKey: 'j', defaultModifiers: [], preventDefault: false },
+  { id: 'tool.smudge', label: 'Mezclador de color', category: 'Herramientas', defaultKey: 'n', defaultModifiers: [], preventDefault: false },
 
   // Pincel / color — X e D calcan la convención exacta de Photoshop (X intercambia,
   // D restablece a blanco y negro), en vez del mapeo anterior (D intercambiaba).

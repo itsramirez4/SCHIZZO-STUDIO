@@ -31,7 +31,8 @@ export type ToolType =
   | 'shapePolygon'
   | 'shapeStar'
   | 'vectorText'
-  | 'warp';
+  | 'warp'
+  | 'smudge';
 
 export interface RGBA {
   r: number;
