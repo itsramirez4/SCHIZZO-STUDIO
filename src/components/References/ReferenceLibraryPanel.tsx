@@ -4,6 +4,7 @@ import { Star, Trash2, ExternalLink } from 'lucide-react';
 import { useReferenceLibraryStore } from '@/store/referenceLibraryStore';
 import { buildReferenceFromDataUrl } from '@/services/referenceImport.service';
 import { isElectron } from '@/utils/fileUtils';
+import { searchReferences, fetchAsDataUrl, ReferenceSearchResult } from '@/services/referenceSearch.service';
 import { ReferenceImage } from '@/types/references';
 
 /** A persistent, cross-project library of reference photos — distinct from the existing "locked
@@ -22,6 +23,9 @@ export default function ReferenceLibraryPanel() {
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [urlInput, setUrlInput] = useState('');
   const [isImporting, setIsImporting] = useState(false);
+  const [webQuery, setWebQuery] = useState('');
+  const [webResults, setWebResults] = useState<ReferenceSearchResult[] | null>(null);
+  const [webBusy, setWebBusy] = useState(false);
 
   useEffect(() => {
     loadLibrary();
@@ -63,6 +67,34 @@ export default function ReferenceLibraryPanel() {
       toast.success('Referencia importada');
     } finally {
       setIsImporting(false);
+    }
+  }
+
+  async function runWebSearch() {
+    const q = webQuery.trim();
+    if (!q) return;
+    setWebBusy(true);
+    try {
+      setWebResults(await searchReferences(q));
+    } catch {
+      toast.error('No se pudo buscar: comprueba tu conexión a internet');
+    } finally {
+      setWebBusy(false);
+    }
+  }
+
+  async function saveWebResult(r: ReferenceSearchResult) {
+    setWebBusy(true);
+    try {
+      const dataUrl = await fetchAsDataUrl(r.imageUrl);
+      const ref = await buildReferenceFromDataUrl(dataUrl, r.title, r.pageUrl);
+      ref.tags = ['web', r.license];
+      addReference(ref);
+      toast.success('Guardada en tus referencias');
+    } catch {
+      toast.error('No se pudo descargar la imagen');
+    } finally {
+      setWebBusy(false);
     }
   }
 
@@ -113,6 +145,37 @@ export default function ReferenceLibraryPanel() {
           </button>
         </div>
       </div>
+
+      <details className="border border-border rounded">
+        <summary className="text-[11px] px-2 py-1.5 cursor-pointer">Buscar referencias en internet</summary>
+        <div className="p-2 space-y-2">
+          <div className="flex gap-1">
+            <input
+              type="text"
+              value={webQuery}
+              onChange={(e) => setWebQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && runWebSearch()}
+              placeholder="p. ej. «hands study», «horse anatomy»…"
+              className="flex-1 min-w-0 bg-panel border border-border rounded text-[10px] px-1.5 py-1"
+            />
+            <button onClick={runWebSearch} disabled={webBusy || !webQuery.trim()} className="text-[10px] bg-panelLight rounded px-2 disabled:opacity-40">
+              {webBusy ? '…' : 'Buscar'}
+            </button>
+          </div>
+          <p className="text-[9px] text-textDim">Imágenes de Wikimedia Commons (licencias libres, se guarda la licencia como etiqueta). Requiere conexión; la búsqueda en inglés da más resultados.</p>
+          {webResults && webResults.length === 0 && <p className="text-[10px] text-textDim">Sin resultados.</p>}
+          {webResults && webResults.length > 0 && (
+            <div className="grid grid-cols-3 gap-1 max-h-64 overflow-y-auto">
+              {webResults.map((r) => (
+                <button key={r.id} onClick={() => saveWebResult(r)} disabled={webBusy} title={`${r.title} — ${r.license}${r.author ? ` — ${r.author}` : ''}
+Clic para guardar en tus referencias`} className="relative aspect-square overflow-hidden rounded border border-border hover:border-accent">
+                  <img src={r.thumbUrl} alt={r.title} loading="lazy" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </details>
 
       <input
         type="text"
