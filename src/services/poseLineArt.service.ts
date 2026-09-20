@@ -168,9 +168,12 @@ export function buildLineArtCandidates(flat: HTMLCanvasElement): PoseCandidate[]
   const cy = ((y0 + y1) / 2 + 0.5) / scale;
   const all: PoseCandidate[] = [];
   // 2. The detector likes the person to fill ~2/3 of the frame: try a tight and a looser crop.
-  for (const margin of [1.15, 1.55]) {
+  for (const margin of [1.15, 1.55, 2.1, 3.2]) {
     const size = Math.max(bw, bh) * margin;
-    all.push(...candidatesForCrop(flat, paper, { x: cx - size / 2, y: cy - size / 2, size }, margin === 1.15 ? '' : ' (más aire)'));
+    const tag = margin === 1.15 ? '' : margin === 1.55 ? ' (más aire)' : margin === 2.1 ? ' (mucho aire)' : ' (muy lejos)';
+    // A close-up (a face filling the page) reads best as a small figure on plenty of paper: only the plain crop.
+    const list = candidatesForCrop(flat, paper, { x: cx - size / 2, y: cy - size / 2, size }, tag);
+    all.push(...(margin > 2.5 ? list.slice(0, 1) : list));
   }
   return all;
 }

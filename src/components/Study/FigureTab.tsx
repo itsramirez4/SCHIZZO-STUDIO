@@ -9,6 +9,7 @@ import { useGridOverlayStore } from '@/store/gridOverlayStore';
 import * as layerService from '@/services/layer.service';
 import { FIGURE_TYPES, FigureType, analyzeFigure } from '@/services/figureAnalysis.service';
 import type { Finding, FindingAction } from '@/services/drawingAnalysis.service';
+import type { FaceReading } from '@/services/poseDetect.service';
 
 const ICONS = { good: CheckCircle2, info: Info, warning: AlertTriangle } as const;
 const COLORS = { good: 'text-green-400', info: 'text-sky-300', warning: 'text-amber-400' } as const;
@@ -28,6 +29,8 @@ export default function FigureTab() {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ findings: Finding[]; heads: number } | null>(null);
   const [applied, setApplied] = useState<Set<string>>(new Set());
+  /** A head found when there is no whole figure to measure (portraits, busts). */
+  const [face, setFace] = useState<FaceReading | null>(null);
 
   if (!project) return <p className="text-[11px] text-textDim">Abre un proyecto para analizar una figura.</p>;
   const proj = project;
@@ -36,15 +39,19 @@ export default function FigureTab() {
     setBusy(true);
     try {
       const flat = layerService.flattenLayers(layers, proj.width, proj.height);
-      const { detectLandmarks } = await import('@/services/poseDetect.service');
+      const { detectPose } = await import('@/services/poseDetect.service');
       toast('Buscando la figura… (la primera vez se descarga un modelo de 12 MB)', { icon: '🔎', duration: 3000 });
-      const r = await detectLandmarks(flat, proj.settings.transparentBg ? '#ffffff' : (proj.settings.backgroundColor ?? '#ffffff'));
+      const pose = await detectPose(flat, proj.settings.transparentBg ? '#ffffff' : (proj.settings.backgroundColor ?? '#ffffff'));
+      const r = pose.body;
+      setFace(pose.face);
       if (r.landmarks) {
         setLandmarks(r.landmarks);
         setResult(null);
         const how = r.method ? ` Se encontró convirtiendo el dibujo (${r.method}).` : '';
         if (r.uncertain) toast(`Lectura aproximada (confianza ${Math.round(r.confidence * 100)} %).${how} Los puntos son un punto de partida: corrígelos a mano antes de analizar.`, { icon: '⚠️', duration: 9000 });
         else toast.success(`Puntos colocados (confianza ${Math.round(r.confidence * 100)} %).${how} Revísalos y ajusta la coronilla y la barbilla: son una estimación.`, { duration: 7000 });
+      } else if (pose.face) {
+        toast('No hay una figura completa que medir, pero he encontrado la cabeza: mira la tarjeta «Rostro encontrado».', { icon: '🙂', duration: 7000 });
       } else {
         toast(r.reason ?? 'No se reconoció una figura.', { icon: 'ℹ️', duration: 8000 });
         if (!landmarks) placeDefault(proj.width, proj.height);
@@ -54,6 +61,21 @@ export default function FigureTab() {
     } finally {
       setBusy(false);
     }
+  }
+
+  function placeFaceGuide() {
+    if (!face) return;
+    addGuide('faceFront', proj.width, proj.height);
+    const g = useStudyGuidesStore.getState().guides.at(-1);
+    if (g) updateGuide(g.id, { x: face.center.x, y: face.center.y, size: face.headHeight, rotation: face.rollDeg });
+  }
+
+  function measureEyeLine() {
+    if (!face) return;
+    const st = useStudyGuidesStore.getState();
+    st.setMeasureEnabled(true, proj.width, proj.height);
+    st.setMeasurePoint('a', face.eyeA);
+    st.setMeasurePoint('b', face.eyeB);
   }
 
   function analyze() {
@@ -110,9 +132,26 @@ export default function FigureTab() {
           {busy ? 'Buscando…' : 'Intentar colocarlos automáticamente'}
         </button>
         <p className="text-[9px] text-textDim leading-relaxed">
-          Lo automático solo reconoce figuras realistas, sombreadas o pintadas (no bocetos de línea ni formas planas) y requiere la app de escritorio; si no la reconoce, colócalos tú. Arrastra cada círculo hasta su articulación.
+          Lo automático está pensado para figuras completas: en dibujos de línea recorta la figura y prueba varias versiones más parecidas a una foto. Si el dibujo es un retrato o un busto (sin caderas ni piernas) no hay figura que medir, pero puede encontrar la cabeza. Requiere la app de escritorio; si no reconoce nada, colócalos tú. Arrastra cada círculo hasta su articulación.
         </p>
       </div>
+
+      {face && (
+        <div className="rounded border border-border p-2 space-y-1.5">
+          <div className="text-[11px] font-medium">Rostro encontrado</div>
+          <p className="text-[10px] text-textDim leading-relaxed">
+            {Math.abs(face.rollDeg) < 2.5
+              ? `Los ojos están casi a nivel (${face.rollDeg.toFixed(1).replace('.', ',')}°): la cabeza parece recta.`
+              : `La cabeza parece inclinada unos ${Math.abs(face.rollDeg).toFixed(0)}° hacia la ${face.rollDeg > 0 ? 'derecha' : 'izquierda'} del dibujo (por la línea de los ojos). ¿Quieres activar una guía para comprobar la inclinación?`}
+            {' '}Es una lectura automática{face.uncertain ? ' dudosa' : ''} (confianza {Math.round(face.confidence * 100)} %): comprueba que los puntos caen sobre los ojos.
+          </p>
+          <div className="grid grid-cols-2 gap-1.5">
+            <button onClick={measureEyeLine} className="bg-accent/80 text-white text-[10px] rounded py-1.5">Medir la línea de los ojos</button>
+            <button onClick={placeFaceGuide} className="bg-panelLight text-[10px] rounded py-1.5">Poner guía de rostro</button>
+          </div>
+          <p className="text-[9px] text-textDim">No se modifica el dibujo: son guías que puedes quitar.</p>
+        </div>
+      )}
 
       {landmarks && (
         <div className="flex gap-1.5">
