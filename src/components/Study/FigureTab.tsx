@@ -10,6 +10,7 @@ import * as layerService from '@/services/layer.service';
 import { FIGURE_TYPES, FigureType, analyzeFigure } from '@/services/figureAnalysis.service';
 import type { Finding, FindingAction } from '@/services/drawingAnalysis.service';
 import type { FaceReading } from '@/services/poseDetect.service';
+import { useAiStore } from '@/store/aiStore';
 
 const ICONS = { good: CheckCircle2, info: Info, warning: AlertTriangle } as const;
 const COLORS = { good: 'text-green-400', info: 'text-sky-300', warning: 'text-amber-400' } as const;
@@ -31,6 +32,7 @@ export default function FigureTab() {
   const [applied, setApplied] = useState<Set<string>>(new Set());
   /** A head found when there is no whole figure to measure (portraits, busts). */
   const [face, setFace] = useState<FaceReading | null>(null);
+  const aiEnabled = useAiStore((s) => s.enabled);
 
   if (!project) return <p className="text-[11px] text-textDim">Abre un proyecto para analizar una figura.</p>;
   const proj = project;
@@ -128,15 +130,17 @@ export default function FigureTab() {
         <button onClick={() => placeDefault(proj.width, proj.height)} className="bg-accent text-white text-[11px] rounded py-2">
           {landmarks ? 'Recolocar los puntos' : 'Colocar puntos (a mano)'}
         </button>
-        <button onClick={autoDetect} disabled={busy} className="bg-panelLight text-[11px] rounded py-1.5 disabled:opacity-50">
+        {aiEnabled && (
+                  <button onClick={autoDetect} disabled={busy} className="bg-panelLight text-[11px] rounded py-1.5 disabled:opacity-50">
           {busy ? 'Buscando…' : 'Intentar colocarlos automáticamente'}
         </button>
+        )}
         <p className="text-[9px] text-textDim leading-relaxed">
           Lo automático está pensado para figuras completas: en dibujos de línea recorta la figura y prueba varias versiones más parecidas a una foto. Si el dibujo es un retrato o un busto (sin caderas ni piernas) no hay figura que medir, pero puede encontrar la cabeza. Requiere la app de escritorio; si no reconoce nada, colócalos tú. Arrastra cada círculo hasta su articulación.
         </p>
       </div>
 
-      {face && (
+      {aiEnabled && face && (
         <div className="rounded border border-border p-2 space-y-1.5">
           <div className="text-[11px] font-medium">Rostro encontrado</div>
           <p className="text-[10px] text-textDim leading-relaxed">

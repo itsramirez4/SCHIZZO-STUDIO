@@ -27,6 +27,7 @@ interface UIState {
   showPerspectivePanel: boolean;
   showStatsPanel: boolean;
   showStudyPanel: boolean;
+  showAssistantPanel: boolean;
   showVersionsPanel: boolean;
   toggleVersionsPanel: () => void;
   /** Left-handed layout: toolbox on the right, side panels on the left. */
@@ -65,6 +66,7 @@ interface UIState {
   togglePerspectivePanel: () => void;
   toggleStatsPanel: () => void;
   toggleStudyPanel: () => void;
+  toggleAssistantPanel: () => void;
 }
 
 function readLeftHanded(): boolean {
@@ -102,6 +104,7 @@ export const useUIStore = create<UIState>((set) => ({
   showPerspectivePanel: false,
   showStatsPanel: false,
   showStudyPanel: false,
+  showAssistantPanel: false,
   showVersionsPanel: false,
   toggleVersionsPanel: () => set((s) => ({ showVersionsPanel: !s.showVersionsPanel })),
   leftHanded: readLeftHanded(),
@@ -147,4 +150,5 @@ export const useUIStore = create<UIState>((set) => ({
   togglePerspectivePanel: () => set((s) => ({ showPerspectivePanel: !s.showPerspectivePanel })),
   toggleStatsPanel: () => set((s) => ({ showStatsPanel: !s.showStatsPanel })),
   toggleStudyPanel: () => set((s) => ({ showStudyPanel: !s.showStudyPanel })),
+  toggleAssistantPanel: () => set((s) => ({ showAssistantPanel: !s.showAssistantPanel })),
 }));

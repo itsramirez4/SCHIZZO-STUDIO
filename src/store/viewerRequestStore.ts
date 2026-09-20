@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { AnatomyView, SubjectKind } from '@/services/mannequin.service';
+import { AnatomyView, BodyTypeId, Expression, SubjectKind, Vec3Deg } from '@/services/mannequin.service';
 import { useUIStore } from './uiStore';
 
 export interface ViewerRequest {
@@ -10,6 +10,10 @@ export interface ViewerRequest {
   autoRotate?: boolean;
   /** Pose preset id, e.g. 'contrapposto'. */
   pose?: string;
+  /** A ready-made pose (joint → Euler degrees), e.g. one fitted to a drawing or built from a description. Wins over `pose`. */
+  poseData?: Record<string, Vec3Deg>;
+  bodyType?: BodyTypeId;
+  expression?: Expression;
 }
 
 interface ViewerRequestStore {

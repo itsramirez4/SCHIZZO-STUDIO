@@ -31,6 +31,10 @@ const electronAPI = {
   // Modelos 3D
   importModel3D: () => ipcRenderer.invoke('model3d:import'),
   getPoseModel: () => ipcRenderer.invoke('poseModel:get'),
+  aiSetEnabled: (on: boolean) => ipcRenderer.invoke('ai:setEnabled', on),
+  aiHasKey: () => ipcRenderer.invoke('ai:hasKey'),
+  aiSetKey: (key: string) => ipcRenderer.invoke('ai:setKey', key),
+  aiGenerateImage: (args: unknown) => ipcRenderer.invoke('ai:generateImage', args),
 
   // Biblioteca de assets
   loadAssetLibrary: () => ipcRenderer.invoke('assetLibrary:load'),

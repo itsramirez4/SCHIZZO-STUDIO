@@ -1,6 +1,7 @@
 import { isElectron } from '@/utils/fileUtils';
 import type { Landmarks } from './figureAnalysis.service';
 import { buildLineArtCandidates } from './poseLineArt.service';
+import { assertAiEnabled } from '@/store/aiStore';
 
 /**
  * Optional automatic placement of the figure landmarks with MoveNet (TensorFlow.js).
@@ -80,6 +81,7 @@ export async function detectLandmarks(source: HTMLCanvasElement, background = '#
 }
 
 export async function detectPose(source: HTMLCanvasElement, background = '#ffffff'): Promise<PoseReading> {
+  assertAiEnabled();
   detectorPromise ??= loadDetector().catch((e) => {
     detectorPromise = null; // allow retrying after a failure
     throw e;

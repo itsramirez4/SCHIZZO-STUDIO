@@ -7,6 +7,8 @@ import { useUIStore } from '@/store/uiStore';
 import { useAppStore } from '@/store/appStore';
 import { useWorkspaceStore } from '@/store/workspaceStore';
 import { useAutoSaveStore } from '@/store/autoSaveStore';
+import { useAiStore } from '@/store/aiStore';
+import { Sparkles } from 'lucide-react';
 import { importImagesAsLayers } from '@/services/importImage';
 
 export default function Header() {
@@ -23,6 +25,8 @@ export default function Header() {
   const addLayer = useAppStore((s) => s.addLayer);
   const setWorkspaceMode = useWorkspaceStore((s) => s.setMode);
   const openAutoSaveDialog = useAutoSaveStore((s) => s.openDialog);
+  const aiEnabled = useAiStore((s) => s.enabled);
+  const setAiEnabled = useAiStore((s) => s.setEnabled);
   const leftHanded = useUIStore((s) => s.leftHanded);
   const toggleLeftHanded = useUIStore((s) => s.toggleLeftHanded);
 
@@ -107,6 +111,18 @@ export default function Header() {
         className={`icon-btn ${leftHanded ? 'text-accent' : ''}`}
       >
         <Hand size={16} />
+      </button>
+      <button
+        onClick={() => {
+          setAiEnabled(!aiEnabled);
+          toast(aiEnabled ? 'IA desactivada: la app es 100 % manual (sin asistente, sin modelos, sin conexiones).' : 'IA activada: el asistente propone, tú decides.', { icon: aiEnabled ? '✋' : '✨' });
+        }}
+        title={aiEnabled ? 'IA activada — clic para desactivarla por completo (modo 100 % manual)' : 'IA desactivada (100 % manual) — clic para activarla'}
+        className={`icon-btn relative ${aiEnabled ? 'text-accent' : 'text-textDim'}`}
+        data-ai-toggle={aiEnabled ? 'on' : 'off'}
+      >
+        <Sparkles size={16} />
+        {!aiEnabled && <span className="absolute inset-0 flex items-center justify-center pointer-events-none"><span className="w-5 h-px bg-textDim rotate-45" /></span>}
       </button>
       <div className="w-px h-5 bg-border mx-1" />
       <button onClick={undo} disabled={!canUndo} title="Deshacer (Ctrl+Z)" className="icon-btn disabled:opacity-30">

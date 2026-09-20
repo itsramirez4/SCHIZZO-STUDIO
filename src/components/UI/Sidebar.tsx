@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
-import { Layers, SlidersHorizontal, History, BarChart3, Film, MessageSquareText, Palette, LibraryBig, ListChecks, GraduationCap, Video, Image, Cloud, Keyboard, Triangle, Gauge, PencilRuler, GitBranch } from 'lucide-react';
+import { Layers, SlidersHorizontal, History, BarChart3, Film, MessageSquareText, Palette, LibraryBig, ListChecks, GraduationCap, Video, Image, Cloud, Keyboard, Triangle, Gauge, PencilRuler, GitBranch, Sparkles } from 'lucide-react';
+import { useAiStore } from '@/store/aiStore';
 import { useUIStore } from '@/store/uiStore';
 import ErrorBoundary from '@/components/UI/ErrorBoundary';
 import LayerPanel from '@/components/Layers/LayerPanel';
@@ -25,8 +26,9 @@ const PerspectivePanel = lazy(() => import('@/components/Perspective/Perspective
 const ProjectStatsPanel = lazy(() => import('@/components/UI/ProjectStatsPanel'));
 const StudyPanel = lazy(() => import('@/components/Study/StudyPanel'));
 const VersionsPanel = lazy(() => import('@/components/Versions/VersionsPanel'));
+const AssistantPanel = lazy(() => import('@/components/Assistant/AssistantPanel'));
 
-type Tab = 'layers' | 'filters' | 'history' | 'histogram' | 'animation' | 'comic' | 'colorTools' | 'assetLibrary' | 'batch' | 'learning' | 'recording' | 'references' | 'cloudSync' | 'customization' | 'perspective' | 'stats' | 'study' | 'versions';
+type Tab = 'assistant' | 'layers' | 'filters' | 'history' | 'histogram' | 'animation' | 'comic' | 'colorTools' | 'assetLibrary' | 'batch' | 'learning' | 'recording' | 'references' | 'cloudSync' | 'customization' | 'perspective' | 'stats' | 'study' | 'versions';
 
 export default function Sidebar() {
   const showLayerPanel = useUIStore((s) => s.showLayerPanel);
@@ -63,6 +65,9 @@ export default function Sidebar() {
   const toggleStatsPanel = useUIStore((s) => s.toggleStatsPanel);
   const showVersionsPanel = useUIStore((s) => s.showVersionsPanel);
   const toggleVersionsPanel = useUIStore((s) => s.toggleVersionsPanel);
+  const aiEnabled = useAiStore((s) => s.enabled);
+  const showAssistantPanel = useUIStore((s) => s.showAssistantPanel) && aiEnabled;
+  const toggleAssistantPanel = useUIStore((s) => s.toggleAssistantPanel);
   const showStudyPanel = useUIStore((s) => s.showStudyPanel);
   const toggleStudyPanel = useUIStore((s) => s.toggleStudyPanel);
 
@@ -70,6 +75,7 @@ export default function Sidebar() {
     { id: 'layers', icon: Layers, label: 'Capas', active: showLayerPanel, toggle: toggleLayerPanel },
     { id: 'filters', icon: SlidersHorizontal, label: 'Filtros', active: showFilterPanel, toggle: toggleFilterPanel },
     { id: 'colorTools', icon: Palette, label: 'Herramientas de color', active: showColorToolsPanel, toggle: toggleColorToolsPanel },
+    ...(aiEnabled ? [{ id: 'assistant' as Tab, icon: Sparkles, label: 'Asistente de IA (referencias, poses, paletas, limpieza…)', active: showAssistantPanel, toggle: toggleAssistantPanel }] : []),
     { id: 'study', icon: PencilRuler, label: 'Estudio: guías, tutor y academia', active: showStudyPanel, toggle: toggleStudyPanel },
     { id: 'perspective', icon: Triangle, label: 'Perspectiva y simetría', active: showPerspectivePanel, toggle: togglePerspectivePanel },
     { id: 'assetLibrary', icon: LibraryBig, label: 'Biblioteca de assets', active: showAssetLibraryPanel, toggle: toggleAssetLibraryPanel },
@@ -105,6 +111,7 @@ export default function Sidebar() {
     showPerspectivePanel ||
     showStatsPanel ||
     showStudyPanel ||
+    showAssistantPanel ||
     showVersionsPanel;
 
   return (
@@ -165,6 +172,11 @@ export default function Sidebar() {
           {showVersionsPanel && (
             <div className="border-b border-border overflow-y-auto max-h-[40rem]">
               <ErrorBoundary name="Versiones" compact><VersionsPanel /></ErrorBoundary>
+            </div>
+          )}
+          {showAssistantPanel && (
+            <div className="border-b border-border overflow-y-auto max-h-[44rem]">
+              <ErrorBoundary name="Asistente de IA" compact><AssistantPanel /></ErrorBoundary>
             </div>
           )}
           {showStudyPanel && (

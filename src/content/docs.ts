@@ -337,6 +337,17 @@ export const DOC_PAGES: DocPage[] = [
     ],
   },
   {
+    id: 'ai-assistant',
+    title: 'Asistente de IA (y cómo desactivarla)',
+    category: 'Estudio',
+    content: [
+      'La IA es un asistente, no un sustituto: nunca dibuja ni modifica tu dibujo. Todo lo que propone llega como referencia, guía, sugerencia o capa NUEVA (las originales quedan intactas y puedes deshacer). Se abre desde la pestaña ✨ de la barra lateral.',
+      'Desactivación total: el botón ✨ de la barra superior (o «Desactivar IA» en el panel) apaga todo. Con la IA apagada desaparecen el panel, la pestaña Analizar y la detección automática de figuras; no se descarga ningún modelo, no se ejecuta ningún análisis automático y no se envía nada a ningún sitio. La elección se recuerda entre sesiones y también la respeta el proceso principal de la app, que se niega a generar imágenes mientras esté apagada. Las herramientas manuales (puntos de figura, guías, cuadrículas, paletas) siguen funcionando igual.',
+      'Qué hace, y con qué medios: pose y expresión a partir de una descripción («mujer corriendo con los brazos hacia arriba», «muy sorprendido») que colocan el maniquí 3D — es un intérprete de palabras clave en español, no entiende frases arbitrarias, y te dice qué entendió y qué ignoró; convertir la pose de tu dibujo en el maniquí 3D (busca la figura o usa tus puntos y ajusta las articulaciones a la vista frontal: la profundidad no se puede leer de un dibujo plano); variaciones de iluminación (lee el brillo como relieve: es una ayuda de estudio, no una iluminación exacta); análisis de anatomía y proporciones; paletas desde un texto o desde tus colores; consejos de composición con mapa de atención; limpieza de motas y huecos con vista previa; separación en capas (línea/color, sujeto/fondo, por colores). Todo eso se calcula en tu equipo.',
+      'Generar referencias con imágenes: opcional y solo si configuras un proveedor (un servidor local de Stable Diffusion o una API compatible con OpenAI). Ves y puedes editar el texto exacto antes de enviarlo; solo se envía al pulsar «Generar». La clave de API se guarda cifrada en tu equipo, solo la usa el proceso principal, y las direcciones remotas deben ser https. El resultado se guarda en tu biblioteca de referencias con la etiqueta «ia» y, si quieres, como capa de referencia bloqueada que no se exporta. La calidad depende del proveedor que elijas.',
+    ],
+  },
+  {
     id: 'left-handed',
     title: 'Modo zurdo',
     category: 'Interfaz',

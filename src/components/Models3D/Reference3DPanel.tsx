@@ -59,7 +59,13 @@ export default function Reference3DPanel() {
     const kind = request.kind ?? engine.getRig()?.state.kind ?? 'human';
     const base = engine.getRig()?.state.kind === kind ? engine.getRig()!.state : defaultRigState(kind);
     const poseDef = request.pose ? getPoses(kind).find((p) => p.id === request.pose) : undefined;
-    engine.setRigState({ ...base, pose: poseDef ? { ...poseDef.pose } : base.pose, anatomy: request.anatomy ?? base.anatomy });
+    engine.setRigState({
+      ...base,
+      pose: request.poseData ? { ...request.poseData } : poseDef ? { ...poseDef.pose } : base.pose,
+      bodyType: request.bodyType ?? base.bodyType,
+      expression: request.expression ? { ...request.expression } : base.expression,
+      anatomy: request.anatomy ?? base.anatomy,
+    });
     if (request.autoRotate !== undefined) {
       engine.setAutoRotate(request.autoRotate);
       setAutoRotate(request.autoRotate);

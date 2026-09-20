@@ -25,6 +25,10 @@ declare global {
       exportPngSequence: (frames: string[], defaultName: string) => Promise<{ canceled: boolean; folderPath?: string }>;
       exportBatch: (files: { name: string; dataUrl: string }[], folderName: string) => Promise<{ canceled: boolean; folderPath?: string }>;
       getPoseModel: () => Promise<{ ok: boolean; modelJson?: string; weights?: Uint8Array; error?: string }>;
+      aiSetEnabled: (on: boolean) => Promise<boolean>;
+      aiHasKey: () => Promise<boolean>;
+      aiSetKey: (key: string) => Promise<boolean>;
+      aiGenerateImage: (args: { kind: 'local-sd' | 'openai-compatible'; endpoint: string; model: string; prompt: string; negative?: string; width: number; height: number }) => Promise<{ ok: boolean; dataUrl?: string; error?: string }>;
       importModel3D: () => Promise<{ canceled: boolean; name?: string; dataUrl?: string; format?: string }>;
       loadAssetLibrary: () => Promise<{ json: string | null }>;
       saveAssetLibrary: (json: string) => Promise<{ ok: boolean }>;
