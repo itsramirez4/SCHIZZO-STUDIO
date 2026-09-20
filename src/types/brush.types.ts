@@ -41,6 +41,8 @@ export interface Brush {
   /** How much paint each stamp lays down (0–1). When set, `opacity` becomes a ceiling for the whole
    * stroke (Photoshop-style); when absent the brush keeps the classic per-stamp opacity. */
   flow?: number;
+  /** Watercolour-style edges, 0–1: paint pools at the rim of the stroke and is thinner in the middle. */
+  wetEdges?: number;
   /** Length in px over which a stroke grows from a point to full size (lineart). Applies to the start
    * of freehand strokes and to both ends of the Line and Curve tools. */
   taperStart?: number;

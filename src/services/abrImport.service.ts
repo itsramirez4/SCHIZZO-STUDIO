@@ -2,6 +2,7 @@ import { Brush } from '@/types';
 import { createBrush, preloadBrushTexture } from './brush.service';
 import { legacyAbrToBrushes } from './brushFormats.service';
 import { AlphaImage, bakeTipAlpha } from './tipBake.service';
+import { addEdgeNoise, generateSoftTip, reshapeTip } from './tipShape.service';
 
 /**
  * Photoshop .abr import (brush libraries, v6+ 'samp' format, parsed with ag-psd).
@@ -25,6 +26,11 @@ export interface AbrBrushFields {
   hardness: number;
   opacity: number;
   flow?: number;
+  /** Tip geometry: 1 = round, < 1 = flattened; angle in degrees. */
+  roundness: number;
+  angle: number;
+  noise: boolean;
+  wetEdges: boolean;
   scatter: number;
   angleJitter: number;
   sizeJitter: number;
@@ -53,10 +59,7 @@ export function mapAbrBrush(b: any): AbrBrushFields {
     if (b.texture) lost.push('textura de papel');
     if (b.dualBrush) lost.push('pincel dual');
   }
-  if (b.wetEdges) lost.push('bordes húmedos');
-  if (b.noise) lost.push('ruido');
   if (b.colorDynamics) lost.push('dinámica de color');
-  if (shape.roundness !== undefined && shape.roundness < 0.98) lost.push('redondez de la punta');
 
   const flow = (tool.flow ?? 100) / 100;
   const opacity = (tool.opacity ?? 100) / 100;
@@ -76,6 +79,10 @@ export function mapAbrBrush(b: any): AbrBrushFields {
     // Opacity caps the whole stroke; flow is what each stamp lays down (see strokeBuffer.service).
     opacity: clamp(opacity, 0.05, 1),
     flow: flow < 0.999 ? clamp(flow, 0.02, 1) : undefined,
+    roundness: clamp(shape.roundness ?? 1, 0.05, 1),
+    angle: shape.angle ?? 0,
+    noise: !!b.noise,
+    wetEdges: !!b.wetEdges,
     scatter: b.scatter ? clamp(scatterJitter > 0 ? scatterJitter : 0.15 + scatterCount * 0.05, 0, 1) : 0,
     angleJitter: clamp((sd?.angleDynamics?.jitter ?? 0) * 360, 0, 360),
     sizeJitter: clamp((sizeDyn?.jitter ?? 0) * 100, 0, 100),
@@ -225,29 +232,47 @@ export async function importAbr(buffer: ArrayBuffer): Promise<AbrImportResult> {
       continue;
     }
     let texture: string | undefined;
+    // Geometry and grain that a plain round brush would otherwise lose.
+    const flatten = f.roundness < 0.98;
+    const turned = Math.abs(f.angle) > 0.5 && (flatten || !!tip);
     if (tip) {
       const dualRef: any = (raw as any).dualBrush?.shape;
       const dual = dualRef?.sampledData ? samples.get(dualRef.sampledData) : undefined;
       const tex: any = (raw as any).texture;
       const pat = tex?.id ? patterns.get(tex.id) : undefined;
       const baked = f.baked.filter((x) => (x === 'pincel dual' ? !!dual : !!pat));
-      const key = `${f.tipId}|${dual ? dualRef.sampledData + '@' + dualRef.size : ''}|${pat ? tex.id + '@' + tex.scale + '/' + tex.depth : ''}|${f.size}`;
+      const key = `${f.tipId}|${dual ? dualRef.sampledData + '@' + dualRef.size : ''}|${pat ? tex.id + '@' + tex.scale + '/' + tex.depth : ''}|${f.size}|${f.roundness}|${turned ? f.angle : 0}|${f.noise}`;
       texture = dataUrls.get(key);
       if (!texture) {
-        const img = baked.length
+        let img = baked.length
           ? bakeTipAlpha(tip, {
               size: f.size,
               dual: dual && { ...dual, size: dualRef.size ?? f.size },
-              pattern: pat && { ...pat, scale: tex.scale ?? 1, depth: tex.depth ?? 1, invert: !!tex.invert, contrast: tex.contrast ?? 0, brightness: tex.brightness ?? 0 },
+              pattern: pat && { ...pat, scale: tex.scale ?? 1, depth: tex.depth ?? 1, invert: !!tex.invert, contrast: tex.contrast ?? 0, brightness: tex.brightness ?? 0 }
             })
           : tip;
+        if (flatten || turned) img = reshapeTip(img, f.roundness, f.angle);
+        if (f.noise) img = addEdgeNoise(img);
         texture = tipToDataUrl(img.alpha, img.w, img.h);
         dataUrls.set(key, texture);
       }
       baked.forEach((x) => (bakedFeatures[x] = (bakedFeatures[x] ?? 0) + 1));
       // A feature present in the file whose data could not be resolved counts as lost.
       f.baked.filter((x) => !baked.includes(x)).forEach((x) => f.lost.push(x));
+    } else if (flatten || f.noise) {
+      // Round ("computed") brush that is squashed, turned or noisy: generate its tip.
+      const key = `soft|${f.hardness}|${f.roundness}|${f.angle}|${f.noise}`;
+      texture = dataUrls.get(key);
+      if (!texture) {
+        let img = generateSoftTip(f.hardness, f.roundness, f.angle);
+        if (f.noise) img = addEdgeNoise(img);
+        texture = tipToDataUrl(img.alpha, img.w, img.h);
+        dataUrls.set(key, texture);
+      }
     }
+    // Reproduced approximately (the exact Photoshop algorithms are not documented).
+    if (f.noise) bakedFeatures['ruido'] = (bakedFeatures['ruido'] ?? 0) + 1;
+    if (f.wetEdges) bakedFeatures['bordes húmedos'] = (bakedFeatures['bordes húmedos'] ?? 0) + 1;
     f.lost.forEach((l) => (lostFeatures[l] = (lostFeatures[l] ?? 0) + 1));
     preloadBrushTexture(texture);
     // Libraries can hold dozens of multi-megapixel tips: let the UI breathe between brushes.
@@ -260,6 +285,7 @@ export async function importAbr(buffer: ArrayBuffer): Promise<AbrImportResult> {
         hardness: f.hardness,
         opacity: f.opacity,
         flow: f.flow,
+        wetEdges: f.wetEdges ? 0.7 : undefined,
         scatter: f.scatter,
         angleJitter: f.angleJitter,
         sizeJitter: f.sizeJitter,

@@ -12,7 +12,7 @@ import type { SelectionRect } from '@/types';
  * Brushes without `flow` and without a blend mode keep the classic per-stamp behaviour.
  */
 export function needsStrokeBuffer(brush: Brush): boolean {
-  return brush.flow !== undefined || (!!brush.blendMode && brush.blendMode !== 'source-over');
+  return brush.flow !== undefined || !!brush.wetEdges || (!!brush.blendMode && brush.blendMode !== 'source-over');
 }
 
 /** The brush as it must be stamped into the buffer: flow accumulates, opacity/blend come later. */
@@ -29,6 +29,8 @@ interface Rect {
 
 let pooledBuffer: HTMLCanvasElement | null = null;
 let pooledBase: HTMLCanvasElement | null = null;
+let pooledWet: HTMLCanvasElement | null = null;
+let pooledBlur: HTMLCanvasElement | null = null;
 
 function takeCanvas(pool: HTMLCanvasElement | null, w: number, h: number): HTMLCanvasElement {
   const c = pool ?? document.createElement('canvas');
@@ -95,10 +97,46 @@ export class StrokeSession {
       ctx.rect(selection.x, selection.y, selection.w, selection.h);
       ctx.clip();
     }
+    const source = this.brush.wetEdges ? this.wetEdgeLayer(x, y, w, h) : this.buf;
+    const sx = this.brush.wetEdges ? 0 : x;
+    const sy = this.brush.wetEdges ? 0 : y;
     ctx.globalAlpha = this.brush.opacity;
     const blend = this.brush.blendMode;
     ctx.globalCompositeOperation = lockAlpha ? 'source-atop' : blend === 'erase' ? 'destination-out' : blend ?? 'source-over';
-    ctx.drawImage(this.buf, x, y, w, h, x, y, w, h);
+    ctx.drawImage(source, sx, sy, w, h, x, y, w, h);
     ctx.restore();
+  }
+
+  /**
+   * Watercolour "wet edges": the paint in the middle of the stroke gets thinner and the rim keeps
+   * its full density. The rim is found by comparing the stroke's alpha with a blurred copy of itself
+   * (equal in the middle, lower along the edge); the blur reads a margin around the area so the
+   * result matches what earlier updates painted next to it.
+   */
+  private wetEdgeLayer(x: number, y: number, w: number, h: number): HTMLCanvasElement {
+    const radius = Math.max(1.5, this.brush.size * 0.07);
+    const m = Math.ceil(radius * 3);
+    const ex = Math.max(0, x - m);
+    const ey = Math.max(0, y - m);
+    const ew = Math.min(this.layer.width, x + w + m) - ex;
+    const eh = Math.min(this.layer.height, y + h + m) - ey;
+    pooledBlur = takeCanvas(pooledBlur, ew, eh);
+    const bctx = pooledBlur.getContext('2d')!;
+    bctx.filter = `blur(${radius}px)`;
+    bctx.drawImage(this.buf, ex, ey, ew, eh, 0, 0, ew, eh);
+    bctx.filter = 'none';
+    const blurred = bctx.getImageData(x - ex, y - ey, w, h).data;
+    const src = this.ctx.getImageData(x, y, w, h);
+    const d = src.data;
+    const wet = Math.min(1, this.brush.wetEdges ?? 0);
+    for (let i = 3; i < d.length; i += 4) {
+      const a = d[i];
+      if (!a) continue;
+      const edge = Math.max(0, Math.min(1, ((a - blurred[i]) / 255) * 3));
+      d[i] = Math.round(a * (1 - wet * 0.6 * (1 - edge)));
+    }
+    pooledWet = takeCanvas(pooledWet, w, h);
+    pooledWet.getContext('2d')!.putImageData(src, 0, 0);
+    return pooledWet;
   }
 }
