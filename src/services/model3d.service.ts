@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
+import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { hexToRgba } from '@/utils/colorUtils';
 import { MannequinRig, RigState, PropKind, buildProp, kelvinToColor } from './mannequin.service';
@@ -111,16 +112,21 @@ export class Model3DViewerEngine {
 
   /** OBJ import uses Three's own OBJLoader (geometry only — no .mtl companion-file support,
    * which would need a second file picked alongside the .obj; left out to keep this a single-
-   * file import like the rest of the app's importers). FBX is deliberately NOT offered: Three
-   * ships an FBXLoader, but without a real FBX fixture to run it against I can't verify it
-   * actually works end-to-end — same reasoning as skipping ABR/ASE/CLIP earlier this session. */
-  async loadModel(url: string, format?: 'glb' | 'gltf' | 'obj'): Promise<void> {
+   * file import like the rest of the app's importers). FBX (binary or ASCII, with skeleton and
+   * embedded textures) goes through Three's FBXLoader; verified against a real skinned Mixamo
+   * export. Animations inside the file are ignored — only the static/bind pose is shown. */
+  async loadModel(url: string, format?: 'glb' | 'gltf' | 'obj' | 'fbx'): Promise<void> {
     let model: THREE.Object3D;
 
     if (format === 'obj') {
       const base64 = url.replace(/^data:[^;]+;base64,/, '');
       const text = decodeURIComponent(escape(atob(base64)));
       model = new OBJLoader().parse(text);
+    } else if (format === 'fbx') {
+      const bin = atob(url.replace(/^data:[^;]+;base64,/, ''));
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      model = new FBXLoader().parse(bytes.buffer, '');
     } else {
       const loader = new GLTFLoader();
       const gltf = await loader.loadAsync(url);

@@ -97,7 +97,7 @@ export default function Reference3DPanel() {
     if (result.canceled || !result.dataUrl) return;
     setLoading(true);
     try {
-      await engineRef.current?.loadModel(result.dataUrl, result.format as 'glb' | 'gltf' | 'obj' | undefined);
+      await engineRef.current?.loadModel(result.dataUrl, result.format as 'glb' | 'gltf' | 'obj' | 'fbx' | undefined);
       setModelName(result.name ?? null);
       setModelVersion((v) => v + 1);
     } catch (err) {

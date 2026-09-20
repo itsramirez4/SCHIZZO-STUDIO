@@ -61,7 +61,7 @@ export default function Model3DViewer() {
     if (result.canceled || !result.dataUrl) return;
     setLoading(true);
     try {
-      await engineRef.current?.loadModel(result.dataUrl, result.format as 'glb' | 'gltf' | 'obj' | undefined);
+      await engineRef.current?.loadModel(result.dataUrl, result.format as 'glb' | 'gltf' | 'obj' | 'fbx' | undefined);
       setModelName(result.name ?? null);
       setHasModel(true);
       setWireframe(false);
@@ -129,7 +129,7 @@ export default function Model3DViewer() {
               <canvas ref={canvasRef} width={VIEWER_WIDTH} height={VIEWER_HEIGHT} />
             </div>
             <p className="text-[11px] text-textDim mt-2">
-              Arrastra para orbitar, rueda para zoom. Formatos soportados: .glb, .gltf, .obj. También puedes usar el maniquí integrado y objetos de escena (panel derecho).
+              Arrastra para orbitar, rueda para zoom. Formatos soportados: .glb, .gltf, .obj, .fbx. También puedes usar el maniquí integrado y objetos de escena (panel derecho).
             </p>
           </div>
 

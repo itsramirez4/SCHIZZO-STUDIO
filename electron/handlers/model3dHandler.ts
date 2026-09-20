@@ -2,11 +2,12 @@ import { dialog, ipcMain, BrowserWindow } from 'electron';
 import fs from 'fs';
 import path from 'path';
 
-const MODEL_FILTERS = [{ name: 'Modelos 3D', extensions: ['glb', 'gltf', 'obj'] }];
+const MODEL_FILTERS = [{ name: 'Modelos 3D', extensions: ['glb', 'gltf', 'obj', 'fbx'] }];
 const MIME_BY_EXT: Record<string, string> = {
   glb: 'model/gltf-binary',
   gltf: 'model/gltf+json',
   obj: 'model/obj',
+  fbx: 'application/octet-stream',
 };
 
 export function registerModel3DHandlers(getWindow: () => BrowserWindow | null) {
