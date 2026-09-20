@@ -19,6 +19,8 @@ const SLIDERS: { key: keyof Brush; label: string; min: number; max: number; pct?
   { key: 'scatter', label: 'Dispersión', min: 0, max: 100, pct: true },
   { key: 'angleJitter', label: 'Variación de ángulo', min: 0, max: 360 },
   { key: 'sizeJitter', label: 'Variación de tamaño', min: 0, max: 100, pct: true },
+  { key: 'taperStart', label: 'Afilado al empezar', min: 0, max: 200 },
+  { key: 'taperEnd', label: 'Afilado al terminar (línea y curva)', min: 0, max: 200 },
 ];
 
 export default function BrushEditor() {

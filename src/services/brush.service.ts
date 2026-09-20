@@ -34,6 +34,8 @@ interface Point {
   pressure?: number;
   /** Stylus tilt, 0 (upright) .. 1 (flat on the surface). */
   tilt?: number;
+  /** Extra multiplier on the stamp radius (tapered stroke ends). */
+  scale?: number;
 }
 
 // --- Brush texture (a custom stamp image, e.g. paper/chalk/leaf) ---
@@ -157,12 +159,13 @@ export function applyBrushStamp(
   square = false,
   pressure = 1,
   direction = 0,
-  tilt = 0
+  tilt = 0,
+  sizeScale = 1
 ) {
   const jitterScale = 1 + ((Math.random() * 2 - 1) * brush.sizeJitter) / 100;
   const sizePressureScale = brush.dynamics?.sizeToPressure ? Math.max(0.05, evalCurve(brush.dynamics.sizeCurve, pressure)) : 1;
   const tiltScale = brush.dynamics?.tiltToSize ? 1 + Math.max(0, Math.min(1, tilt)) * 1.6 : 1;
-  const radius = Math.max(0.5, (brush.size / 2) * jitterScale * sizePressureScale * tiltScale);
+  const radius = Math.max(0.5, (brush.size / 2) * jitterScale * sizePressureScale * tiltScale * sizeScale);
   const scatterOffset = brush.scatter * brush.size * (Math.random() - 0.5);
   const angle = Math.random() * Math.PI * 2;
   const sx = x + Math.cos(angle) * scatterOffset;
@@ -253,13 +256,13 @@ export function strokeBrush(
 ) {
   if (points.length === 0) return;
   if (points.length === 1) {
-    applyBrushStamp(ctx, points[0].x, points[0].y, brush, color, square, points[0].pressure ?? 1, 0, points[0].tilt ?? 0);
+    applyBrushStamp(ctx, points[0].x, points[0].y, brush, color, square, points[0].pressure ?? 1, 0, points[0].tilt ?? 0, points[0].scale ?? 1);
     return;
   }
 
   const step = Math.max(1, brush.size * Math.max(0.02, brush.spacing));
   let prev = points[0];
-  applyBrushStamp(ctx, prev.x, prev.y, brush, color, square, prev.pressure ?? 1);
+  applyBrushStamp(ctx, prev.x, prev.y, brush, color, square, prev.pressure ?? 1, 0, 0, prev.scale ?? 1);
 
   for (let i = 1; i < points.length; i++) {
     const curr = points[i];
@@ -276,7 +279,8 @@ export function strokeBrush(
     for (let s = 1; s <= steps; s++) {
       const t = s / steps;
       const pressure = prevPressure + (currPressure - prevPressure) * t;
-      applyBrushStamp(ctx, prev.x + dx * t, prev.y + dy * t, brush, color, square, pressure, direction, prevTilt + (currTilt - prevTilt) * t);
+      const scale = (prev.scale ?? 1) + ((curr.scale ?? 1) - (prev.scale ?? 1)) * t;
+      applyBrushStamp(ctx, prev.x + dx * t, prev.y + dy * t, brush, color, square, pressure, direction, prevTilt + (currTilt - prevTilt) * t, scale);
     }
     prev = curr;
   }

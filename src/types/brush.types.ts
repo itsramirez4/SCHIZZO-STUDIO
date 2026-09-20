@@ -41,6 +41,11 @@ export interface Brush {
   /** How much paint each stamp lays down (0–1). When set, `opacity` becomes a ceiling for the whole
    * stroke (Photoshop-style); when absent the brush keeps the classic per-stamp opacity. */
   flow?: number;
+  /** Length in px over which a stroke grows from a point to full size (lineart). Applies to the start
+   * of freehand strokes and to both ends of the Line and Curve tools. */
+  taperStart?: number;
+  /** Length in px over which a Line/Curve stroke narrows to a point at its end. */
+  taperEnd?: number;
   /** Composite mode used while stamping; 'erase' removes paint instead of adding it. */
   blendMode?: GlobalCompositeOperation | 'erase';
 }

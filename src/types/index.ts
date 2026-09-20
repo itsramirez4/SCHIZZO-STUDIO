@@ -32,7 +32,9 @@ export type ToolType =
   | 'shapeStar'
   | 'vectorText'
   | 'warp'
-  | 'smudge';
+  | 'smudge'
+  | 'line'
+  | 'curve';
 
 export interface RGBA {
   r: number;

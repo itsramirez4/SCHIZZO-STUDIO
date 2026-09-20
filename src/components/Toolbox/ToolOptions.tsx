@@ -166,7 +166,8 @@ export default function ToolOptions() {
     );
   }
 
-  if (!['brush', 'eraser'].includes(currentTool)) return null;
+  if (!['brush', 'eraser', 'line', 'curve'].includes(currentTool)) return null;
+  const isBrushLike = currentTool === 'brush' || currentTool === 'line' || currentTool === 'curve';
 
   return (
     <div className="p-2 border-t border-border space-y-2">
@@ -198,7 +199,15 @@ export default function ToolOptions() {
           className="w-full"
         />
       </div>
-      {currentTool === 'brush' && (
+      {isBrushLike && (
+        <>
+          <OptionSlider label="Afilado al empezar" value={currentBrush.taperStart ?? 0} min={0} max={200} unit="px" onChange={(v) => updateCurrentBrush({ taperStart: v })} />
+          {currentTool !== 'brush' && (
+            <OptionSlider label="Afilado al terminar" value={currentBrush.taperEnd ?? 0} min={0} max={200} unit="px" onChange={(v) => updateCurrentBrush({ taperEnd: v })} />
+          )}
+        </>
+      )}
+      {isBrushLike && (
         <>
           <div>
             <div className="flex justify-between text-xs text-textDim mb-1">

@@ -10,6 +10,7 @@ import { useRecentColorsStore } from '@/store/recentColorsStore';
 import * as layerService from '@/services/layer.service';
 import { strokeBrush } from '@/services/brush.service';
 import { StrokeSession, needsStrokeBuffer } from '@/services/strokeBuffer.service';
+import { buildLinePoints, snapAngle, taperRamp } from '@/services/lineTools.service';
 import { eraseStroke, floodFill, getPixelAveraged, withClip, withAlphaLock } from '@/services/canvas.service';
 import { drawStyledText, drawTextAlongPath, DEFAULT_TEXT_OPTIONS, TextEffect, TEXT_EFFECT_LABELS, TextOptions } from '@/services/text.service';
 import { screenToProjectPoint } from '@/utils/canvasUtils';
@@ -59,6 +60,8 @@ interface Point {
   /** Stylus pressure (0-1) at this point, for pressure-sensitive brush dynamics — only ever
    * set on points headed into a brush stroke; every other tool leaves it undefined. */
   pressure?: number;
+  /** Stamp-radius multiplier (tapered stroke ends). */
+  scale?: number;
 }
 
 // A handful of fonts every OS ships with, so the text always renders as picked instead of
@@ -253,6 +256,12 @@ export default function Canvas2D() {
   const stylusTilt = (e: { tiltX?: number; tiltY?: number }) => Math.min(1, Math.hypot(e.tiltX ?? 0, e.tiltY ?? 0) / 90);
   const lastPointRef = useRef<Point | null>(null);
   const strokeSessionRef = useRef<StrokeSession | null>(null);
+  /** Distance travelled by the current freehand stroke, for the start taper. */
+  const strokeDistRef = useRef(0);
+  /** Line / Curve tools: `a`→`b` is the drag; `c` (curve only) is the bend, chosen while `bend` is set. */
+  const [lineDraft, setLineDraft] = useState<{ a: Point; b: Point; c: Point | null; bend: boolean } | null>(null);
+  const lineDraftRef = useRef(lineDraft);
+  lineDraftRef.current = lineDraft;
   const smudgeRef = useRef<SmudgeState | null>(null);
   // Unlike `lastPointRef` (cleared on every pointer-up), this survives across separate clicks —
   // it's the anchor for Shift+click straight lines (Photoshop/Krita/CSP convention): click once
@@ -868,7 +877,7 @@ export default function Canvas2D() {
     const perPointVariants = points.map((p) => calculateSymmetricPoints(p.x, p.y, symmetry));
     const variantCount = perPointVariants[0]?.length ?? 0;
     for (let i = 0; i < variantCount; i++) {
-      paintFn(perPointVariants.map((variants) => variants[i]));
+      paintFn(perPointVariants.map((variants, k) => ({ ...points[k], ...variants[i] })));
     }
   }
 
@@ -892,6 +901,36 @@ export default function Canvas2D() {
       });
     });
   }
+
+  /** Strokes the pending Line/Curve with the current brush (tapered ends included). */
+  function commitLineDraft(draft: { a: Point; b: Point; c: Point | null }) {
+    setLineDraft(null);
+    if (!currentLayer || currentLayer.locked || !project) return;
+    const canvasEl = getActiveCanvas(currentLayer);
+    if (!canvasEl) return;
+    if (Math.hypot(draft.b.x - draft.a.x, draft.b.y - draft.a.y) < 1) return;
+    const pts = buildLinePoints(draft.a, draft.b, draft.c, currentBrush) as Point[];
+    strokeSessionRef.current = needsStrokeBuffer(currentBrush) ? new StrokeSession(canvasEl, currentBrush) : null;
+    paintBrushSegment(canvasEl, pts, currentLayer);
+    strokeSessionRef.current = null;
+    layerService.syncLinkedInstances(layers, currentLayer.id);
+    lastStrokeEndRef.current = draft.b;
+    pushHistory(currentTool === 'curve' ? 'Curva' : 'Línea recta');
+  }
+
+  useEffect(() => {
+    if (!lineDraft) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setLineDraft(null);
+      else if (e.key === 'Enter' && lineDraftRef.current) commitLineDraft(lineDraftRef.current);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!lineDraft, currentTool]);
+  useEffect(() => {
+    if (currentTool !== 'line' && currentTool !== 'curve') setLineDraft(null);
+  }, [currentTool]);
 
   function getPos(e: React.PointerEvent): Point | null {
     if (!project || !currentLayer || !stageRef.current) return null;
@@ -1001,9 +1040,24 @@ export default function Canvas2D() {
           endDrawing();
           break;
         }
+        strokeDistRef.current = 0;
+        if (currentBrush.taperStart) posP.scale = taperRamp(0, currentBrush.taperStart);
         lastPointRef.current = posP;
         strokeSessionRef.current = needsStrokeBuffer(currentBrush) ? new StrokeSession(canvasEl, currentBrush) : null;
         paintBrushSegment(canvasEl, [posP], currentLayer);
+        break;
+      }
+      case 'line':
+      case 'curve': {
+        const draft = lineDraftRef.current;
+        if (draft?.bend) {
+          // Second click of a curve: the bend chosen while hovering becomes final.
+          commitLineDraft({ ...draft, c: draft.c ?? { x: (draft.a.x + draft.b.x) / 2, y: (draft.a.y + draft.b.y) / 2 } });
+          endDrawing();
+          break;
+        }
+        const a = snapPos(pos);
+        setLineDraft({ a, b: a, c: null, bend: false });
         break;
       }
       case 'eraser': {
@@ -1149,6 +1203,16 @@ export default function Canvas2D() {
       return;
     }
 
+    if ((currentTool === 'line' || currentTool === 'curve') && lineDraftRef.current) {
+      const pos = getPos(e);
+      const d = lineDraftRef.current;
+      if (pos) {
+        if (d.bend) setLineDraft({ ...d, c: pos });
+        else if (isDrawingRef.current) setLineDraft({ ...d, b: e.shiftKey ? snapAngle(d.a, pos) : snapPos(pos) });
+      }
+      return;
+    }
+
     if (!isDrawingRef.current) return;
 
     if (panStartRef.current) {
@@ -1167,7 +1231,9 @@ export default function Canvas2D() {
     if (!canvasEl) return;
 
     if (currentTool === 'brush' && lastPointRef.current) {
-      const smoothedPos = { ...applySmoothing(lastPointRef.current, pos, currentBrush.smoothing ?? 0), pressure: e.pressure, tilt: stylusTilt(e) };
+      const smoothedPos: Point = { ...applySmoothing(lastPointRef.current, pos, currentBrush.smoothing ?? 0), pressure: e.pressure, tilt: stylusTilt(e) };
+      strokeDistRef.current += Math.hypot(smoothedPos.x - lastPointRef.current.x, smoothedPos.y - lastPointRef.current.y);
+      if (currentBrush.taperStart) smoothedPos.scale = taperRamp(strokeDistRef.current, currentBrush.taperStart);
       paintBrushSegment(canvasEl, [lastPointRef.current!, smoothedPos], currentLayer);
       lastPointRef.current = smoothedPos;
     } else if (currentTool === 'eraser' && lastPointRef.current) {
@@ -1230,6 +1296,15 @@ export default function Canvas2D() {
 
   function handlePointerUp() {
     strokeSessionRef.current = null;
+    if ((currentTool === 'line' || currentTool === 'curve') && lineDraftRef.current && !lineDraftRef.current.bend && isDrawingRef.current) {
+      const d = lineDraftRef.current;
+      if (currentTool === 'curve' && Math.hypot(d.b.x - d.a.x, d.b.y - d.a.y) >= 1) {
+        // Keep the draft open: the next move bends it, the next click commits it.
+        setLineDraft({ ...d, c: { x: (d.a.x + d.b.x) / 2, y: (d.a.y + d.b.y) / 2 }, bend: true });
+      } else {
+        commitLineDraft(d);
+      }
+    }
     if (isDrawingRef.current && (currentTool === 'brush' || currentTool === 'eraser') && currentLayer) {
       layerService.syncLinkedInstances(layers, currentLayer.id);
       pushHistory(currentTool === 'brush' ? 'Trazo de pincel' : 'Borrador');
@@ -1492,7 +1567,7 @@ export default function Canvas2D() {
   if (!project) return null;
 
   const topLevelLayers = layers.filter((l) => !l.parent).reverse();
-  const brushCursorActive = !isSpacePanning && (currentTool === 'brush' || currentTool === 'eraser' || currentTool === 'warp' || currentTool === 'smudge');
+  const brushCursorActive = !isSpacePanning && (currentTool === 'brush' || currentTool === 'line' || currentTool === 'curve' || currentTool === 'eraser' || currentTool === 'warp' || currentTool === 'smudge');
   const brushCursorDiameter = currentTool === 'warp' ? warpRadius * 2 * zoom : currentTool === 'smudge' ? useSmudgeStore.getState().size * zoom : currentBrush.size * zoom;
   const brushCursorSquare = currentTool === 'brush' && project.type === 'pixelart';
 
@@ -1548,7 +1623,7 @@ export default function Canvas2D() {
                 ? 'zoom-in'
                 : currentTool === 'transform' || currentTool === 'pen'
                   ? 'default'
-                  : currentTool === 'brush' || currentTool === 'eraser' || currentTool === 'warp' || currentTool === 'smudge'
+                  : currentTool === 'brush' || currentTool === 'line' || currentTool === 'curve' || currentTool === 'eraser' || currentTool === 'warp' || currentTool === 'smudge'
                     ? 'none' // the size-accurate BrushCursor ring replaces the native pointer here
                     : 'crosshair',
         }}
@@ -1621,6 +1696,25 @@ export default function Canvas2D() {
               strokeWidth={1 / zoom}
               strokeDasharray={`${4 / zoom} ${4 / zoom}`}
             />
+          </svg>
+        )}
+
+        {lineDraft && (
+          <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
+            {(() => {
+              const { a, b, c } = lineDraft;
+              const d = c ? `M ${a.x} ${a.y} Q ${c.x} ${c.y} ${b.x} ${b.y}` : `M ${a.x} ${a.y} L ${b.x} ${b.y}`;
+              return (
+                <>
+                  <path d={d} fill="none" stroke={primaryColor} strokeOpacity={0.3} strokeWidth={currentBrush.size} strokeLinecap="round" />
+                  <path d={d} fill="none" stroke="#5b8cff" strokeWidth={1.5 / zoom} />
+                  {c && <line x1={c.x} y1={c.y} x2={(a.x + b.x) / 2} y2={(a.y + b.y) / 2} stroke="#5b8cff" strokeWidth={1 / zoom} strokeDasharray={`${4 / zoom} ${4 / zoom}`} />}
+                  <circle cx={a.x} cy={a.y} r={4 / zoom} fill="#fff" stroke="#5b8cff" strokeWidth={1 / zoom} />
+                  <circle cx={b.x} cy={b.y} r={4 / zoom} fill="#fff" stroke="#5b8cff" strokeWidth={1 / zoom} />
+                  {c && <circle cx={c.x} cy={c.y} r={4 / zoom} fill="#5b8cff" stroke="#fff" strokeWidth={1 / zoom} />}
+                </>
+              );
+            })()}
           </svg>
         )}
 
