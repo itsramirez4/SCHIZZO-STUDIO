@@ -10,6 +10,12 @@ export interface BrushDynamics {
   opacityCurve?: number[];
 }
 
+/** A brush that does not lay down paint but runs one of the editing tools (Krita's non-paint engines). */
+export type BrushEngine =
+  | { kind: 'smudge'; strength: number; paintLoad: number }
+  | { kind: 'deform'; mode: 'push' | 'twirl' | 'pinch' | 'expand' | 'turbulence' | 'smooth'; amount: number }
+  | { kind: 'clone' };
+
 export interface Brush {
   id: string;
   name: string;
@@ -41,6 +47,8 @@ export interface Brush {
   /** How much paint each stamp lays down (0–1). When set, `opacity` becomes a ceiling for the whole
    * stroke (Photoshop-style); when absent the brush keeps the classic per-stamp opacity. */
   flow?: number;
+  /** Set for smudge / deform / clone brushes: the brush drives that tool instead of painting. */
+  engine?: BrushEngine;
   /** Watercolour-style edges, 0–1: paint pools at the rim of the stroke and is thinner in the middle. */
   wetEdges?: number;
   /** Length in px over which a stroke grows from a point to full size (lineart). Applies to the start

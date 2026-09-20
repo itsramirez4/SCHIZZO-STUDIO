@@ -570,7 +570,38 @@ async function kritaPresetToBrush(xml: string, fallbackName: string, loadTip?: K
     const t = param(n);
     return t !== undefined && t !== '' && Number.isFinite(Number(t)) ? Number(t) : undefined;
   };
-  if (engine && engine !== 'paintbrush') return { brush: null, skipped: `motor «${engine}»`, notes: [] };
+  if (engine && engine !== 'paintbrush') {
+    // Engines that edit the picture instead of painting: they become brushes that run the matching tool.
+    const defDoc = param('brush_definition') ? new DOMParser().parseFromString(param('brush_definition')!, 'text/xml') : null;
+    const mask = defDoc?.querySelector('MaskGenerator');
+    const diameter = Number(mask?.getAttribute('diameter')) || numP('Brush/diameter') || 60;
+    const size = Math.min(300, Math.max(4, Math.round(diameter)));
+    const spacingAttr = Number(defDoc?.querySelector('Brush')?.getAttribute('spacing')) || numP('Brush/spacing') || 0.15;
+    const soft = mask?.getAttribute('id') === 'soft' || mask?.getAttribute('id') === 'gauss';
+    const base = { size, spacing: Math.min(1, Math.max(0.03, spacingAttr)), hardness: soft ? 0.4 : 0.9, opacity: Math.min(1, Math.max(0.05, numP('OpacityValue') ?? 1)) };
+    if (engine === 'colorsmudge') {
+      // "Smudge rate" = how much of the underlying paint is dragged; a preset that also feeds the
+      // foreground colour (colour rate under pressure) paints while it smudges.
+      const rate = numP('SmudgeRateValue') ?? 1;
+      const paints = bool('PressureColorRate');
+      const b = makeBrush(name, undefined, { ...base, engine: { kind: 'smudge', strength: Math.min(1, Math.max(0.1, rate)), paintLoad: paints ? 0.2 : 0 } }, 'Importados (Krita)');
+      return { brush: b, notes: ['difuminado de Krita: se aproxima con el mezclador de color de la app (no hay modo «embotar» ni fusión de capas)'] };
+    }
+    if (engine === 'deformbrush') {
+      const ACTIONS: Record<number, [NonNullable<Extract<Brush['engine'], { kind: 'deform' }>['mode']>, string?]> = {
+        1: ['expand'], 2: ['pinch'], 3: ['twirl'], 4: ['twirl', 'giro en sentido contrario: se importa como giro normal'], 5: ['push'],
+        6: ['pinch', 'lente hacia dentro: se importa como contraer'], 7: ['expand', 'lente hacia fuera: se importa como expandir'], 8: ['turbulence', 'deformación de color: se importa como turbulencia'],
+      };
+      const [mode, note] = ACTIONS[numP('Deform/deformAction') ?? 5] ?? ['push'];
+      const b = makeBrush(name, undefined, { ...base, engine: { kind: 'deform', mode, amount: Math.min(1, Math.max(0.1, (numP('Deform/deformAmount') ?? 0.3) * 2)) } }, 'Importados (Krita)');
+      return { brush: b, notes: note ? [note] : [] };
+    }
+    if (engine === 'duplicate') {
+      const b = makeBrush(name, undefined, { ...base, engine: { kind: 'clone' } }, 'Importados (Krita)');
+      return { brush: b, notes: ['clonado: con el pincel elegido, Alt+clic fija el punto de origen y se pinta con lo que hay ahí (sin modo de corrección «healing»)'] };
+    }
+    return { brush: null, skipped: `motor «${engine}»`, notes: [] };
+  }
   // Erasers are flagged by the "erase" composite op (EraserMode is often absent); "adjust" brushes
   // (multiply, overlay, dodge, colour…) paint with a blend mode, which a brush here cannot carry.
   const comp = param('CompositeOp');

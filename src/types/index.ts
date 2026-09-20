@@ -35,7 +35,8 @@ export type ToolType =
   | 'smudge'
   | 'line'
   | 'curve'
-  | 'vectorSelect';
+  | 'vectorSelect'
+  | 'clone';
 
 export interface RGBA {
   r: number;
