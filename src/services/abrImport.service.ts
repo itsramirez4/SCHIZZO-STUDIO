@@ -24,6 +24,7 @@ export interface AbrBrushFields {
   spacing: number;
   hardness: number;
   opacity: number;
+  flow?: number;
   scatter: number;
   angleJitter: number;
   sizeJitter: number;
@@ -72,7 +73,9 @@ export function mapAbrBrush(b: any): AbrBrushFields {
     // visible chain of beads here at partial opacity; tighten them. Sampled tips keep their own.
     spacing: shape.spacingOn === false ? 0.1 : clamp(shape.type === 'computed' ? Math.min(shape.spacing ?? 0.1, 0.06) : (shape.spacing ?? 0.1), 0.02, 1),
     hardness: shape.type === 'computed' ? clamp(shape.hardness ?? 1, 0, 1) : 1,
-    opacity: clamp(flow * opacity, 0.05, 1),
+    // Opacity caps the whole stroke; flow is what each stamp lays down (see strokeBuffer.service).
+    opacity: clamp(opacity, 0.05, 1),
+    flow: flow < 0.999 ? clamp(flow, 0.02, 1) : undefined,
     scatter: b.scatter ? clamp(scatterJitter > 0 ? scatterJitter : 0.15 + scatterCount * 0.05, 0, 1) : 0,
     angleJitter: clamp((sd?.angleDynamics?.jitter ?? 0) * 360, 0, 360),
     sizeJitter: clamp((sizeDyn?.jitter ?? 0) * 100, 0, 100),
@@ -256,6 +259,7 @@ export async function importAbr(buffer: ArrayBuffer): Promise<AbrImportResult> {
         spacing: f.spacing,
         hardness: f.hardness,
         opacity: f.opacity,
+        flow: f.flow,
         scatter: f.scatter,
         angleJitter: f.angleJitter,
         sizeJitter: f.sizeJitter,

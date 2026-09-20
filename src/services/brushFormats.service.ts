@@ -631,9 +631,9 @@ async function kritaPresetToBrush(xml: string, fallbackName: string, loadTip?: K
     size: Math.min(300, Math.max(1, Math.round(size))),
     spacing: spacing !== undefined ? Math.min(1, Math.max(0.02, spacing)) : undefined,
     hardness: Math.min(1, Math.max(0, hardness)),
-    // Blend-mode brushes composite each stamp onto the previous ones, so a dense stroke piles up far
-    // more than Krita's per-stroke blend; softening the stamps keeps the result usable.
-    opacity: Math.min(1, Math.max(0.05, flow * opacity * (blend && blend !== 'erase' && blend !== 'source-over' ? 0.3 : 1))),
+    // Opacity caps the whole stroke and flow is what each stamp lays down (see strokeBuffer.service).
+    opacity: Math.min(1, Math.max(0.05, opacity)),
+    flow: flow < 0.999 ? Math.min(1, Math.max(0.02, flow)) : undefined,
     scatter,
     sizeJitter: fuzzySize ? 25 : 0,
     textures: frameUrls,
@@ -649,7 +649,6 @@ async function kritaPresetToBrush(xml: string, fallbackName: string, loadTip?: K
       tiltToSize: /tilt/i.test(sensorId(param('SizeSensor')) ?? ''),
     },
   }, 'Importados (Krita)');
-  if (b.blendMode && b.blendMode !== 'erase') notes.push(`modo de fusión «${b.blendMode}»: se aplica sello a sello (los trazos densos se acumulan más que en Krita)`);
   return { brush: b, notes };
 }
 

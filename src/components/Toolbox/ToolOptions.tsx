@@ -228,6 +228,20 @@ export default function ToolOptions() {
               className="w-full"
             />
           </div>
+          <div>
+            <div className="flex justify-between text-xs text-textDim mb-1" title="Cantidad de pintura por sello. Con el flujo activado, la opacidad pasa a ser el máximo de todo el trazo.">
+              <span>Flujo</span>
+              <span>{currentBrush.flow === undefined ? 'clásico' : `${Math.round(currentBrush.flow * 100)}%`}</span>
+            </div>
+            <input
+              type="range"
+              min={1}
+              max={100}
+              value={(currentBrush.flow ?? 1) * 100}
+              onChange={(e) => updateCurrentBrush({ flow: Number(e.target.value) / 100 })}
+              className="w-full"
+            />
+          </div>
         </>
       )}
     </div>

@@ -14,6 +14,7 @@ const SLIDERS: { key: keyof Brush; label: string; min: number; max: number; pct?
   { key: 'size', label: 'Tamaño', min: 1, max: 300 },
   { key: 'hardness', label: 'Dureza', min: 0, max: 100, pct: true },
   { key: 'opacity', label: 'Opacidad', min: 1, max: 100, pct: true },
+  { key: 'flow', label: 'Flujo (el resto = trazo clásico)', min: 1, max: 100, pct: true },
   { key: 'spacing', label: 'Espaciado', min: 1, max: 100, pct: true },
   { key: 'scatter', label: 'Dispersión', min: 0, max: 100, pct: true },
   { key: 'angleJitter', label: 'Variación de ángulo', min: 0, max: 360 },
@@ -33,7 +34,7 @@ export default function BrushEditor() {
   if (!show) return null;
 
   function getValue(key: keyof Brush, pct?: boolean) {
-    const v = currentBrush[key] as number;
+    const v = ((currentBrush[key] as number | undefined) ?? (key === 'flow' ? 1 : 0));
     return pct ? Math.round(v * 100) : v;
   }
 

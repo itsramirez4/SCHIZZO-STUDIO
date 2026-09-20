@@ -9,6 +9,7 @@ import { useHistory } from '@/hooks/useHistory';
 import { useRecentColorsStore } from '@/store/recentColorsStore';
 import * as layerService from '@/services/layer.service';
 import { strokeBrush } from '@/services/brush.service';
+import { StrokeSession, needsStrokeBuffer } from '@/services/strokeBuffer.service';
 import { eraseStroke, floodFill, getPixelAveraged, withClip, withAlphaLock } from '@/services/canvas.service';
 import { drawStyledText, drawTextAlongPath, DEFAULT_TEXT_OPTIONS, TextEffect, TEXT_EFFECT_LABELS, TextOptions } from '@/services/text.service';
 import { screenToProjectPoint } from '@/utils/canvasUtils';
@@ -251,6 +252,7 @@ export default function Canvas2D() {
   /** 0 (pen upright) .. 1 (pen flat) from the pointer event's tilt angles; 0 for a mouse. */
   const stylusTilt = (e: { tiltX?: number; tiltY?: number }) => Math.min(1, Math.hypot(e.tiltX ?? 0, e.tiltY ?? 0) / 90);
   const lastPointRef = useRef<Point | null>(null);
+  const strokeSessionRef = useRef<StrokeSession | null>(null);
   const smudgeRef = useRef<SmudgeState | null>(null);
   // Unlike `lastPointRef` (cleared on every pointer-up), this survives across separate clicks —
   // it's the anchor for Shift+click straight lines (Photoshop/Krita/CSP convention): click once
@@ -870,6 +872,27 @@ export default function Canvas2D() {
     }
   }
 
+  /** One brush stroke segment. Brushes with flow or a blend mode go through a stroke session
+   * (see strokeBuffer.service); the rest paint straight onto the layer as before. */
+  function paintBrushSegment(canvasEl: HTMLCanvasElement, pts: Point[], layer: { lockAlpha?: boolean }) {
+    const session = strokeSessionRef.current;
+    const pixel = project?.type === 'pixelart';
+    if (session) {
+      strokeWithSymmetry((p) => {
+        session.touch(p);
+        strokeBrush(session.ctx, p, session.stampBrush, primaryColor, pixel);
+      }, pts);
+      session.flush(selection, layer.lockAlpha);
+      return;
+    }
+    const ctx = canvasEl.getContext('2d')!;
+    withAlphaLock(ctx, layer.lockAlpha, () => {
+      withClip(ctx, selection, () => {
+        strokeWithSymmetry((p) => strokeBrush(ctx, p, currentBrush, primaryColor, pixel), pts);
+      });
+    });
+  }
+
   function getPos(e: React.PointerEvent): Point | null {
     if (!project || !currentLayer || !stageRef.current) return null;
     const rect = stageRef.current.getBoundingClientRect();
@@ -969,11 +992,9 @@ export default function Canvas2D() {
         // away), same as the other one-shot tools below, rather than an open drag.
         if (e.shiftKey && lastStrokeEndRef.current) {
           const from = lastStrokeEndRef.current;
-          withAlphaLock(canvasEl.getContext('2d')!, currentLayer.lockAlpha, () => {
-            withClip(canvasEl.getContext('2d')!, selection, () => {
-              strokeWithSymmetry((pts) => strokeBrush(canvasEl.getContext('2d')!, pts, currentBrush, primaryColor, project.type === 'pixelart'), [from, posP]);
-            });
-          });
+          strokeSessionRef.current = needsStrokeBuffer(currentBrush) ? new StrokeSession(canvasEl, currentBrush) : null;
+          paintBrushSegment(canvasEl, [from, posP], currentLayer);
+          strokeSessionRef.current = null;
           lastStrokeEndRef.current = pos;
           layerService.syncLinkedInstances(layers, currentLayer.id);
           pushHistory('Línea recta');
@@ -981,11 +1002,8 @@ export default function Canvas2D() {
           break;
         }
         lastPointRef.current = posP;
-        withAlphaLock(canvasEl.getContext('2d')!, currentLayer.lockAlpha, () => {
-          withClip(canvasEl.getContext('2d')!, selection, () => {
-            strokeWithSymmetry((pts) => strokeBrush(canvasEl.getContext('2d')!, pts, currentBrush, primaryColor, project.type === 'pixelart'), [posP]);
-          });
-        });
+        strokeSessionRef.current = needsStrokeBuffer(currentBrush) ? new StrokeSession(canvasEl, currentBrush) : null;
+        paintBrushSegment(canvasEl, [posP], currentLayer);
         break;
       }
       case 'eraser': {
@@ -1150,11 +1168,7 @@ export default function Canvas2D() {
 
     if (currentTool === 'brush' && lastPointRef.current) {
       const smoothedPos = { ...applySmoothing(lastPointRef.current, pos, currentBrush.smoothing ?? 0), pressure: e.pressure, tilt: stylusTilt(e) };
-      withAlphaLock(canvasEl.getContext('2d')!, currentLayer.lockAlpha, () => {
-        withClip(canvasEl.getContext('2d')!, selection, () => {
-          strokeWithSymmetry((pts) => strokeBrush(canvasEl.getContext('2d')!, pts, currentBrush, primaryColor, project?.type === 'pixelart'), [lastPointRef.current!, smoothedPos]);
-        });
-      });
+      paintBrushSegment(canvasEl, [lastPointRef.current!, smoothedPos], currentLayer);
       lastPointRef.current = smoothedPos;
     } else if (currentTool === 'eraser' && lastPointRef.current) {
       const smoothedPos = applySmoothing(lastPointRef.current, pos, currentBrush.smoothing ?? 0);
@@ -1215,6 +1229,7 @@ export default function Canvas2D() {
   }
 
   function handlePointerUp() {
+    strokeSessionRef.current = null;
     if (isDrawingRef.current && (currentTool === 'brush' || currentTool === 'eraser') && currentLayer) {
       layerService.syncLinkedInstances(layers, currentLayer.id);
       pushHistory(currentTool === 'brush' ? 'Trazo de pincel' : 'Borrador');
