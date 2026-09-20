@@ -432,7 +432,7 @@ function applyAdjustmentToAccumulator(out: HTMLCanvasElement, layer: Layer) {
 function getOwnContentCanvas(allLayers: Layer[], layer: Layer, width: number, height: number): HTMLCanvasElement | undefined {
   if (layer.type === 'group') return flattenSubtree(allLayers, layer.id, width, height);
   if (layer.type === 'fill') return renderFillLayer(layer, width, height);
-  if (layer.type === 'raster' || layer.type === 'text' || layer.type === 'reference') return canvasRegistry.get(layer.id);
+  if (layer.type === 'raster' || layer.type === 'text' || layer.type === 'reference' || layer.type === 'vector') return canvasRegistry.get(layer.id);
   return undefined;
 }
 

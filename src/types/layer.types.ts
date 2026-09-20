@@ -1,6 +1,29 @@
 import { LayerEffects } from './layerEffects';
+import type { ShapeDraft, VectorFillStyle, VectorStrokeStyle } from './vectorShapes';
+import type { PenPath } from '@/services/path.service';
 
-export type LayerType = 'raster' | 'text' | 'reference' | 'group' | 'adjustment' | 'fill';
+export type LayerType = 'raster' | 'text' | 'reference' | 'group' | 'adjustment' | 'fill' | 'vector';
+
+/** One editable object of a vector layer. The layer's pixels are only a cache re-rendered from these. */
+export type VectorObject =
+  | { id: string; kind: 'shape'; draft: ShapeDraft; stroke: VectorStrokeStyle; fill: VectorFillStyle }
+  | {
+      id: string;
+      kind: 'text';
+      text: string;
+      /** Top-left of the (unrotated) text box, in layer pixels. */
+      x: number;
+      y: number;
+      angle: number;
+      /** Uniform scale on top of `fontSize`. */
+      scale: number;
+      font: string;
+      fontSize: number;
+      weight: 'normal' | 'bold';
+      fill: VectorFillStyle;
+      stroke: VectorStrokeStyle;
+    }
+  | { id: string; kind: 'path'; path: PenPath; stroke: VectorStrokeStyle; fill: VectorFillStyle };
 
 /** Non-destructive color adjustments applied to everything stacked below the layer. */
 export type AdjustmentType = 'brightness-contrast' | 'hue-saturation' | 'invert' | 'desaturate' | 'posterize' | 'sepia' | 'levels' | 'threshold';
@@ -46,6 +69,9 @@ export interface Layer {
    * composite onto pixels that already have alpha, and can't raise that alpha, so nothing
    * spills outside the layer's existing silhouette. Doesn't affect the eraser or warp. */
   lockAlpha?: boolean;
+
+  /** Vector layers only: the objects the layer is drawn from (bottom to top). */
+  vectorObjects?: VectorObject[];
 
   // --- Adjustment layers: no pixels of their own, transform everything below instead. ---
   adjustmentType?: AdjustmentType;

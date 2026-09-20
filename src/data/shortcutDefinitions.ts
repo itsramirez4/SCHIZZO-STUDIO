@@ -26,6 +26,7 @@ export const TOOL_SHORTCUT_ACTIONS: Record<string, ToolType> = {
   'tool.smudge': 'smudge',
   'tool.line': 'line',
   'tool.curve': 'curve',
+  'tool.vectorSelect': 'vectorSelect',
 };
 
 /**
@@ -58,6 +59,7 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
   { id: 'tool.smudge', label: 'Mezclador de color', category: 'Herramientas', defaultKey: 'n', defaultModifiers: [], preventDefault: false },
   { id: 'tool.line', label: 'Línea recta', category: 'Herramientas', defaultKey: 'q', defaultModifiers: [], preventDefault: false },
   { id: 'tool.curve', label: 'Curva', category: 'Herramientas', defaultKey: 'c', defaultModifiers: [], preventDefault: false },
+  { id: 'tool.vectorSelect', label: 'Seleccionar objeto vectorial', category: 'Herramientas', defaultKey: 'a', defaultModifiers: [], preventDefault: false },
 
   // Pincel / color — X e D calcan la convención exacta de Photoshop (X intercambia,
   // D restablece a blanco y negro), en vez del mapeo anterior (D intercambiaba).

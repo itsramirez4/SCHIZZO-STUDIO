@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import VectorObjectsEditor from './VectorObjectsEditor';
 import {
   Eye,
   EyeOff,
@@ -18,6 +19,7 @@ import {
   FlipVertical,
   SlidersHorizontal,
   PaintBucket,
+  Shapes,
   Image as ImageIcon,
   Sparkles,
   Scissors,
@@ -188,6 +190,7 @@ export default function LayerItem({
         {isGroup && (isExpanded ? <FolderOpen size={13} className="text-textDim" /> : <Folder size={13} className="text-textDim" />)}
         {layer.type === 'adjustment' && <SlidersHorizontal size={12} className="text-textDim shrink-0" />}
         {layer.type === 'fill' && <PaintBucket size={12} className="text-textDim shrink-0" />}
+        {layer.type === 'vector' && <Shapes size={12} className="text-textDim shrink-0" />}
         {layer.type === 'reference' && <ImageIcon size={12} className="text-textDim shrink-0" />}
 
         {editingName ? (
@@ -244,7 +247,7 @@ export default function LayerItem({
             <X size={12} />
           </button>
         )}
-        {(layer.type === 'raster' || layer.type === 'fill') && (
+        {(layer.type === 'raster' || layer.type === 'fill' || layer.type === 'vector') && (
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -368,6 +371,7 @@ export default function LayerItem({
           )}
           {layer.type === 'adjustment' && <AdjustmentEditor layer={layer} />}
           {layer.type === 'fill' && <FillEditor layer={layer} />}
+          {layer.type === 'vector' && <VectorObjectsEditor layer={layer} />}
           {!isGroup && layer.hasMask && (
             <div className="flex gap-1">
               <button
@@ -386,7 +390,7 @@ export default function LayerItem({
               </button>
             </div>
           )}
-          {showEffects && (layer.type === 'raster' || layer.type === 'fill') && <LayerEffectsEditor layer={layer} />}
+          {showEffects && (layer.type === 'raster' || layer.type === 'fill' || layer.type === 'vector') && <LayerEffectsEditor layer={layer} />}
           {!isGroup && otherGroups.length > 0 && (
             <select
               value={layer.parent ?? ''}

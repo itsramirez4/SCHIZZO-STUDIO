@@ -10,6 +10,7 @@ export function useLayers() {
     currentLayer: project?.layers.find((l) => l.id === currentLayerId) ?? null,
     addLayer: useAppStore((s) => s.addLayer),
     addReferenceLayer: useAppStore((s) => s.addReferenceLayer),
+    addVectorLayer: useAppStore((s) => s.addVectorLayer),
     deleteLayer: useAppStore((s) => s.deleteLayer),
     duplicateLayer: useAppStore((s) => s.duplicateLayer),
     renameLayer: useAppStore((s) => s.renameLayer),

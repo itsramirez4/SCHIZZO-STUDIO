@@ -4,6 +4,7 @@ import * as layerService from '@/services/layer.service';
 import { withClip, withAlphaLock } from '@/services/canvas.service';
 import { ShapeDraft, ShapeKind, VectorStrokeStyle, VectorFillStyle, BooleanOp } from '@/types/vectorShapes';
 import { paintShape, rasterizeShapeMask } from '@/services/shapeGeometry.service';
+import { newVectorId } from '@/services/vectorLayer.service';
 import { combineMasks, divideMasks, paintMaskFill, paintMaskStroke } from '@/services/vectorBoolean.service';
 
 interface ShapeStore {
@@ -66,6 +67,11 @@ export const useShapeStore = create<ShapeStore>((set, get) => ({
     if (!project || !currentLayerId) return;
     const layer = project.layers.find((l) => l.id === currentLayerId);
     if (!layer || layer.locked) return;
+    if (layer.type === 'vector') {
+      app.addVectorObject({ id: newVectorId(), kind: 'shape', draft: shapeDraft, stroke: { ...stroke }, fill: { ...fill } }, 'Forma vectorial');
+      set({ shapeDraft: null });
+      return;
+    }
     const canvas = layerService.getLayerCanvas(currentLayerId);
     if (!canvas) return;
 

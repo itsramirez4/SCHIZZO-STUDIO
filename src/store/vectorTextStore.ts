@@ -3,6 +3,7 @@ import { useAppStore } from '@/store/appStore';
 import { useShapeStore } from '@/store/shapeStore';
 import * as layerService from '@/services/layer.service';
 import { withClip, withAlphaLock } from '@/services/canvas.service';
+import { newVectorId } from '@/services/vectorLayer.service';
 import { textToPath2D, paintTextDraft, TextDraft } from '@/services/vectorText.service';
 
 interface VectorTextStore {
@@ -53,9 +54,19 @@ export const useVectorTextStore = create<VectorTextStore>((set, get) => ({
     if (!project || !currentLayerId) return;
     const layer = project.layers.find((l) => l.id === currentLayerId);
     if (!layer || layer.locked) return;
+    const { stroke, fill } = useShapeStore.getState();
+    if (layer.type === 'vector') {
+      // Kept as live text (font + string) rather than glyph outlines, so it stays editable.
+      app.addVectorObject({
+        id: newVectorId(), kind: 'text', text: textDraft.text, x: textDraft.x, y: textDraft.y, angle: textDraft.angle,
+        scale: textDraft.h / textDraft.naturalHeight, font: 'Inter, Arial, sans-serif', fontSize: textDraft.fontSize, weight: 'normal',
+        fill: { ...fill }, stroke: { ...stroke },
+      }, 'Texto vectorial');
+      set({ textDraft: null });
+      return;
+    }
     const canvas = layerService.getLayerCanvas(currentLayerId);
     if (!canvas) return;
-    const { stroke, fill } = useShapeStore.getState();
 
     withAlphaLock(canvas.getContext('2d')!, layer.lockAlpha, () => {
       withClip(canvas.getContext('2d')!, selection, () => {

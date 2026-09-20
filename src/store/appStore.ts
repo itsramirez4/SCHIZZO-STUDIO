@@ -16,6 +16,7 @@ import {
   LayerCompState,
 } from '@/types';
 import * as layerService from '@/services/layer.service';
+import { renderVectorLayer } from '@/services/vectorLayer.service';
 import * as filterService from '@/services/filter.service';
 import { withAlphaLock } from '@/services/canvas.service';
 import { loadPresets, createBrush as makeBrush } from '@/services/brush.service';
@@ -164,6 +165,13 @@ interface AppState {
   commitAdjustmentParams: () => void;
 
   addFillLayer: (fillType: FillType) => string;
+  /** Vector layers: objects stay editable; the layer's pixels are re-rendered from them. */
+  addVectorLayer: () => string;
+  /** Replaces a vector layer's objects and re-renders it; `historyLabel` null skips the undo step (drags). */
+  setVectorObjects: (layerId: string, objects: import('@/types/layer.types').VectorObject[], historyLabel?: string | null) => void;
+  /** Adds an object to the current layer when it is a vector layer. Returns false otherwise. */
+  addVectorObject: (obj: import('@/types/layer.types').VectorObject, historyLabel?: string) => boolean;
+  rasterizeVectorLayer: (layerId: string) => void;
   setFillType: (id: string, fillType: FillType) => void;
   setFillProps: (id: string, patch: Partial<Pick<Layer, 'fillColor' | 'gradient' | 'patternId' | 'patternColor'>>) => void;
   commitFillProps: () => void;
@@ -696,6 +704,39 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ project: { ...project, layers }, currentLayerId: layer.id });
     get().pushHistory('Nueva capa de relleno');
     return layer.id;
+  },
+
+  addVectorLayer: () => {
+    const { project } = get();
+    if (!project) return '';
+    const layer = { ...layerService.createLayer('Vectorial', project.width, project.height, 'vector' as const), vectorObjects: [] };
+    set({ project: { ...project, layers: [layer, ...project.layers] }, currentLayerId: layer.id });
+    get().pushHistory('Nueva capa vectorial');
+    return layer.id;
+  },
+
+  setVectorObjects: (layerId, objects, historyLabel = 'Editar objeto vectorial') => {
+    const { project } = get();
+    if (!project) return;
+    const canvas = layerService.getLayerCanvas(layerId);
+    if (canvas) renderVectorLayer(canvas, objects);
+    set({ project: { ...project, layers: project.layers.map((l) => (l.id === layerId ? { ...l, vectorObjects: objects } : l)) } });
+    if (historyLabel) get().pushHistory(historyLabel);
+  },
+
+  addVectorObject: (obj, historyLabel = 'Objeto vectorial') => {
+    const { project, currentLayerId } = get();
+    const layer = project?.layers.find((l) => l.id === currentLayerId);
+    if (!layer || layer.type !== 'vector' || layer.locked) return false;
+    get().setVectorObjects(layer.id, [...(layer.vectorObjects ?? []), obj], historyLabel);
+    return true;
+  },
+
+  rasterizeVectorLayer: (layerId) => {
+    const { project } = get();
+    if (!project) return;
+    set({ project: { ...project, layers: project.layers.map((l) => (l.id === layerId ? { ...l, type: 'raster' as const, vectorObjects: undefined } : l)) } });
+    get().pushHistory('Rasterizar capa vectorial');
   },
 
   setFillType: (id, fillType) => {

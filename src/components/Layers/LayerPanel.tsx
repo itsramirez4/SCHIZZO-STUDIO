@@ -1,6 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react';
 import toast from 'react-hot-toast';
-import { Plus, FolderPlus, Image as ImageIcon, Group, GitMerge, Layers, X, Eye, EyeOff, Lock, Unlock, Camera, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, FolderPlus, Image as ImageIcon, Group, GitMerge, Layers, X, Eye, EyeOff, Lock, Unlock, Camera, Trash2, ChevronDown, ChevronRight, Shapes } from 'lucide-react';
 import { Layer, AdjustmentType, FillType } from '@/types';
 import { ADJUSTMENT_LABELS } from '@/services/filter.service';
 import { importReferenceImages } from '@/services/importImage';
@@ -11,7 +11,7 @@ import LayerItem from './LayerItem';
 const FILL_TYPE_LABELS: Record<FillType, string> = { solid: 'Color sólido', gradient: 'Degradado', pattern: 'Patrón' };
 
 export default function LayerPanel() {
-  const { layers, currentLayerId, addLayer, reorderLayers, addAdjustmentLayer, addFillLayer, addReferenceLayer } = useLayers();
+  const { layers, currentLayerId, addLayer, reorderLayers, addAdjustmentLayer, addFillLayer, addReferenceLayer, addVectorLayer } = useLayers();
   const createGroup = useAppStore((s) => s.createGroup);
   const setLayerParent = useAppStore((s) => s.setLayerParent);
   const selectedLayerIds = useAppStore((s) => s.selectedLayerIds);
@@ -169,6 +169,9 @@ export default function LayerPanel() {
             title="Importar imagen de referencia"
           >
             <ImageIcon size={14} />
+          </button>
+          <button onClick={() => addVectorLayer()} className="text-textDim hover:text-text" title="Nueva capa vectorial (formas, texto y trazados editables)">
+            <Shapes size={14} />
           </button>
           <button onClick={() => createGroup()} className="text-textDim hover:text-text" title="Nuevo grupo">
             <FolderPlus size={15} />

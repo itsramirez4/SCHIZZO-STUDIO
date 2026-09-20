@@ -34,7 +34,8 @@ export type ToolType =
   | 'warp'
   | 'smudge'
   | 'line'
-  | 'curve';
+  | 'curve'
+  | 'vectorSelect';
 
 export interface RGBA {
   r: number;

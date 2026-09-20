@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { Bold, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useAppStore } from '@/store/appStore';
 import { useLayers } from '@/hooks/useLayers';
 import { useTools } from '@/hooks/useTools';
@@ -11,6 +12,8 @@ import * as layerService from '@/services/layer.service';
 import { strokeBrush } from '@/services/brush.service';
 import { StrokeSession, needsStrokeBuffer } from '@/services/strokeBuffer.service';
 import { buildLinePoints, snapAngle, taperRamp } from '@/services/lineTools.service';
+import { hitTestVector, newVectorId, objectBounds, translateObject } from '@/services/vectorLayer.service';
+import { useVectorLayerStore } from '@/store/vectorLayerStore';
 import { eraseStroke, floodFill, getPixelAveraged, withClip, withAlphaLock } from '@/services/canvas.service';
 import { drawStyledText, drawTextAlongPath, DEFAULT_TEXT_OPTIONS, TextEffect, TEXT_EFFECT_LABELS, TextOptions } from '@/services/text.service';
 import { screenToProjectPoint } from '@/utils/canvasUtils';
@@ -68,6 +71,9 @@ interface Point {
 // silently falling back for anyone without some obscure font installed.
 const TEXT_FONT_OPTIONS = ['Arial', 'Georgia', 'Times New Roman', 'Courier New', 'Verdana', 'Impact', 'Comic Sans MS'];
 
+/** Tools that work on a vector layer; every pixel-painting tool asks for the layer to be rasterized first. */
+const VECTOR_LAYER_TOOLS = ['shapeRect', 'shapeEllipse', 'shapePolygon', 'shapeStar', 'text', 'vectorText', 'pen', 'vectorSelect', 'eyedropper', 'pan', 'zoom', 'selection', 'lasso', 'magicWand'];
+
 const SHAPE_TOOL_KIND: Partial<Record<string, ShapeKind>> = {
   shapeRect: 'rectangle',
   shapeEllipse: 'ellipse',
@@ -84,6 +90,9 @@ export default function Canvas2D() {
   const { zoom, panX, panY, canvasRotation, viewFlippedH, setZoom, setPan, zoomBy, setIsDrawing } = useCanvas();
   const { historyVersion } = useHistory();
   const pushHistory = useAppStore((s) => s.pushHistory);
+  const addVectorObject = useAppStore((s) => s.addVectorObject);
+  const setVectorObjects = useAppStore((s) => s.setVectorObjects);
+  const selectedVectorId = useVectorLayerStore((s) => s.selectedId);
   const selection = useAppStore((s) => s.selection);
   const setSelection = useAppStore((s) => s.setSelection);
   const selectionMask = useAppStore((s) => s.selectionMask);
@@ -256,6 +265,7 @@ export default function Canvas2D() {
   const stylusTilt = (e: { tiltX?: number; tiltY?: number }) => Math.min(1, Math.hypot(e.tiltX ?? 0, e.tiltY ?? 0) / 90);
   const lastPointRef = useRef<Point | null>(null);
   const strokeSessionRef = useRef<StrokeSession | null>(null);
+  const vectorDragRef = useRef<{ id: string; last: Point; moved: boolean } | null>(null);
   /** Distance travelled by the current freehand stroke, for the start taper. */
   const strokeDistRef = useRef(0);
   /** Line / Curve tools: `a`→`b` is the drag; `c` (curve only) is the bend, chosen while `bend` is set. */
@@ -505,7 +515,7 @@ export default function Canvas2D() {
         for (let i = idx + 1; i < siblings.length; i++) {
           const candidate = siblings[i];
           if (candidate.clipTo) continue;
-          if (candidate.type === 'raster' || candidate.type === 'reference') {
+          if (candidate.type === 'raster' || candidate.type === 'reference' || candidate.type === 'vector') {
             const c = layerService.getLayerCanvas(candidate.id);
             if (c) clipAlpha = layerService.alphaToLuminanceMask(c);
           } else if (candidate.type === 'fill') {
@@ -740,6 +750,22 @@ export default function Canvas2D() {
   function commitPenPath() {
     if (!penPath || !currentLayer || penPath.points.length < 2) {
       setPenPath(null);
+      setCurrentTool('brush');
+      return;
+    }
+    if (currentLayer.type === 'vector' && !(penTextMode && penText.trim())) {
+      addVectorObject(
+        {
+          id: newVectorId(),
+          kind: 'path',
+          path: penPath,
+          stroke: { enabled: true, color: primaryColor, width: currentBrush.size, cap: 'round', join: 'round', dashed: false, opacity: 1 },
+          fill: { enabled: penFillEnabled && penPath.closed, color: secondaryColor, opacity: 1 },
+        },
+        'Trazado vectorial'
+      );
+      setPenPath(null);
+      setPenText('');
       setCurrentTool('brush');
       return;
     }
@@ -998,6 +1024,10 @@ export default function Canvas2D() {
     }
     if (currentTool === 'transform') return;
     if (currentLayer.locked || currentLayer.type === 'group' || currentLayer.type === 'reference') return;
+    if (currentLayer.type === 'vector' && !VECTOR_LAYER_TOOLS.includes(currentTool)) {
+      toast('Esta capa es vectorial: usa formas, texto, pluma o «Seleccionar objeto». Para pintar píxeles, rasteriza la capa.', { icon: 'ℹ️', id: 'vector-layer-paint' });
+      return;
+    }
 
     const pos = getPos(e);
     if (!pos) return;
@@ -1045,6 +1075,13 @@ export default function Canvas2D() {
         lastPointRef.current = posP;
         strokeSessionRef.current = needsStrokeBuffer(currentBrush) ? new StrokeSession(canvasEl, currentBrush) : null;
         paintBrushSegment(canvasEl, [posP], currentLayer);
+        break;
+      }
+      case 'vectorSelect': {
+        if (currentLayer.type !== 'vector') break;
+        const hit = hitTestVector(currentLayer.vectorObjects ?? [], pos.x, pos.y);
+        useVectorLayerStore.getState().select(hit?.id ?? null);
+        vectorDragRef.current = hit ? { id: hit.id, last: pos, moved: false } : null;
         break;
       }
       case 'line':
@@ -1230,6 +1267,17 @@ export default function Canvas2D() {
     const canvasEl = getActiveCanvas(currentLayer);
     if (!canvasEl) return;
 
+    if (currentTool === 'vectorSelect' && vectorDragRef.current && currentLayer.type === 'vector') {
+      const drag = vectorDragRef.current;
+      const dx = pos.x - drag.last.x;
+      const dy = pos.y - drag.last.y;
+      if (dx !== 0 || dy !== 0) {
+        setVectorObjects(currentLayer.id, (currentLayer.vectorObjects ?? []).map((o) => (o.id === drag.id ? translateObject(o, dx, dy) : o)), null);
+        vectorDragRef.current = { ...drag, last: pos, moved: true };
+      }
+      return;
+    }
+
     if (currentTool === 'brush' && lastPointRef.current) {
       const smoothedPos: Point = { ...applySmoothing(lastPointRef.current, pos, currentBrush.smoothing ?? 0), pressure: e.pressure, tilt: stylusTilt(e) };
       strokeDistRef.current += Math.hypot(smoothedPos.x - lastPointRef.current.x, smoothedPos.y - lastPointRef.current.y);
@@ -1296,6 +1344,8 @@ export default function Canvas2D() {
 
   function handlePointerUp() {
     strokeSessionRef.current = null;
+    if (vectorDragRef.current?.moved) pushHistory('Mover objeto vectorial');
+    vectorDragRef.current = null;
     if ((currentTool === 'line' || currentTool === 'curve') && lineDraftRef.current && !lineDraftRef.current.bend && isDrawingRef.current) {
       const d = lineDraftRef.current;
       if (currentTool === 'curve' && Math.hypot(d.b.x - d.a.x, d.b.y - d.a.y) >= 1) {
@@ -1384,6 +1434,27 @@ export default function Canvas2D() {
   }
 
   function commitText(value: string) {
+    if (value.trim() && currentLayer?.type === 'vector' && textInput) {
+      addVectorObject(
+        {
+          id: newVectorId(),
+          kind: 'text',
+          text: value,
+          x: textInput.x,
+          y: textInput.y,
+          angle: 0,
+          scale: 1,
+          font: textStyle.font,
+          fontSize: textStyle.size,
+          weight: textStyle.weight,
+          fill: { enabled: true, color: primaryColor, opacity: 1 },
+          stroke: { enabled: false, color: primaryColor, width: 1, cap: 'round', join: 'round', dashed: false, opacity: 1 },
+        },
+        'Texto'
+      );
+      setTextInput(null);
+      return;
+    }
     if (value.trim() && currentLayer && textInput) {
       const canvasEl = getActiveCanvas(currentLayer);
       if (canvasEl) {
@@ -1698,6 +1769,17 @@ export default function Canvas2D() {
             />
           </svg>
         )}
+
+        {currentLayer?.type === 'vector' && selectedVectorId && (() => {
+          const obj = (currentLayer.vectorObjects ?? []).find((o) => o.id === selectedVectorId);
+          if (!obj) return null;
+          const b = objectBounds(obj);
+          return (
+            <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
+              <rect x={b.x} y={b.y} width={b.w} height={b.h} fill="none" stroke="#5b8cff" strokeWidth={1.5 / zoom} strokeDasharray={`${5 / zoom} ${4 / zoom}`} />
+            </svg>
+          );
+        })()}
 
         {lineDraft && (
           <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>

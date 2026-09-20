@@ -1,4 +1,4 @@
-import { Paintbrush, Eraser, BoxSelect, Lasso, Wand, PaintBucket, Blend, Type, Pipette, ZoomIn, Hand, Move3d, PenTool, Square, Circle, Hexagon, Star, CaseSensitive, Waves, Droplets, Minus, Spline } from 'lucide-react';
+import { Paintbrush, Eraser, BoxSelect, Lasso, Wand, PaintBucket, Blend, Type, Pipette, ZoomIn, Hand, Move3d, PenTool, Square, Circle, Hexagon, Star, CaseSensitive, Waves, Droplets, Minus, Spline, MousePointer2 } from 'lucide-react';
 import { useTools } from '@/hooks/useTools';
 import { useAppStore } from '@/store/appStore';
 import { ToolType, ProjectType } from '@/types';
@@ -32,6 +32,7 @@ const TOOLS: { id: ToolType; label: string; icon: typeof Paintbrush }[] = [
   { id: 'shapePolygon', label: 'Polígono', icon: Hexagon },
   { id: 'shapeStar', label: 'Estrella', icon: Star },
   { id: 'vectorText', label: 'Texto vectorial', icon: CaseSensitive },
+  { id: 'vectorSelect', label: 'Seleccionar objeto vectorial (capas vectoriales)', icon: MousePointer2 },
   { id: 'transform', label: 'Transformar', icon: Move3d },
   { id: 'zoom', label: 'Zoom', icon: ZoomIn },
   { id: 'pan', label: 'Mano', icon: Hand },
