@@ -70,8 +70,12 @@ export function encodeCanvas(canvas: HTMLCanvasElement, format: BatchOutputForma
     }
     case 'webp':
       return canvasToDataUrl(canvas, 'image/webp', quality);
-    case 'avif':
-      return canvasToDataUrl(canvas, 'image/avif', quality);
+    case 'avif': {
+      // Chromium cannot encode AVIF from a canvas (it silently returns a PNG): fail loudly, never write PNG bytes as .avif.
+      const url = canvasToDataUrl(canvas, 'image/avif', quality);
+      if (!url.startsWith('data:image/avif')) throw new Error('AVIF no está disponible en esta versión del motor: elige WebP.');
+      return url;
+    }
     default:
       return canvasToDataUrl(canvas, 'image/png');
   }

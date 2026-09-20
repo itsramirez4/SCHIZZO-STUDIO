@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { v4 as uuid } from 'uuid';
+import { canEncodeAvif } from '@/services/export.service';
 import { BatchFilterConfig, BatchItem, BatchOutputFormat, BatchResizeConfig, BATCH_FORMAT_LABELS } from '@/types/batchOperations';
 import { processBatchImage, resizeToCanvas, encodeCanvas } from '@/services/batchImage.service';
 import { isElectron, sanitizeFilename, downloadDataUrl } from '@/utils/fileUtils';
@@ -149,7 +150,7 @@ export default function BatchPanel() {
             onChange={(e) => setSizesFormat(e.target.value as BatchOutputFormat)}
             className="flex-1 bg-panel border border-border rounded text-[10px] px-1.5 py-1"
           >
-            {(Object.keys(BATCH_FORMAT_LABELS) as BatchOutputFormat[]).map((f) => (
+            {(Object.keys(BATCH_FORMAT_LABELS) as BatchOutputFormat[]).filter((f) => f !== 'avif' || canEncodeAvif()).map((f) => (
               <option key={f} value={f}>{BATCH_FORMAT_LABELS[f]}</option>
             ))}
           </select>
@@ -247,7 +248,7 @@ export default function BatchPanel() {
           onChange={(e) => setFormat(e.target.value as BatchOutputFormat)}
           className="w-full bg-panel border border-border rounded text-[10px] px-1.5 py-1"
         >
-          {(Object.keys(BATCH_FORMAT_LABELS) as BatchOutputFormat[]).map((f) => (
+          {(Object.keys(BATCH_FORMAT_LABELS) as BatchOutputFormat[]).filter((f) => f !== 'avif' || canEncodeAvif()).map((f) => (
             <option key={f} value={f}>
               {BATCH_FORMAT_LABELS[f]}
             </option>

@@ -79,6 +79,9 @@ export class GestureRecognizer {
    * them). `remainingCount` is how many touches are still down afterward. */
   handleEnd(endedTouches: TouchPoint[], remainingCount: number) {
     this.clearLongPressTimer();
+    // Fingers rarely lift in the same instant: while any is still down the gesture is not over, and
+    // forgetting it now would make every two- or three-finger tap impossible to recognise.
+    if (remainingCount > 0) return;
     const wasLongPress = this.longPressFired;
     const duration = Date.now() - this.startTime;
     const touchCountAtStart = this.startTouches.length;
