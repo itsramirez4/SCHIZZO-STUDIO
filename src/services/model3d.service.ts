@@ -41,6 +41,10 @@ export class Model3DViewerEngine {
   private directionalLight: THREE.DirectionalLight;
   private bindPose = new Map<THREE.Bone, BindPoseEntry>();
   private rimLight: THREE.DirectionalLight;
+  /** Second light with its own kind: a lamp (point), a spotlight or a soft fill. */
+  private lampLight: THREE.PointLight;
+  private spotLight: THREE.SpotLight;
+  private fillLight: THREE.DirectionalLight;
   private shadowCatcher: THREE.Mesh;
   private grid: THREE.GridHelper;
   private rig: MannequinRig | null = null;
@@ -78,7 +82,13 @@ export class Model3DViewerEngine {
     // Rim light: a weak backlight opposite the key light, off by default (intensity 0).
     this.rimLight = new THREE.DirectionalLight(0xffffff, 0);
     this.rimLight.position.set(-5, 5, -6);
-    this.scene.add(this.ambientLight, this.directionalLight, this.rimLight);
+    this.lampLight = new THREE.PointLight(0xffffff, 0, 0, 2);
+    this.spotLight = new THREE.SpotLight(0xffffff, 0, 0, 0.45, 0.5, 2);
+    this.spotLight.castShadow = true;
+    this.spotLight.shadow.mapSize.set(1024, 1024);
+    this.spotLight.target.position.set(0, 1, 0);
+    this.fillLight = new THREE.DirectionalLight(0xffffff, 0);
+    this.scene.add(this.ambientLight, this.directionalLight, this.rimLight, this.lampLight, this.spotLight, this.spotLight.target, this.fillLight);
 
     this.grid = new THREE.GridHelper(10, 10, 0x555555, 0x333333);
     this.scene.add(this.grid);
@@ -210,8 +220,32 @@ export class Model3DViewerEngine {
     this.rimLight.color.copy(kelvinToColor(kelvin));
   }
 
+  /**
+   * Second light source next to the sun: `kind` 'point' is a lamp (light falls off with distance),
+   * 'spot' a focused spotlight aimed at the subject, 'fill' a soft shadowless light from the side.
+   * Position is azimuth/elevation/distance around the subject; `intensity` 0 or 'off' switches it off.
+   */
+  setExtraLight(kind: 'off' | 'point' | 'spot' | 'fill', azimuthDeg: number, elevationDeg: number, distance: number, intensity: number, kelvin: number) {
+    const az = (azimuthDeg * Math.PI) / 180;
+    const el = (elevationDeg * Math.PI) / 180;
+    const pos = new THREE.Vector3(distance * Math.cos(el) * Math.sin(az), distance * Math.sin(el) + 1, distance * Math.cos(el) * Math.cos(az));
+    const color = kelvinToColor(kelvin);
+    // Point and spot lights are physical (candela, inverse-square): scale the slider so 1 reads like the sun's 1.
+    const candela = intensity * distance * distance * 1.6;
+    this.lampLight.position.copy(pos);
+    this.lampLight.color.copy(color);
+    this.lampLight.intensity = kind === 'point' ? candela : 0;
+    this.spotLight.position.copy(pos);
+    this.spotLight.color.copy(color);
+    this.spotLight.intensity = kind === 'spot' ? candela : 0;
+    this.fillLight.position.copy(pos);
+    this.fillLight.color.copy(color);
+    this.fillLight.intensity = kind === 'fill' ? intensity : 0;
+  }
+
   setShadowsVisible(visible: boolean) {
     this.directionalLight.castShadow = visible;
+    this.spotLight.castShadow = visible;
     this.shadowCatcher.visible = visible;
   }
 
