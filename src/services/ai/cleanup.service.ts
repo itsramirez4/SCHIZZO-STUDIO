@@ -49,6 +49,38 @@ export function inkMask(d: Uint8ClampedArray, w: number, h: number): { mask: Uin
   return { mask, transparent, paper: p };
 }
 
+/**
+ * Strokes as thin things darker than their surroundings. Comparing with the local average (instead of one "paper"
+ * colour) keeps painted or shaded backgrounds from counting as ink.
+ */
+function strokeMask(d: Uint8ClampedArray, w: number, h: number): Uint8Array {
+  const luma = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i++) luma[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
+  const r = Math.max(5, Math.round(Math.max(w, h) / 90));
+  // separable box blur through running sums
+  const tmp = new Float32Array(w * h);
+  const avg = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) {
+    let acc = 0;
+    for (let x = -r; x <= r; x++) acc += luma[y * w + Math.max(0, Math.min(w - 1, x))];
+    for (let x = 0; x < w; x++) {
+      tmp[y * w + x] = acc / (2 * r + 1);
+      acc += luma[y * w + Math.min(w - 1, x + r + 1)] - luma[y * w + Math.max(0, x - r)];
+    }
+  }
+  for (let x = 0; x < w; x++) {
+    let acc = 0;
+    for (let y = -r; y <= r; y++) acc += tmp[Math.max(0, Math.min(h - 1, y)) * w + x];
+    for (let y = 0; y < h; y++) {
+      avg[y * w + x] = acc / (2 * r + 1);
+      acc += tmp[Math.min(h - 1, y + r + 1) * w + x] - tmp[Math.max(0, y - r) * w + x];
+    }
+  }
+  const mask = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) mask[i] = avg[i] - luma[i] > 40 ? 1 : 0;
+  return mask;
+}
+
 export function cleanDrawing(source: HTMLCanvasElement, opts: CleanOptions): CleanResult {
   const w = source.width;
   const h = source.height;
@@ -59,7 +91,8 @@ export function cleanDrawing(source: HTMLCanvasElement, opts: CleanOptions): Cle
   ctx.drawImage(source, 0, 0);
   const img = ctx.getImageData(0, 0, w, h);
   const d = img.data;
-  const { mask, transparent, paper: p } = inkMask(d, w, h);
+  const { mask: paperMask, transparent, paper: p } = inkMask(d, w, h);
+  const mask = transparent ? paperMask : strokeMask(d, w, h);
   const removed = new Uint8Array(w * h);
   const added = new Uint8Array(w * h);
   let specksRemoved = 0;

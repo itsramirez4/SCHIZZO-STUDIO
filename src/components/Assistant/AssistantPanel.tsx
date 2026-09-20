@@ -95,8 +95,8 @@ export default function AssistantPanel() {
   const [palText, setPalText] = useState('');
   const [ideas, setIdeas] = useState<{ title: string; list: PaletteIdea[]; current?: string[] } | null>(null);
   const [comp, setComp] = useState<{ r: CompositionResult; overlay: HTMLCanvasElement } | null>(null);
-  const [speck, setSpeck] = useState(30);
-  const [gap, setGap] = useState(4);
+  const [speck, setSpeck] = useState(12);
+  const [gap, setGap] = useState(3);
   const [clean, setClean] = useState<CleanResult | null>(null);
   const [parts, setParts] = useState<SeparatedLayer[] | null>(null);
   const [findings, setFindings] = useState<Finding[] | null>(null);

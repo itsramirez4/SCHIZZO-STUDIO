@@ -71,6 +71,35 @@ export function separateLineArt(source: HTMLCanvasElement): SeparatedLayer[] {
   const hole = new Uint8Array(w * h);
   const T1 = paperLuma * 0.62; // fully ink below this
   const T2 = paperLuma * 0.86; // paper above this
+  // A dark FILL (sunglasses, a black dress, a pupil) is not a line: pixels that survive erosion are thick, so the
+  // blobs they belong to stay on the colour layer instead of being torn out as "ink".
+  const inkish = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) {
+    const r = d[i * 4], g = d[i * 4 + 1], b = d[i * 4 + 2];
+    const mx = Math.max(r, g, b);
+    const mn = Math.min(r, g, b);
+    const luma = 0.299 * r + 0.587 * g + 0.114 * b;
+    if ((mx === 0 ? 0 : (mx - mn) / mx) < 0.22 && luma < paperLuma * 0.62) inkish[i] = 1;
+  }
+  const rad = Math.max(3, Math.round(Math.max(w, h) / 110));
+  const morph = (src: Uint8Array, grow: boolean) => {
+    const out = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = y * w + x;
+        const v = src[i];
+        const hit = (j: number) => src[j] === (grow ? 1 : 0);
+        const any = (x > 0 && hit(i - 1)) || (x < w - 1 && hit(i + 1)) || (y > 0 && hit(i - w)) || (y < h - 1 && hit(i + w));
+        out[i] = grow ? (v || any ? 1 : 0) : (v && !any ? 1 : 0);
+      }
+    }
+    return out;
+  };
+  let core: Uint8Array = inkish;
+  for (let k = 0; k < rad; k++) core = morph(core, false);
+  for (let k = 0; k < rad + 2; k++) core = morph(core, true); // grown a little past the fill so its soft edge is included
+  const fill = core; // 1 = belongs to a dark fill (keep it on the colour layer)
+
   for (let i = 0; i < w * h; i++) {
     const r = d[i * 4], g = d[i * 4 + 1], b = d[i * 4 + 2];
     const luma = 0.299 * r + 0.587 * g + 0.114 * b;
@@ -79,7 +108,7 @@ export function separateLineArt(source: HTMLCanvasElement): SeparatedLayer[] {
     // a dark stroke is dark AND not strongly coloured (a dark red fill is not a line)
     const sat = mx === 0 ? 0 : (mx - mn) / mx;
     const dark = sat < 0.22 ? Math.max(0, Math.min(1, (T2 - luma) / (T2 - T1))) : 0;
-    if (dark > 0.05) {
+    if (dark > 0.05 && !fill[i]) {
       // the stroke keeps its own darkness as colour: near-black ink stays near-black
       const k = Math.min(1, luma / Math.max(1, T2));
       li.data[i * 4] = r * k * 0.5;
@@ -88,7 +117,7 @@ export function separateLineArt(source: HTMLCanvasElement): SeparatedLayer[] {
       li.data[i * 4 + 3] = Math.round(255 * dark);
     }
     ci.data[i * 4] = r; ci.data[i * 4 + 1] = g; ci.data[i * 4 + 2] = b; ci.data[i * 4 + 3] = 255;
-    if (dark > 0.02) hole[i] = 1;
+    if (dark > 0.02 && !fill[i]) hole[i] = 1;
   }
   // one more ring around the ink: its anti-aliased edge must not survive on the colour layer as a faint outline
   const ring = hole.slice();
