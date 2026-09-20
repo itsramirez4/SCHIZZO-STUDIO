@@ -69,6 +69,8 @@ export interface FaceReading {
   confidence: number;
   method?: string;
   uncertain: boolean;
+  /** Found from the shape of the drawing alone (no eyes were read): the eyes and nose here are placed from the oval. */
+  estimated?: boolean;
 }
 
 export interface PoseReading {
@@ -125,6 +127,8 @@ export async function detectPose(source: HTMLCanvasElement, background = '#fffff
 
   let best = await run(c, (x, y) => ({ x, y }));
   let bestFace = best;
+  const shoulderConf = (r: typeof best) => Math.min(r.kps.find((k) => k.name === 'left_shoulder')?.score ?? 0, r.kps.find((k) => k.name === 'right_shoulder')?.score ?? 0);
+  let bestShoulders = best;
   let method: string | undefined;
   let faceMethod: string | undefined;
   if (!best.ok) {
@@ -138,6 +142,7 @@ export async function detectPose(source: HTMLCanvasElement, background = '#fffff
         best = r;
         method = cand.name;
       }
+      if (shoulderConf(r) > shoulderConf(bestShoulders)) bestShoulders = r;
       if (r.faceConf > bestFace.faceConf) {
         bestFace = r;
         faceMethod = cand.name;
@@ -145,7 +150,7 @@ export async function detectPose(source: HTMLCanvasElement, background = '#fffff
       if ((r.ok && r.confidence > 0.55) || (r.faceOk && r.faceConf > 0.7)) break; // good enough
     }
   }
-  const face = faceFrom(bestFace, faceMethod);
+  const face = faceFrom(bestFace, faceMethod) ?? headAboveShoulders(bestShoulders);
   const { kps, confidence } = best;
   const get = (n: string) => kps.find((k) => k.name === n);
   // A converted drawing rarely reads as cleanly as a photo: a shaky but plausible reading is still
@@ -205,6 +210,31 @@ export async function detectPose(source: HTMLCanvasElement, background = '#fffff
       ankleL: p('left_ankle'), ankleR: p('right_ankle'),
     },
     },
+  };
+}
+
+/**
+ * When no face can be read but the shoulders can (busts, sunglasses, a turned head), the head is put where a head
+ * goes above shoulders: an ESTIMATE from proportions alone, flagged so the artist corrects it by hand.
+ */
+function headAboveShoulders(r: RunLike): FaceReading | null {
+  const get = (n: string) => r.kps.find((k) => k.name === n);
+  const l = get('left_shoulder'), rr = get('right_shoulder');
+  if (!l || !rr || (l.score ?? 0) < 0.25 || (rr.score ?? 0) < 0.25) return null;
+  const sw = Math.hypot(l.x - rr.x, l.y - rr.y);
+  if (sw < 20) return null;
+  const roll = (Math.atan2(rr.y - l.y, rr.x - l.x) * 180) / Math.PI;
+  const [a, b] = l.x <= rr.x ? [l, rr] : [rr, l];
+  const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  const headWidth = sw * 0.5;
+  const headHeight = headWidth * 1.3;
+  const center = { x: mid.x, y: mid.y - sw * 0.15 - headHeight / 2 };
+  return {
+    eyeA: { x: center.x - headWidth * 0.22, y: center.y - headHeight * 0.04 },
+    eyeB: { x: center.x + headWidth * 0.22, y: center.y - headHeight * 0.04 },
+    nose: { x: center.x, y: center.y + headHeight * 0.16 },
+    center, headHeight, headWidth, rollDeg: roll * 0.3, confidence: Math.min(l.score ?? 0, rr.score ?? 0),
+    method: 'sobre los hombros (estimación)', uncertain: true, estimated: true,
   };
 }
 

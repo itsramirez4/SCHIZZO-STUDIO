@@ -97,6 +97,7 @@ export default function AssistantPanel() {
   const [comp, setComp] = useState<{ r: CompositionResult; overlay: HTMLCanvasElement } | null>(null);
   const [speck, setSpeck] = useState(12);
   const [gap, setGap] = useState(3);
+  const [isolatedOnly, setIsolatedOnly] = useState(true);
   const [clean, setClean] = useState<CleanResult | null>(null);
   const [parts, setParts] = useState<SeparatedLayer[] | null>(null);
   const [findings, setFindings] = useState<Finding[] | null>(null);
@@ -237,7 +238,7 @@ export default function AssistantPanel() {
   }
 
   // ---------------------------------------------------------------- cleanup / separation
-  const previewClean = () => run('clean', () => setClean(cleanDrawing(flat(), { minSpeckArea: speck, closeGapRadius: gap })));
+  const previewClean = () => run('clean', () => setClean(cleanDrawing(flat(), { minSpeckArea: speck, closeGapRadius: gap, isolatedOnly })));
   async function applyClean() {
     if (!clean) return;
     await run('cleanApply', async () => {
@@ -354,6 +355,7 @@ export default function AssistantPanel() {
       <Card id="light" title="Variaciones de iluminación" open={open} setOpen={setOpen}>
         <Hint>Lee el brillo de tu dibujo como relieve y lo ilumina desde otras direcciones. Sirve para estudiar dónde irían luces y sombras; no es una iluminación físicamente exacta.</Hint>
         <Btn primary onClick={makeVariants} disabled={busy === 'light'}>Ver variaciones</Btn>
+        {variants.length > 0 && variants[0].mode === 'inflado' && <Hint>Es un dibujo de línea: sin sombreado que leer, he «inflado» los volúmenes a partir de las líneas (cada forma se abomba hacia su centro). Es un volumen inventado para estudiar la luz, no algo que tu dibujo contenga.</Hint>}
         {variants.length > 0 && (
           <div className="grid grid-cols-2 gap-1.5">
             {variants.map((v) => <CanvasThumb key={v.id} canvas={v.canvas} label={`${v.label} · clic = añadir como referencia`} onClick={() => applyVariant(v)} />)}
@@ -417,6 +419,10 @@ export default function AssistantPanel() {
         </label>
         <label className="text-[10px] text-textDim block">Cerrar huecos de hasta {gap} px en las líneas
           <input type="range" min={0} max={8} value={gap} onChange={(e) => setGap(+e.target.value)} className="w-full" />
+        </label>
+        <label className="text-[10px] text-textDim flex items-start gap-1.5">
+          <input type="checkbox" checked={isolatedOnly} onChange={(e) => setIsolatedOnly(e.target.checked)} className="mt-0.5" />
+          <span>Solo polvo aislado (recomendado): conserva los trozos alargados y los puntos junto a una línea, que suelen ser trazo o detalle.</span>
         </label>
         <Btn primary onClick={previewClean} disabled={busy === 'clean'}>Previsualizar cambios</Btn>
         {clean && (

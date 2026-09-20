@@ -175,6 +175,16 @@ export function buildLineArtCandidates(flat: HTMLCanvasElement): PoseCandidate[]
     const list = candidatesForCrop(flat, paper, { x: cx - size / 2, y: cy - size / 2, size }, tag);
     all.push(...(margin > 2.5 ? list.slice(0, 1) : list));
   }
+  // 3. Busts and portraits: the head is only a third of the drawing, so the crops above show it tiny. Also try
+  // crops that fill the frame with the upper part (head and shoulders), centred on the ink of the top third.
+  let sx = 0, sn = 0;
+  for (let y = y0; y <= y0 + (y1 - y0) / 3; y++) for (let x = x0; x <= x1; x++) if (am[y * aw + x]) { sx += x; sn++; }
+  const topX = sn ? (sx / sn + 0.5) / scale : cx;
+  const topY = y0 / scale;
+  for (const [frac, tag] of [[0.62, ' (cabeza y hombros)'], [0.42, ' (cabeza)']] as const) {
+    const size = Math.max(64, Math.min(bh * frac * 1.6, Math.max(bw, bh)));
+    all.push(...candidatesForCrop(flat, paper, { x: topX - size / 2, y: topY - size * 0.06, size }, tag));
+  }
   return all;
 }
 

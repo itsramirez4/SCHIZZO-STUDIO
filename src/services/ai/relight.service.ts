@@ -1,3 +1,5 @@
+import { strokeMask } from './cleanup.service';
+
 /**
  * Lighting variations for studying light and shadow. The picture's brightness is read as a relief (bright
  * = high), normals are derived from it and a light from another direction is applied — so a shaded
@@ -7,6 +9,8 @@
 
 export interface LightVariant {
   id: string;
+  /** 'relieve': the shading of the picture was read as relief. 'inflado': it is a line drawing, so the volumes were inflated from its lines. */
+  mode: 'relieve' | 'inflado';
   label: string;
   canvas: HTMLCanvasElement;
 }
@@ -77,6 +81,53 @@ export function reliefAmount(canvas: HTMLCanvasElement): number {
   return Math.sqrt(vals.reduce((a, b) => a + (b - mean) * (b - mean), 0) / vals.length);
 }
 
+/** A line drawing has almost no brightness variation to read as relief. */
+export function isLineArt(canvas: HTMLCanvasElement): boolean {
+  return reliefAmount(canvas) < 0.15;
+}
+
+/**
+ * Line art has no shading to read as relief, so volumes are INFLATED from the lines: height grows with the distance
+ * to the nearest line (rounded, like a pillow) up to a cap, so every form enclosed by lines swells toward its middle
+ * and the light has something to play on. It is an invented volume, not something the drawing contains.
+ */
+function inflatedHeight(d: Uint8ClampedArray, w: number, h: number): Float32Array {
+  const ink = strokeMask(d, w, h);
+  const INF = 1e9;
+  const dist = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i++) dist[i] = ink[i] ? 0 : INF;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = y * w + x;
+      let v = dist[i];
+      if (x > 0) v = Math.min(v, dist[i - 1] + 1);
+      if (y > 0) {
+        v = Math.min(v, dist[i - w] + 1);
+        if (x > 0) v = Math.min(v, dist[i - w - 1] + 1.414);
+        if (x < w - 1) v = Math.min(v, dist[i - w + 1] + 1.414);
+      }
+      dist[i] = v;
+    }
+  }
+  for (let y = h - 1; y >= 0; y--) {
+    for (let x = w - 1; x >= 0; x--) {
+      const i = y * w + x;
+      let v = dist[i];
+      if (x < w - 1) v = Math.min(v, dist[i + 1] + 1);
+      if (y < h - 1) {
+        v = Math.min(v, dist[i + w] + 1);
+        if (x < w - 1) v = Math.min(v, dist[i + w + 1] + 1.414);
+        if (x > 0) v = Math.min(v, dist[i + w - 1] + 1.414);
+      }
+      dist[i] = v;
+    }
+  }
+  const cap = 0.09 * Math.max(w, h);
+  const out = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i++) out[i] = Math.sqrt(Math.min(1, Math.min(dist[i], cap) / cap));
+  return out;
+}
+
 function shade(src: HTMLCanvasElement, spec: LightSpec, maxSide: number): HTMLCanvasElement {
   const scale = Math.min(1, maxSide / Math.max(src.width, src.height));
   const w = Math.max(2, Math.round(src.width * scale));
@@ -90,8 +141,11 @@ function shade(src: HTMLCanvasElement, spec: LightSpec, maxSide: number): HTMLCa
   const d = img.data;
   const luma = new Float32Array(w * h);
   for (let i = 0; i < w * h; i++) luma[i] = (0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2]) / 255;
-  const height = boxBlur(luma, w, h, Math.max(1, Math.round(Math.max(w, h) * 0.006) + (spec.blur ?? 0)));
-  const relief = 6;
+  const lineArt = isLineArt(src);
+  const height = lineArt
+    ? boxBlur(inflatedHeight(d, w, h), w, h, Math.max(2, Math.round(Math.max(w, h) * 0.02) + (spec.blur ?? 0)))
+    : boxBlur(luma, w, h, Math.max(1, Math.round(Math.max(w, h) * 0.006) + (spec.blur ?? 0)));
+  const relief = lineArt ? 1.3 : 6; // an inflated volume is invented: keep it gentle so it never overpowers the drawing
   const [lx, ly, lz] = spec.dir;
   const ln = Math.hypot(lx, ly, lz);
   const L: [number, number, number] = [lx / ln, ly / ln, lz / ln];
@@ -104,7 +158,7 @@ function shade(src: HTMLCanvasElement, spec: LightSpec, maxSide: number): HTMLCa
     const ux = L[0] / planar;
     const uy = L[1] / planar;
     const slope = L[2] / planar; // ray height gained per pixel travelled toward the light
-    const heightScale = 0.09 * Math.max(w, h);
+    const heightScale = (lineArt ? 0.035 : 0.09) * Math.max(w, h);
     const reach = 0.22 * Math.max(w, h);
     const STEPS = 40;
     const stepLen = reach / STEPS;
@@ -136,7 +190,7 @@ function shade(src: HTMLCanvasElement, spec: LightSpec, maxSide: number): HTMLCa
       nx /= nl;
       ny /= nl;
       const nz = 1 / nl;
-      const lam = Math.max(0, nx * L[0] + ny * L[1] + nz * L[2]) * (1 - (spec.shadows ?? 0) * 0.9 * castShadow[i]);
+      const lam = Math.max(0, nx * L[0] + ny * L[1] + nz * L[2]) * (1 - (spec.shadows ?? 0) * (lineArt ? 0.45 : 0.9) * castShadow[i]);
       let v = spec.ambient + spec.diffuse * lam;
       if (spec.rim) v += spec.rim * Math.pow(1 - nz, 1.5) * 3;
       shading[i] = v;
@@ -155,7 +209,8 @@ function shade(src: HTMLCanvasElement, spec: LightSpec, maxSide: number): HTMLCa
 }
 
 export function relightVariants(src: HTMLCanvasElement, maxSide = 420): LightVariant[] {
-  return SPECS.map((s) => ({ id: s.id, label: s.label, canvas: shade(src, s, maxSide) }));
+  const mode = isLineArt(src) ? 'inflado' : 'relieve';
+  return SPECS.map((s) => ({ id: s.id, label: s.label, mode: mode as LightVariant['mode'], canvas: shade(src, s, maxSide) }));
 }
 
 export function relightFull(src: HTMLCanvasElement, id: string): HTMLCanvasElement {

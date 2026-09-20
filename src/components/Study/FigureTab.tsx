@@ -144,13 +144,15 @@ export default function FigureTab() {
         <div className="rounded border border-border p-2 space-y-1.5">
           <div className="text-[11px] font-medium">Rostro encontrado</div>
           <p className="text-[10px] text-textDim leading-relaxed">
-            {Math.abs(face.rollDeg) < 2.5
+            {face.estimated
+              ? 'No he podido leer los ojos (gafas, ojos cerrados o cabeza girada): he colocado la cabeza por las proporciones de los hombros. Es solo una estimación de dónde iría, no una lectura del dibujo: ajusta la guía de rostro a mano. '
+              : Math.abs(face.rollDeg) < 2.5
               ? `Los ojos están casi a nivel (${face.rollDeg.toFixed(1).replace('.', ',')}°): la cabeza parece recta.`
               : `La cabeza parece inclinada unos ${Math.abs(face.rollDeg).toFixed(0)}° hacia la ${face.rollDeg > 0 ? 'derecha' : 'izquierda'} del dibujo (por la línea de los ojos). ¿Quieres activar una guía para comprobar la inclinación?`}
-            {' '}Es una lectura automática{face.uncertain ? ' dudosa' : ''} (confianza {Math.round(face.confidence * 100)} %): comprueba que los puntos caen sobre los ojos.
+            {face.estimated ? null : <>{' '}Es una lectura automática{face.uncertain ? ' dudosa' : ''} (confianza {Math.round(face.confidence * 100)} %): comprueba que los puntos caen sobre los ojos.</>}
           </p>
           <div className="grid grid-cols-2 gap-1.5">
-            <button onClick={measureEyeLine} className="bg-accent/80 text-white text-[10px] rounded py-1.5">Medir la línea de los ojos</button>
+            {!face.estimated && <button onClick={measureEyeLine} className="bg-accent/80 text-white text-[10px] rounded py-1.5">Medir la línea de los ojos</button>}
             <button onClick={placeFaceGuide} className="bg-panelLight text-[10px] rounded py-1.5">Poner guía de rostro</button>
           </div>
           <p className="text-[9px] text-textDim">No se modifica el dibujo: son guías que puedes quitar.</p>

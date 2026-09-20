@@ -77,7 +77,7 @@ const BODIES: { re: string[]; id: BodyTypeId; label: string }[] = [
 ];
 
 /** Words that carry no pose information — they must not be reported as "ignored". */
-const FILLER = new Set('un una el la los las de del con y o en a al su sus se que muy mas menos poco algo como mientras hacia sobre por para pero solo tambien'.split(' '));
+const FILLER = new Set('un una el la los las de del con y o en a al su sus se que muy mas menos poco algo como mientras hacia sobre por para pero solo tambien with the and his her is are he she it looking'.split(' '));
 
 function poseCore(text: string): PoseResult {
   const t = normalize(text);
@@ -120,6 +120,11 @@ function poseCore(text: string): PoseResult {
     pose.shoulderL = [0, -10, 30]; pose.elbowL = [-105, 0, 0]; pose.wristL = [0, 25, 0]; pose.shoulderR = [0, 10, -30]; pose.elbowR = [-105, 0, 0]; pose.wristR = [0, -25, 0];
     understood.push('manos en la cintura'); mark('manos', 'cintura', 'caderas', 'jarras');
   }
+  if (has(t, 'brazos hacia delante', 'brazos al frente', 'brazos adelante', 'brazos estirados hacia delante', 'zombi')) { pose.shoulderL = [-88, 0, 6]; pose.shoulderR = [-88, 0, -6]; pose.elbowL = [-4, 0, 0]; pose.elbowR = [-4, 0, 0]; understood.push('brazos hacia delante'); mark('brazos', 'hacia', 'delante', 'frente', 'adelante', 'estirados', 'zombi', 'al'); }
+  if (has(t, 'brazo izquierdo extendido', 'brazo izquierdo abierto', 'brazo izquierdo a un lado')) { pose.shoulderL = [0, 0, 80]; understood.push('brazo izquierdo extendido'); mark('brazo', 'izquierdo', 'extendido', 'abierto', 'lado', 'un', 'a'); }
+  if (has(t, 'brazo derecho extendido', 'brazo derecho abierto', 'brazo derecho a un lado')) { pose.shoulderR = [0, 0, -80]; understood.push('brazo derecho extendido'); mark('brazo', 'derecho', 'extendido', 'abierto', 'lado', 'un', 'a'); }
+  if (has(t, 'torso girado a la izquierda', 'girando a la izquierda', 'girado a la izquierda', 'de medio lado a la izquierda')) { add(pose, 'spine', [0, 22, 0]); add(pose, 'chest', [0, 14, 0]); understood.push('torso girado a la izquierda'); mark('torso', 'girado', 'girando', 'izquierda', 'medio', 'lado'); }
+  if (has(t, 'torso girado a la derecha', 'girando a la derecha', 'girado a la derecha', 'de medio lado a la derecha')) { add(pose, 'spine', [0, -22, 0]); add(pose, 'chest', [0, -14, 0]); understood.push('torso girado a la derecha'); mark('torso', 'girado', 'girando', 'derecha', 'medio', 'lado'); }
   if (has(t, 'brazos abiertos', 'brazos extendidos') && !both && base?.id !== 'tpose') { pose.shoulderL = [0, 0, 80]; pose.shoulderR = [0, 0, -80]; understood.push('brazos abiertos'); mark('brazos', 'abiertos', 'extendidos'); }
   if (has(t, 'mano en la cabeza', 'se toca la cabeza', 'mano en la frente', 'saludo militar')) { pose.shoulderR = [-40, 0, -60]; pose.elbowR = [-125, 0, 0]; understood.push('mano en la cabeza'); mark('mano', 'cabeza', 'toca', 'frente', 'saludo', 'militar'); }
   if (has(t, 'brazos atras', 'manos a la espalda', 'manos en la espalda')) { pose.shoulderL = [30, 0, 8]; pose.elbowL = [-70, 0, 0]; pose.shoulderR = [30, 0, -8]; pose.elbowR = [-70, 0, 0]; understood.push('manos a la espalda'); mark('brazos', 'atras', 'manos', 'espalda'); }
@@ -164,7 +169,30 @@ export interface ExpressionResult {
   ignored: string[];
 }
 
+/** Emotions the app's presets do not have; blended exactly like the presets. */
+const EXTRA_EXPRESSIONS: Record<string, Expression> = {
+  disgust: { browRaise: -0.2, browTilt: 0.6, eyeOpen: 0.45, mouthCurve: -0.7, mouthOpen: 0.15 },
+  confused: { browRaise: 0.45, browTilt: -0.35, eyeOpen: 0.75, mouthCurve: -0.15, mouthOpen: 0.1 },
+  shy: { browRaise: 0.2, browTilt: -0.45, eyeOpen: 0.5, mouthCurve: 0.3, mouthOpen: 0 },
+  determined: { browRaise: -0.35, browTilt: 0.55, eyeOpen: 0.75, mouthCurve: -0.1, mouthOpen: 0 },
+  laugh: { browRaise: 0.35, browTilt: -0.1, eyeOpen: 0.3, mouthCurve: 1, mouthOpen: 0.85 },
+  yell: { browRaise: -0.2, browTilt: 0.7, eyeOpen: 0.7, mouthCurve: -0.2, mouthOpen: 1 },
+  pain: { browRaise: 0.25, browTilt: -0.7, eyeOpen: 0.2, mouthCurve: -0.7, mouthOpen: 0.3 },
+  suspicious: { browRaise: -0.15, browTilt: 0.45, eyeOpen: 0.4, mouthCurve: -0.15, mouthOpen: 0 },
+  love: { browRaise: 0.25, browTilt: -0.25, eyeOpen: 0.55, mouthCurve: 0.65, mouthOpen: 0.05 },
+};
+const presetExpression = (id: string): Expression => EXTRA_EXPRESSIONS[id] ?? EXPRESSION_PRESETS.find((p) => p.id === id)!.expr;
+
 const EXPR_WORDS: { re: string[]; id: string; label: string }[] = [
+  { re: ['asqueado', 'asqueada', 'asco', 'repugnancia', 'repugnado', 'repugnada'], id: 'disgust', label: 'asco' },
+  { re: ['confundido', 'confundida', 'desconcertado', 'desconcertada', 'dudoso', 'dudosa', 'extranado', 'extranada'], id: 'confused', label: 'confundido' },
+  { re: ['timido', 'timida', 'avergonzado', 'avergonzada', 'vergonzoso', 'vergonzosa', 'cohibido', 'cohibida'], id: 'shy', label: 'tímido' },
+  { re: ['decidido', 'decidida', 'determinado', 'determinada', 'concentrado', 'concentrada', 'resuelto', 'resuelta', 'desafiante', 'firme'], id: 'determined', label: 'decidido' },
+  { re: ['carcajada', 'carcajadas', 'riendose', 'partiendose'], id: 'laugh', label: 'carcajada' },
+  { re: ['gritando', 'grita', 'grito', 'chillando'], id: 'yell', label: 'gritando' },
+  { re: ['dolor', 'sufriendo', 'sufre', 'doliendo', 'agonia'], id: 'pain', label: 'dolor' },
+  { re: ['desconfiado', 'desconfiada', 'sospechoso', 'sospechosa', 'recelo', 'receloso', 'recelosa'], id: 'suspicious', label: 'desconfiado' },
+  { re: ['enamorado', 'enamorada', 'embelesado', 'embelesada', 'tierno', 'tierna', 'carinoso', 'carinosa'], id: 'love', label: 'enamorado' },
   { re: ['alegre', 'feliz', 'contento', 'contenta', 'sonriendo', 'sonrie', 'sonriente', 'riendo', 'risa', 'divertido', 'divertida'], id: 'happy', label: 'alegre' },
   { re: ['triste', 'llorando', 'llora', 'apenado', 'apenada', 'melancolico', 'melancolica', 'desolado', 'desolada', 'deprimido'], id: 'sad', label: 'triste' },
   { re: ['enfadado', 'enfadada', 'enojado', 'enojada', 'furioso', 'furiosa', 'rabia', 'ira', 'molesto', 'molesta', 'gruñon', 'gruñona', 'serio y duro'], id: 'angry', label: 'enfadado' },
@@ -196,12 +224,12 @@ function expressionCore(text: string): ExpressionResult {
       break;
     }
   }
-  const neutral = EXPRESSION_PRESETS.find((p) => p.id === 'neutral')!.expr;
+  const neutral = presetExpression('neutral');
   if (!hits.length) return { expression: { ...neutral }, understood: [], ignored: words.filter((w) => w.length > 2 && !FILLER.has(w)) };
   const total = hits.reduce((s, h) => s + h.weight, 0);
   const out: Expression = { browRaise: 0, browTilt: 0, eyeOpen: 0, mouthCurve: 0, mouthOpen: 0 };
   for (const h of hits) {
-    const p = EXPRESSION_PRESETS.find((x) => x.id === h.id)!.expr;
+    const p = presetExpression(h.id);
     // intensity scales the distance from neutral, so "ligeramente triste" is a weaker sad, not a different face
     const k = h.weight / total;
     out.browRaise += k * (neutral.browRaise + (p.browRaise - neutral.browRaise) * h.weight);
@@ -222,6 +250,53 @@ function expressionCore(text: string): ExpressionResult {
 }
 
 export { BODY_TYPES };
+
+
+// ---------------------------------------------------------------- wording: English, synonyms, conjugations, negation
+
+const ALIASES: [RegExp, string][] = [
+  // English
+  [/\b(running|runs|run|sprinting|jogging)\b/g, 'corriendo'], [/\b(walking|walks|walk|strolling)\b/g, 'caminando'], [/\b(jumping|jumps|jump|leaping)\b/g, 'saltando'],
+  [/\b(sitting|seated|sits|sit)\b/g, 'sentado'], [/\b(standing|stands|stand)\b/g, 'de pie'], [/\b(kneeling|kneels)\b/g, 'de rodillas'], [/\b(crouching|crouched|squatting)\b/g, 'agachado'],
+  [/\b(waving|waves|wave)\b/g, 'saludando'], [/\b(pointing|points)\b/g, 'senalando'], [/\b(fighting|boxing|fight stance)\b/g, 'luchando'], [/\b(thinking|thoughtful)\b/g, 'pensativo'], [/\b(reaching)\b/g, 'alcanzando'],
+  [/\barms (up|raised|in the air)\b/g, 'brazos arriba'], [/\b(arms crossed|crossed arms|folded arms)\b/g, 'brazos cruzados'], [/\bhands on (his |her |the )?hips\b/g, 'manos en la cintura'], [/\b(arms (out|open|wide)|outstretched arms)\b/g, 'brazos abiertos'],
+  [/\b(hands behind (his |her |the )?back)\b/g, 'manos a la espalda'], [/\b(legs crossed|crossed legs)\b/g, 'piernas cruzadas'], [/\b(looking|looks) (to the )?left\b/g, 'mirando a la izquierda'], [/\b(looking|looks) (to the )?right\b/g, 'mirando a la derecha'],
+  [/\b(looking|looks) up\b/g, 'mirando arriba'], [/\b(looking|looks) down\b/g, 'mirando abajo'], [/\bhead tilted\b/g, 'cabeza ladeada'], [/\b(hunched|slouching|slouched)\b/g, 'encorvado'],
+  [/\b(woman|girl|lady|female)\b/g, 'mujer'], [/\b(man|boy|guy|male)\b/g, 'hombre'], [/\b(child|kid)\b/g, 'nino'], [/\b(elderly|old (man|woman|person))\b/g, 'anciano'], [/\b(muscular|athletic|strong)\b/g, 'musculoso'], [/\b(skinny|thin|slim)\b/g, 'delgado'],
+  [/\bdog\b/g, 'perro'], [/\bcat\b/g, 'gato'], [/\bhorse\b/g, 'caballo'],
+  [/\b(happy|smiling|joyful|cheerful)\b/g, 'alegre'], [/\b(sad|crying|unhappy)\b/g, 'triste'], [/\b(angry|furious|mad)\b/g, 'enfadado'], [/\b(surprised|shocked|amazed)\b/g, 'sorprendido'], [/\b(scared|afraid|frightened|worried|nervous)\b/g, 'miedo'],
+  [/\b(tired|sleepy|bored|exhausted)\b/g, 'cansado'], [/\b(smirking|smug|cocky)\b/g, 'burlon'], [/\b(neutral|calm|serious)\b/g, 'serio'], [/\b(very)\b/g, 'muy'], [/\b(slightly|a bit|a little)\b/g, 'ligeramente'],
+  [/\b(disgusted|disgust)\b/g, 'asqueado'], [/\b(confused|puzzled)\b/g, 'confundido'], [/\b(shy|embarrassed)\b/g, 'timido'], [/\b(determined|resolute)\b/g, 'decidido'], [/\b(laughing|laughs)\b/g, 'carcajada'], [/\b(screaming|yelling|shouting)\b/g, 'gritando'],
+  // Spanish synonyms and set phrases
+  [/\b(trotando|corretea|correteando|huyendo|escapando|a la carrera|a toda pastilla|a toda velocidad|de carrera|acelerando)\b/g, 'corriendo'],
+  [/\b(paseando|avanzando|marchando|desfilando|deambulando|andando)\b/g, 'caminando'],
+  [/\b(brincando|dando un salto|pegando un salto|botando|volando)\b/g, 'saltando'],
+  [/\b(de cuclillas|en cuclillas|acuclillado|acuclillada)\b/g, 'agachado'], [/\b(cruzado de brazos|cruzada de brazos|con los brazos en el pecho)\b/g, 'brazos cruzados'],
+  [/\b(en jarras|brazos en jarras|manos en jarras|manos en las caderas|manos a las caderas|puestas en la cintura)\b/g, 'manos en la cintura'], [/\b(brazos en alto|manos al aire|brazos al cielo|celebrando|victoria)\b/g, 'brazos arriba'],
+  [/\b(pose heroica|pose de superheroe|pose de poder)\b/g, 'heroico manos en la cintura'], [/\b(pose de modelo|posando|posando como modelo)\b/g, 'contrapposto'], [/\b(descansando|tranquilamente|sin hacer nada)\b/g, 'de pie'],
+  [/\b(asomando|mirando de reojo)\b/g, 'mirando a la izquierda'], [/\b(mirada al cielo)\b/g, 'mirando arriba'], [/\b(mirada baja|cabeza gacha)\b/g, 'mirando abajo'],
+  [/\b(feliz|contento|contenta|radiante|eufori[ao]|jubiloso|jubilosa|encantado|encantada)\b/g, 'alegre'], [/\b(apenado|desconsolado|desconsolada|afligido|afligida|abatido|abatida|dolido|dolida|desanimado|desanimada)\b/g, 'triste'],
+  [/\b(cabreado|cabreada|indignado|indignada|rabioso|rabiosa|enrabietado|enrabietada|iracundo|iracunda)\b/g, 'enfadado'], [/\b(alucinado|alucinada|perplejo|perpleja|atonito|atonita|flipando)\b/g, 'sorprendido'],
+  [/\b(pavor|panico|aterrorizado|aterrorizada|acojonado|acojonada|espantado|espantada|tembloroso|temblorosa)\b/g, 'miedo'], [/\b(molido|molida|hecho polvo|somnoliento|con sueno)\b/g, 'cansado'],
+];
+
+const STEMS: [string, string, string][] = [
+  ['corr', 'corriendo', '(e|es|en|ia|ian|io|ieron|iendo|er|emos)'], ['salt', 'saltando', '(a|an|as|o|amos|ar|ando|aba|aron)'], ['camin', 'caminando', '(a|an|as|amos|ar|ando|aba|aron)'],
+  ['salud', 'saludando', '(a|an|as|o|amos|ar|ando|aba|aron)'], ['senal', 'senalando', '(a|an|as|o|amos|ar|ando|aba|aron)'], ['apunt', 'apuntando', '(a|an|as|o|amos|ar|ando|aba|aron)'],
+  ['alcanz', 'alcanzando', '(a|an|as|o|amos|ar|ando|aba|aron)'], ['pens', 'pensando', '(a|an|as|o|amos|ar|ando|aba|aron)'], ['agach', 'agachado', '(a|an|ada|ado|ados|adas|arse|andose|ando)'],
+  ['sient', 'sentado', '(a|an)'], ['sent', 'sentado', '(ada|ado|ados|adas|arse|andose|ando)'],
+];
+
+/** English, synonyms, verb forms ("corre", "salta") and simple negation ("sin cruzar los brazos"), all folded to the words the interpreter knows. */
+export function canonicalWording(text: string): string {
+  let t = normalize(text);
+  // "sin cruzar los brazos": only a negated BODY phrase is dropped ("sin camisa" says nothing about the pose)
+  t = t.replace(/\bsin (?:\w+ ){0,3}\w+/g, (m) => (/(brazo|pierna|cruz|mano|mir|cabeza|levant|inclin)/.test(m) ? ' ' : m));
+  t = t.replace(/\bsin \w+/g, ' '); // any other "sin <thing>" (sin camisa, sin gafas) says nothing about the pose
+  for (const [re, to] of ALIASES) t = t.replace(re, to);
+  for (const [stem, to, ends] of STEMS) t = t.replace(new RegExp(`\\b${stem}${ends}\\b`, 'g'), to);
+  return t.replace(/\s+/g, ' ').trim();
+}
 
 // ---------------------------------------------------------------- tolerance for typos
 
@@ -245,6 +320,9 @@ function distance(a: string, b: string, max: number): number {
   return prev[b.length];
 }
 
+/** Everyday words that are close to a keyword but mean something else ("camisa" is not "camina"). */
+const COMMON_NOUNS = new Set('camisa camiseta pantalon pantalones sombrero gorra gafas ropa vestido falda chaqueta zapatos botas guantes bufanda abrigo mochila espada pelo cabello fondo sombra pelota balon libro telefono movil casa calle arbol coche cuerpo persona personaje figura dibujo pose postura mirada expresion cara rostro'.split(' '));
+
 /** Fixes small typos ("corrindo", "sorprendio") by snapping unknown words to the single closest known word. */
 export function correctTypos(text: string): { text: string; fixes: string[] } {
   vocab ??= vocabulary();
@@ -252,7 +330,7 @@ export function correctTypos(text: string): { text: string; fixes: string[] } {
   const out = normalize(text)
     .split(' ')
     .map((w) => {
-      if (w.length < 5 || vocab!.has(w) || FILLER.has(w)) return w;
+      if (w.length < 5 || vocab!.has(w) || FILLER.has(w) || COMMON_NOUNS.has(w)) return w;
       const max = w.length > 7 ? 2 : 1;
       let best: string | null = null;
       let bd = max + 1;
@@ -272,14 +350,14 @@ export function correctTypos(text: string): { text: string; fixes: string[] } {
 }
 
 export function poseFromText(text: string): PoseResult {
-  const { text: fixed, fixes } = correctTypos(text);
+  const { text: fixed, fixes } = correctTypos(canonicalWording(text));
   const r = poseCore(fixed);
   if (fixes.length) r.understood.push(`corregí ${fixes.join(', ')}`);
   return r;
 }
 
 export function expressionFromText(text: string): ExpressionResult {
-  const { text: fixed, fixes } = correctTypos(text);
+  const { text: fixed, fixes } = correctTypos(canonicalWording(text));
   const r = expressionCore(fixed);
   if (fixes.length) r.understood.push(`corregí ${fixes.join(', ')}`);
   return r;

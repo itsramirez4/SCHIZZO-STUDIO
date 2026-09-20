@@ -9,6 +9,11 @@ export interface CleanOptions {
   minSpeckArea: number;
   /** Line ends closer than this many pixels are joined (0 = off). */
   closeGapRadius: number;
+  /**
+   * Only remove dust: compact specks with no line nearby. Elongated fragments (a piece of a hair stroke) and
+   * specks touching or close to a line are kept, because they are far more likely to be drawn on purpose.
+   */
+  isolatedOnly?: boolean;
 }
 
 export interface CleanResult {
@@ -53,7 +58,7 @@ export function inkMask(d: Uint8ClampedArray, w: number, h: number): { mask: Uin
  * Strokes as thin things darker than their surroundings. Comparing with the local average (instead of one "paper"
  * colour) keeps painted or shaded backgrounds from counting as ink.
  */
-function strokeMask(d: Uint8ClampedArray, w: number, h: number): Uint8Array {
+export function strokeMask(d: Uint8ClampedArray, w: number, h: number): Uint8Array {
   const luma = new Float32Array(w * h);
   for (let i = 0; i < w * h; i++) luma[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
   const r = Math.max(5, Math.round(Math.max(w, h) / 90));
@@ -81,6 +86,25 @@ function strokeMask(d: Uint8ClampedArray, w: number, h: number): Uint8Array {
   return mask;
 }
 
+/** Square dilation by `r` pixels (two running passes), for "is there any line within r pixels?". */
+function dilateSquare(src: Uint8Array, w: number, h: number, r: number): Uint8Array {
+  const tmp = new Uint8Array(w * h);
+  const out = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    let last = -1e9;
+    for (let x = 0; x < w; x++) { if (src[y * w + x]) last = x; if (x - last <= r) tmp[y * w + x] = 1; }
+    last = 1e9;
+    for (let x = w - 1; x >= 0; x--) { if (src[y * w + x]) last = x; if (last - x <= r) tmp[y * w + x] = 1; }
+  }
+  for (let x = 0; x < w; x++) {
+    let last = -1e9;
+    for (let y = 0; y < h; y++) { if (tmp[y * w + x]) last = y; if (y - last <= r) out[y * w + x] = 1; }
+    last = 1e9;
+    for (let y = h - 1; y >= 0; y--) { if (tmp[y * w + x]) last = y; if (last - y <= r) out[y * w + x] = 1; }
+  }
+  return out;
+}
+
 export function cleanDrawing(source: HTMLCanvasElement, opts: CleanOptions): CleanResult {
   const w = source.width;
   const h = source.height;
@@ -101,6 +125,8 @@ export function cleanDrawing(source: HTMLCanvasElement, opts: CleanOptions): Cle
   if (opts.minSpeckArea > 0) {
     const seen = new Uint8Array(w * h);
     const stack: number[] = [];
+    const pending: number[][] = [];
+    const big = new Uint8Array(w * h);
     for (let s = 0; s < w * h; s++) {
       if (!mask[s] || seen[s]) continue;
       const comp: number[] = [];
@@ -125,12 +151,29 @@ export function cleanDrawing(source: HTMLCanvasElement, opts: CleanOptions): Cle
           }
         }
       }
-      if (comp.length < opts.minSpeckArea) {
-        specksRemoved++;
-        for (const i of comp) {
-          removed[i] = 1;
-          mask[i] = 0;
-        }
+      if (comp.length < opts.minSpeckArea) pending.push(comp);
+      else for (const i of comp) big[i] = 1;
+    }
+    // shape and surroundings decide which small components are really dust
+    const near = opts.isolatedOnly ? dilateSquare(big, w, h, Math.max(6, Math.round(Math.max(w, h) / 70))) : null;
+    for (const comp of pending) {
+      let x0 = w, x1 = 0, y0 = h, y1 = 0;
+      for (const i of comp) {
+        const x = i % w;
+        const y = (i / w) | 0;
+        if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+      }
+      const long = Math.max(x1 - x0 + 1, y1 - y0 + 1);
+      const short = Math.min(x1 - x0 + 1, y1 - y0 + 1);
+      const elongated = long >= 5 && long / short >= 3;
+      if (opts.isolatedOnly) {
+        if (elongated) continue;
+        if (comp.some((i) => near![i])) continue;
+      }
+      specksRemoved++;
+      for (const i of comp) {
+        removed[i] = 1;
+        mask[i] = 0;
       }
     }
     for (let i = 0; i < w * h; i++) {
