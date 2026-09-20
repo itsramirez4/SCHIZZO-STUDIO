@@ -1,4 +1,4 @@
-import { useEffect, lazy, Suspense } from 'react';
+import { useEffect, useRef, lazy, Suspense } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { useAppStore } from '@/store/appStore';
 import { useUIStore } from '@/store/uiStore';
@@ -71,6 +71,7 @@ export default function App() {
   const openExportDialog = useUIStore((s) => s.openExportDialog);
   const openModel3DViewer = useUIStore((s) => s.openModel3DViewer);
   const leftHanded = useUIStore((s) => s.leftHanded);
+  const historyVersion = useAppStore((s) => s.historyVersion);
   const showModel3DViewer = useUIStore((s) => s.showModel3DViewer);
   const showReference3DPanel = useUIStore((s) => s.showReference3DPanel);
   const showResizeDialog = useUIStore((s) => s.showResizeDialog);
@@ -95,6 +96,34 @@ export default function App() {
   const isRecordingMacro = useCustomizationStore((s) => s.isRecording);
   const recordStep = useCustomizationStore((s) => s.recordStep);
   const registerActions = useShortcutRuntimeStore((s) => s.registerActions);
+
+  // Version history: remember how the project looked when opened (for before/after), make sure a
+  // persistent "Estado inicial" version exists, and snapshot automatically every 10 minutes of work.
+  const lastAutoVersion = useRef(0);
+  useEffect(() => {
+    if (!project) return;
+    const t = setTimeout(async () => {
+      const versions = await import('@/services/versionHistory.service');
+      const current = useAppStore.getState().project;
+      if (!current || current.id !== project.id) return;
+      versions.captureBaseline(current);
+      versions.ensureInitialVersion(current);
+      lastAutoVersion.current = useAppStore.getState().historyVersion;
+    }, 600);
+    return () => clearTimeout(t);
+  }, [project?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!project) return;
+    const timer = setInterval(async () => {
+      const state = useAppStore.getState();
+      if (!state.project || state.historyVersion === lastAutoVersion.current) return;
+      lastAutoVersion.current = state.historyVersion;
+      const versions = await import('@/services/versionHistory.service');
+      versions.saveVersion(state.project, { name: 'Autoguardado', auto: true }).catch(() => undefined);
+    }, 10 * 60 * 1000);
+    return () => clearInterval(timer);
+  }, [project?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     useCustomizationStore.getState().loadAll().then(() => {

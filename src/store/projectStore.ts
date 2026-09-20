@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import toast from 'react-hot-toast';
 import * as fileService from '@/services/file.service';
 import { useAppStore } from './appStore';
+import { Project } from '@/types';
 
 interface ProjectStoreState {
   recentProjects: string[];
@@ -13,6 +14,13 @@ interface ProjectStoreState {
   saveCurrentProjectAs: () => Promise<void>;
   openProjectDialog: () => Promise<void>;
   openProjectAtPath: (path: string) => Promise<void>;
+}
+
+/** Every explicit save also leaves an automatic restorable version (best-effort, never blocks saving). */
+function snapshotOnSave(project: Project) {
+  import('@/services/versionHistory.service')
+    .then((m) => m.saveVersion(useAppStore.getState().project ?? project, { name: 'Guardado', auto: true }))
+    .catch(() => undefined);
 }
 
 export const useProjectStore = create<ProjectStoreState>((set, get) => ({
@@ -39,6 +47,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
           );
         }
         get().refreshRecent();
+        snapshotOnSave(project);
       }
     } catch (err) {
       toast.error('No se pudo guardar el proyecto');

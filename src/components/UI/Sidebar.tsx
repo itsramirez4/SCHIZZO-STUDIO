@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { Layers, SlidersHorizontal, History, BarChart3, Film, MessageSquareText, Palette, LibraryBig, ListChecks, GraduationCap, Video, Image, Cloud, Keyboard, Triangle, Gauge, PencilRuler } from 'lucide-react';
+import { Layers, SlidersHorizontal, History, BarChart3, Film, MessageSquareText, Palette, LibraryBig, ListChecks, GraduationCap, Video, Image, Cloud, Keyboard, Triangle, Gauge, PencilRuler, GitBranch } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
 import LayerPanel from '@/components/Layers/LayerPanel';
 
@@ -23,8 +23,9 @@ const CustomizationPanel = lazy(() => import('@/components/Customization/Customi
 const PerspectivePanel = lazy(() => import('@/components/Perspective/PerspectivePanel'));
 const ProjectStatsPanel = lazy(() => import('@/components/UI/ProjectStatsPanel'));
 const StudyPanel = lazy(() => import('@/components/Study/StudyPanel'));
+const VersionsPanel = lazy(() => import('@/components/Versions/VersionsPanel'));
 
-type Tab = 'layers' | 'filters' | 'history' | 'histogram' | 'animation' | 'comic' | 'colorTools' | 'assetLibrary' | 'batch' | 'learning' | 'recording' | 'references' | 'cloudSync' | 'customization' | 'perspective' | 'stats' | 'study';
+type Tab = 'layers' | 'filters' | 'history' | 'histogram' | 'animation' | 'comic' | 'colorTools' | 'assetLibrary' | 'batch' | 'learning' | 'recording' | 'references' | 'cloudSync' | 'customization' | 'perspective' | 'stats' | 'study' | 'versions';
 
 export default function Sidebar() {
   const showLayerPanel = useUIStore((s) => s.showLayerPanel);
@@ -59,6 +60,8 @@ export default function Sidebar() {
   const togglePerspectivePanel = useUIStore((s) => s.togglePerspectivePanel);
   const showStatsPanel = useUIStore((s) => s.showStatsPanel);
   const toggleStatsPanel = useUIStore((s) => s.toggleStatsPanel);
+  const showVersionsPanel = useUIStore((s) => s.showVersionsPanel);
+  const toggleVersionsPanel = useUIStore((s) => s.toggleVersionsPanel);
   const showStudyPanel = useUIStore((s) => s.showStudyPanel);
   const toggleStudyPanel = useUIStore((s) => s.toggleStudyPanel);
 
@@ -78,6 +81,7 @@ export default function Sidebar() {
     { id: 'comic', icon: MessageSquareText, label: 'Cómic / Manga', active: showComicPanel, toggle: toggleComicPanel },
     { id: 'animation', icon: Film, label: 'Animación', active: showAnimationPanel, toggle: toggleAnimationPanel },
     { id: 'histogram', icon: BarChart3, label: 'Histograma', active: showHistogramPanel, toggle: toggleHistogramPanel },
+    { id: 'versions', icon: GitBranch, label: 'Versiones del proyecto y comparación', active: showVersionsPanel, toggle: toggleVersionsPanel },
     { id: 'history', icon: History, label: 'Historial', active: showHistoryPanel, toggle: toggleHistoryPanel },
     { id: 'stats', icon: Gauge, label: 'Estadísticas del proyecto', active: showStatsPanel, toggle: toggleStatsPanel },
   ];
@@ -99,7 +103,8 @@ export default function Sidebar() {
     showCustomizationPanel ||
     showPerspectivePanel ||
     showStatsPanel ||
-    showStudyPanel;
+    showStudyPanel ||
+    showVersionsPanel;
 
   return (
     <div className="sidebar-root flex border-l border-border bg-panel">
@@ -154,6 +159,11 @@ export default function Sidebar() {
           {showPerspectivePanel && (
             <div className="border-b border-border overflow-y-auto max-h-[32rem]">
               <PerspectivePanel />
+            </div>
+          )}
+          {showVersionsPanel && (
+            <div className="border-b border-border overflow-y-auto max-h-[40rem]">
+              <VersionsPanel />
             </div>
           )}
           {showStudyPanel && (
