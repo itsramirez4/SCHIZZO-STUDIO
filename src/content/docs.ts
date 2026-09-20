@@ -242,7 +242,7 @@ export const DOC_PAGES: DocPage[] = [
     content: [
       'En el visor 3D y en la ventana de Referencia 3D encontrarás la sección «Maniquí de referencia»: figura humana de 8 tipos de cuerpo, perro, gato y caballo.',
       'Cada articulación tiene sus tres giros con los rangos de una articulación real. Puedes elegir poses predefinidas, una pose aleatoria plausible o espejar la pose. Las manos tienen posiciones predefinidas y un control por dedo; el rostro tiene expresiones y sliders de cejas, ojos y boca.',
-      'La ropa (camiseta, pantalón, sombrero, gafas, mochila, capa) y los objetos de escena (muebles, coche, casa, espada, guitarra…) son volúmenes simplificados para estudiar proporciones y perspectiva, no modelos detallados. También puedes importar tus propios .glb, .gltf u .obj.',
+      'La ropa (camiseta, pantalón, sombrero, gafas, mochila, capa) y los objetos de escena (muebles, coche, casa, espada, guitarra…) son volúmenes simplificados para estudiar proporciones y perspectiva, no modelos detallados. También puedes importar tus propios .glb, .gltf, .obj u .fbx (con esqueleto y texturas; las animaciones del archivo se ignoran).',
       'La iluminación admite dirección, intensidad, temperatura de color en Kelvin, contraluz, sombras proyectadas y una vista de valores en gris para estudiar luz y sombra. La perspectiva de cámara se controla con el ángulo de visión y presets de vista.',
     ],
   },
@@ -273,7 +273,7 @@ export const DOC_PAGES: DocPage[] = [
     content: [
       'Bote de pintura → «Relleno inteligente»: detecta el área en todas las capas (para colorear en una capa bajo el line art), cierra huecos del contorno de hasta unos 2× el valor de «Cerrar huecos» y expande el color bajo la línea para no dejar un halo claro.',
       'Mezclador de color (tecla N): arrastra el color como pintura fresca. «Fuerza de arrastre» controla cuánto se arrastra y «Carga de color» va añadiendo el color principal mientras mezclas.',
-      'Los pinceles admiten sensibilidad a la presión, inclinación del lápiz (ancho de la punta), giro según la dirección del trazo y estabilizador (suavizado). Puedes importar varias imágenes PNG/JPG a la vez como puntas de pincel. Las librerías .abr de Photoshop (CS y posterior) se importan desde el editor de pinceles: puntas, tamaño, espaciado, dispersión y dinámicas de presión; la textura de papel y el pincel dual se integran de forma aproximada en la punta, y los bordes húmedos y el ruido no se importan.',
+      'Los pinceles admiten sensibilidad a la presión, inclinación del lápiz (ancho de la punta), giro según la dirección del trazo y estabilizador (suavizado). Puedes importar varias imágenes PNG/JPG a la vez como puntas de pincel. Desde el editor de pinceles se importan librerías .abr de Photoshop (todas las versiones), pinceles .brush de Procreate y presets .kpp de Krita: puntas, tamaño, espaciado, dispersión y dinámicas de presión. En el .abr moderno la textura de papel y el pincel dual se integran de forma aproximada en la punta; los bordes húmedos y el ruido no se importan. Los .abr antiguos, Procreate y Krita se han probado solo con archivos sintéticos, no con pinceles reales de esos programas.',
     ],
   },
   {
@@ -293,6 +293,43 @@ export const DOC_PAGES: DocPage[] = [
       'Estudio → Modos: mesa de artista (abre lienzo, referencias, paleta, modelo 3D y capas), modelo vivo (la cámara orbita el modelo mientras dibujas), estudio de anatomía (piel, músculos y esqueleto simplificados), pose aleatoria con temporizador y modo espejo automático (voltea el lienzo cada cierto tiempo).',
       'Referencias → «Buscar referencias en internet» busca imágenes libres en Wikimedia Commons y las guarda con su licencia como etiqueta. Requiere conexión.',
       'Exportar → PSD guarda las capas de píxeles (nombre, posición, opacidad, visibilidad y modo de fusión) más la imagen combinada. No incluye máscaras, capas de ajuste ni estilos de capa.',
+    ],
+  },
+  {
+    id: 'versions-undo',
+    title: 'Versiones del proyecto, comparación y deshacer',
+    category: 'Proyecto',
+    content: [
+      'El panel «Versiones» guarda copias completas del proyecto (capas, máscaras y ajustes) que sobreviven al cierre de la app: puedes volver a «la versión del martes». Se crea un «Estado inicial» automático la primera vez que abres un proyecto, una versión automática cada vez que guardas y otra cada 10 minutos de trabajo (se conservan las 20 últimas automáticas). Antes de restaurar una versión, tu estado actual se guarda para no perderlo.',
+      'Comparar enfrenta dos versiones (o la versión inicial y el estado actual) con un deslizador, lado a lado, parpadeo o un mapa de diferencias que indica qué porcentaje de la imagen cambió.',
+      'El deshacer/rehacer no tiene límite fijo: los estados recientes están en memoria y los antiguos se guardan en disco, así que la única cota es el espacio libre. El historial es de la sesión y se vacía al cerrar.',
+    ],
+  },
+  {
+    id: 'export-pdf-svg',
+    title: 'Exportar a PDF y SVG vectorial',
+    category: 'Proyecto',
+    content: [
+      'PDF: una página con el tamaño físico que corresponde a los DPI del proyecto (300 DPI para imprimir), con la imagen en JPEG o sin pérdida. Las transparencias se aplanan sobre el color de fondo.',
+      'SVG: además de incrustar la imagen aplanada, puedes vectorizar. Cada capa se traza en formas de color plano (con huecos) y se escribe como su propio grupo, con su opacidad, visibilidad y modo de fusión, para editarla en Inkscape, Illustrator o Figma. Es un trazado automático: los degradados pasan a bandas de color, las transparencias parciales se vuelven opacas y la textura fina se pierde.',
+    ],
+  },
+  {
+    id: 'figure-analysis',
+    title: 'Figura: proporciones, anatomía y errores de perspectiva',
+    category: 'Estudio',
+    content: [
+      'Estudio → Figura: marca sobre tu dibujo 14 puntos (coronilla, barbilla, hombros, codos, muñecas, caderas, rodillas, tobillos) y la app mide la altura en cabezas, piernas y brazos, anchura de hombros, inclinación de cabeza, hombros y caderas, y si el centro de gravedad cae sobre los pies. Compara con el canon del tipo de figura elegido (adulto, héroe, niño o estilizado sin canon) y puede superponer una guía de figura para comparar.',
+      'Las medidas son del plano de la imagen: un brazo hacia la cámara o una figura de perfil dan valores engañosos. La colocación automática de puntos usa un modelo de pose (se descarga una vez, 12 MB, y queda en tu equipo) que solo reconoce figuras realistas, sombreadas o pintadas: no bocetos de línea ni formas planas. En un adulto frontal la altura sale con ~3-4 % de error; en niños no es fiable. Si falla, coloca los puntos a mano.',
+      'Estudio → Analizar → Perspectiva automática: además de proponer los puntos de fuga, marca en verde las líneas que convergen y en rojo las que no, con el ángulo que se desvían y hacia qué lado girarlas.',
+    ],
+  },
+  {
+    id: 'left-handed',
+    title: 'Modo zurdo',
+    category: 'Interfaz',
+    content: [
+      'El botón de la mano en la barra superior invierte la disposición: las herramientas pasan a la derecha y los paneles y sus pestañas a la izquierda. Se recuerda entre sesiones. No afecta al espacio de trabajo flotante.',
     ],
   },
 ];
