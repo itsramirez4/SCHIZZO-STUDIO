@@ -34,10 +34,20 @@ export function extractKMeans(imageData: ImageData, k: number, iterations = 6): 
   if (samples.length === 0) return [];
   if (samples.length <= k) return samples;
 
-  // Deterministic init (evenly spaced through the sample) rather than Math.random() — keeps
-  // repeated extractions of the same image stable instead of returning a different palette
-  // order/composition on every click.
-  const centroids: RGBA[] = Array.from({ length: k }, (_, i) => samples[Math.floor((i / k) * samples.length)]);
+  // Deterministic "farthest point" init rather than Math.random() — repeated extractions of the same
+  // image stay stable, and every seed lands in a different colour region. (Seeds taken evenly through
+  // the sample can all fall on the same colour, e.g. the first column of every row, and the result is
+  // duplicated colours plus a muddy blend of the ones that were missed.)
+  const centroids: RGBA[] = [samples[0]];
+  const minDist = samples.map((p) => colorDistance(p, samples[0]));
+  while (centroids.length < k) {
+    let far = 0;
+    for (let i = 1; i < samples.length; i++) if (minDist[i] > minDist[far]) far = i;
+    if (minDist[far] === 0) break; // fewer distinct colours than clusters
+    centroids.push(samples[far]);
+    for (let i = 0; i < samples.length; i++) minDist[i] = Math.min(minDist[i], colorDistance(samples[i], samples[far]));
+  }
+  while (centroids.length < k) centroids.push(centroids[centroids.length - 1]);
 
   for (let iter = 0; iter < iterations; iter++) {
     const clusters: RGBA[][] = Array.from({ length: k }, () => []);
@@ -69,9 +79,9 @@ export function extractDominant(imageData: ImageData, k: number): RGBA[] {
 
   for (let i = 0; i < data.length; i += 4) {
     if (data[i + 3] === 0) continue;
-    const r = Math.round(data[i] / bucket) * bucket;
-    const g = Math.round(data[i + 1] / bucket) * bucket;
-    const b = Math.round(data[i + 2] / bucket) * bucket;
+    const r = Math.min(255, Math.round(data[i] / bucket) * bucket); // 250 rounds to 256, which is not a colour
+    const g = Math.min(255, Math.round(data[i + 1] / bucket) * bucket); // 250 rounds to 256, which is not a colour
+    const b = Math.min(255, Math.round(data[i + 2] / bucket) * bucket); // 250 rounds to 256, which is not a colour
     const key = `${r},${g},${b}`;
     const entry = counts.get(key);
     if (entry) entry.count++;

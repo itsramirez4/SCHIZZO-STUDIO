@@ -66,8 +66,18 @@ export function exportWebP(project: Project, quality = 0.9) {
   return exportViaCanvasMime(project, 'image/webp', 'webp', quality);
 }
 
-/** Chromium supports AVIF encoding via canvas.toDataURL since v85 — no separate encoder needed. */
+/** Chromium's canvas can only encode PNG, JPEG and WebP: asking for AVIF silently returns a PNG. */
+export function canEncodeAvif(): boolean {
+  try {
+    return document.createElement('canvas').toDataURL('image/avif').startsWith('data:image/avif');
+  } catch {
+    return false;
+  }
+}
+
 export function exportAVIF(project: Project, quality = 0.7) {
+  // Never write PNG bytes into a ".avif" file: refuse instead.
+  if (!canEncodeAvif()) throw new Error('AVIF no está disponible en esta versión del motor: usa WebP (pesa parecido).');
   return exportViaCanvasMime(project, 'image/avif', 'avif', quality);
 }
 

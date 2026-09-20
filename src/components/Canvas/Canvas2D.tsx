@@ -280,6 +280,11 @@ export default function Canvas2D() {
   const [lineDraft, setLineDraft] = useState<{ a: Point; b: Point; c: Point | null; bend: boolean } | null>(null);
   const lineDraftRef = useRef(lineDraft);
   lineDraftRef.current = lineDraft;
+  /** Sets the draft and the ref together: pointer events can arrive faster than React re-renders. */
+  const updateLineDraft = (v: typeof lineDraft) => {
+    lineDraftRef.current = v;
+    setLineDraft(v);
+  };
   const smudgeRef = useRef<SmudgeState | null>(null);
   /** Clone stamp: where Alt+click pointed, the offset it implies, and the layer as it was when the stroke began. */
   const cloneSourceRef = useRef<Point | null>(null);
@@ -859,10 +864,12 @@ export default function Canvas2D() {
         const step = e.shiftKey ? 10 : 1;
         const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
         const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0;
+        // Functional updates: key repeat can deliver several presses before React re-renders, and each
+        // one must build on the previous nudge instead of the stale value of this closure.
         if (perspectiveWarpMode && freeCorners) {
-          setFreeCorners(freeCorners.map((c) => ({ x: c.x + dx, y: c.y + dy })) as [Point, Point, Point, Point]);
+          setFreeCorners((corners) => (corners ? (corners.map((c) => ({ x: c.x + dx, y: c.y + dy })) as [Point, Point, Point, Point]) : corners));
         } else if (transform) {
-          setTransform({ ...transform, x: transform.x + dx, y: transform.y + dy });
+          setTransform((t) => (t ? { ...t, x: t.x + dx, y: t.y + dy } : t));
         }
       }
     }
@@ -965,7 +972,7 @@ export default function Canvas2D() {
 
   /** Strokes the pending Line/Curve with the current brush (tapered ends included). */
   function commitLineDraft(draft: { a: Point; b: Point; c: Point | null }) {
-    setLineDraft(null);
+    updateLineDraft(null);
     if (!currentLayer || currentLayer.locked || !project) return;
     const canvasEl = getActiveCanvas(currentLayer);
     if (!canvasEl) return;
@@ -983,7 +990,7 @@ export default function Canvas2D() {
   useEffect(() => {
     if (!lineDraft) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setLineDraft(null);
+      if (e.key === 'Escape') updateLineDraft(null);
       else if (e.key === 'Enter' && lineDraftRef.current) commitLineDraft(lineDraftRef.current);
     };
     window.addEventListener('keydown', onKey);
@@ -991,7 +998,7 @@ export default function Canvas2D() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!lineDraft, currentTool]);
   useEffect(() => {
-    if (currentTool !== 'line' && currentTool !== 'curve') setLineDraft(null);
+    if (currentTool !== 'line' && currentTool !== 'curve') updateLineDraft(null);
   }, [currentTool]);
 
   /** Smudge parameters: the tool's own panel, or the imported brush's when it is a smudge brush. */
@@ -1154,7 +1161,7 @@ export default function Canvas2D() {
           break;
         }
         const a = snapPos(pos);
-        setLineDraft({ a, b: a, c: null, bend: false });
+        updateLineDraft({ a, b: a, c: null, bend: false });
         break;
       }
       case 'eraser': {
@@ -1339,8 +1346,8 @@ export default function Canvas2D() {
       const pos = getPos(e);
       const d = lineDraftRef.current;
       if (pos) {
-        if (d.bend) setLineDraft({ ...d, c: pos });
-        else if (isDrawingRef.current) setLineDraft({ ...d, b: e.shiftKey ? snapAngle(d.a, pos) : snapPos(pos) });
+        if (d.bend) updateLineDraft({ ...d, c: pos });
+        else if (isDrawingRef.current) updateLineDraft({ ...d, b: e.shiftKey ? snapAngle(d.a, pos) : snapPos(pos) });
       }
       return;
     }
@@ -1506,7 +1513,7 @@ export default function Canvas2D() {
       const d = lineDraftRef.current;
       if (currentTool === 'curve' && Math.hypot(d.b.x - d.a.x, d.b.y - d.a.y) >= 1) {
         // Keep the draft open: the next move bends it, the next click commits it.
-        setLineDraft({ ...d, c: { x: (d.a.x + d.b.x) / 2, y: (d.a.y + d.b.y) / 2 }, bend: true });
+        updateLineDraft({ ...d, c: { x: (d.a.x + d.b.x) / 2, y: (d.a.y + d.b.y) / 2 }, bend: true });
       } else {
         commitLineDraft(d);
       }

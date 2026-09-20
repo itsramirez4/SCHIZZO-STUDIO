@@ -16,6 +16,7 @@ import { useAutoSaveStore } from '@/store/autoSaveStore';
 
 import Header from '@/components/UI/Header';
 import StatusBar from '@/components/UI/StatusBar';
+import ErrorBoundary from '@/components/UI/ErrorBoundary';
 import Sidebar from '@/components/UI/Sidebar';
 import StartScreen from '@/components/UI/StartScreen';
 import Toolbox from '@/components/Toolbox/Toolbox';
@@ -375,18 +376,20 @@ export default function App() {
       <Toaster position="bottom-center" toastOptions={{ style: { background: '#2a2a2a', color: '#fff' } }} />
       {project ? (
         workspaceMode === 'floating' ? (
-          <Suspense fallback={null}>
-            <WorkspaceShell />
-          </Suspense>
+          <ErrorBoundary name="Espacio de trabajo">
+            <Suspense fallback={null}>
+              <WorkspaceShell />
+            </Suspense>
+          </ErrorBoundary>
         ) : (
           <>
-            <Header />
+            <ErrorBoundary name="Barra superior"><Header /></ErrorBoundary>
             <div className={`flex-1 flex min-h-0 ${leftHanded ? 'flex-row-reverse' : ''}`} data-lefty={leftHanded}>
-              <Toolbox />
-              <Canvas2D />
-              <Sidebar />
+              <ErrorBoundary name="Herramientas"><Toolbox /></ErrorBoundary>
+              <ErrorBoundary name="Lienzo"><Canvas2D /></ErrorBoundary>
+              <ErrorBoundary name="Paneles"><Sidebar /></ErrorBoundary>
             </div>
-            <StatusBar />
+            <ErrorBoundary name="Barra de estado" compact><StatusBar /></ErrorBoundary>
           </>
         )
       ) : (
@@ -394,10 +397,10 @@ export default function App() {
       )}
 
       <TourOverlay />
-      <NewProjectDialog />
-      <ExportDialog />
-      <AutoSaveDialog />
-      <BrushEditor />
+      <ErrorBoundary name="Diálogo"><NewProjectDialog /></ErrorBoundary>
+      <ErrorBoundary name="Diálogo de exportación"><ExportDialog /></ErrorBoundary>
+      <ErrorBoundary name="Diálogo de copias"><AutoSaveDialog /></ErrorBoundary>
+      <ErrorBoundary name="Editor de pinceles"><BrushEditor /></ErrorBoundary>
       {showModel3DViewer && (
         <Suspense fallback={null}>
           <Model3DViewer />

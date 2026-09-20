@@ -73,7 +73,7 @@ export default function ExportDialog() {
         close();
       }
     } catch (err) {
-      toast.error('No se pudo exportar la imagen');
+      toast.error(err instanceof Error && err.message ? err.message : 'No se pudo exportar la imagen');
       console.error(err);
     } finally {
       setExporting(false);
@@ -88,7 +88,7 @@ export default function ExportDialog() {
         <h2 className="text-lg font-semibold mb-4">Exportar imagen</h2>
 
         <div className="grid grid-cols-4 gap-1.5 mb-3">
-          {(Object.keys(FORMAT_INFO) as Format[]).map((f) => (
+          {(Object.keys(FORMAT_INFO) as Format[]).filter((f) => f !== 'avif' || exportService.canEncodeAvif()).map((f) => (
             <button
               key={f}
               onClick={() => setFormat(f)}

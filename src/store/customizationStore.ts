@@ -82,6 +82,28 @@ export function allProfiles(store: Pick<CustomizationStore, 'customProfiles'>): 
   return [...BUILT_IN_PROFILES, ...store.customProfiles];
 }
 
+/** A saved shortcut must be {key: string, modifiers: ('ctrl'|'shift'|'alt')[]}; anything else is dropped. */
+function sanitizeCombo(c: unknown): KeyCombo | null {
+  if (!c || typeof c !== 'object') return null;
+  const { key, modifiers } = c as { key?: unknown; modifiers?: unknown };
+  if (typeof key !== 'string' || !key) return null;
+  const mods = Array.isArray(modifiers) ? modifiers.filter((m): m is 'ctrl' | 'shift' | 'alt' => m === 'ctrl' || m === 'shift' || m === 'alt') : [];
+  return { key: key.toLowerCase(), modifiers: mods };
+}
+
+function sanitizeOverrides(raw: unknown): Record<string, KeyCombo | null> {
+  const out: Record<string, KeyCombo | null> = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const [id, c] of Object.entries(raw as Record<string, unknown>)) {
+    if (c === null) out[id] = null;
+    else {
+      const clean = sanitizeCombo(c);
+      if (clean) out[id] = clean;
+    }
+  }
+  return out;
+}
+
 export const useCustomizationStore = create<CustomizationStore>((set, get) => ({
   overrides: {},
   customProfiles: [],
@@ -110,7 +132,7 @@ export const useCustomizationStore = create<CustomizationStore>((set, get) => ({
     try {
       const data = JSON.parse(json) as PersistedCustomization;
       set({
-        overrides: data.overrides ?? {},
+        overrides: sanitizeOverrides(data.overrides),
         customProfiles: data.customProfiles ?? [],
         activeProfileId: data.activeProfileId ?? null,
         macros: data.macros ?? [],
@@ -122,7 +144,9 @@ export const useCustomizationStore = create<CustomizationStore>((set, get) => ({
   },
 
   setOverride: (id, combo) => {
-    set((s) => ({ overrides: { ...s.overrides, [id]: combo } }));
+    const clean = combo === null ? null : sanitizeCombo(combo);
+    if (combo !== null && !clean) return; // malformed: ignore rather than break every screen that shows shortcuts
+    set((s) => ({ overrides: { ...s.overrides, [id]: clean } }));
     schedulePersist(get);
   },
   resetOverride: (id) => {
@@ -142,7 +166,7 @@ export const useCustomizationStore = create<CustomizationStore>((set, get) => ({
     const profile = allProfiles(get()).find((p) => p.id === profileId);
     if (!profile) return;
 
-    set({ overrides: { ...profile.shortcutOverrides }, activeProfileId: profileId });
+    set({ overrides: sanitizeOverrides(profile.shortcutOverrides), activeProfileId: profileId });
     schedulePersist(get);
 
     useAppStore.getState().updateCurrentBrush({ size: profile.defaultBrushSize, opacity: profile.defaultOpacity });
@@ -244,7 +268,7 @@ export const useCustomizationStore = create<CustomizationStore>((set, get) => ({
     try {
       const data = JSON.parse(json);
       if (data.kind !== 'schizzo-profile' || !data.profile) return { ok: false, error: 'Archivo inválido' };
-      const imported: WorkflowProfile = { ...data.profile, id: uuid(), builtIn: false };
+      const imported: WorkflowProfile = { ...data.profile, shortcutOverrides: sanitizeOverrides(data.profile.shortcutOverrides), visiblePanels: Array.isArray(data.profile.visiblePanels) ? data.profile.visiblePanels : [], id: uuid(), builtIn: false };
       set((s) => ({ customProfiles: [...s.customProfiles, imported] }));
       schedulePersist(get);
       return { ok: true };

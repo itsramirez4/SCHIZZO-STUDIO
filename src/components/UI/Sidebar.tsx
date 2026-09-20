@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { Layers, SlidersHorizontal, History, BarChart3, Film, MessageSquareText, Palette, LibraryBig, ListChecks, GraduationCap, Video, Image, Cloud, Keyboard, Triangle, Gauge, PencilRuler, GitBranch } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
+import ErrorBoundary from '@/components/UI/ErrorBoundary';
 import LayerPanel from '@/components/Layers/LayerPanel';
 
 // Every other panel here starts closed (only the layer panel is open by default) — loading
@@ -113,92 +114,92 @@ export default function Sidebar() {
         <Suspense fallback={<div className="p-3 text-xs text-textDim">Cargando…</div>}>
           {showLayerPanel && (
             <div className="flex-1 min-h-0 border-b border-border overflow-y-auto">
-              <LayerPanel />
+              <ErrorBoundary name="Capas" compact><LayerPanel /></ErrorBoundary>
             </div>
           )}
           {showFilterPanel && (
             <div className="border-b border-border overflow-y-auto max-h-96">
-              <FilterPanel />
+              <ErrorBoundary name="Filtros" compact><FilterPanel /></ErrorBoundary>
             </div>
           )}
           {showAnimationPanel && (
             <div className="border-b border-border overflow-y-auto max-h-96">
-              <TimelinePanel />
+              <ErrorBoundary name="Animación" compact><TimelinePanel /></ErrorBoundary>
             </div>
           )}
           {showComicPanel && (
             <div className="border-b border-border overflow-y-auto max-h-[32rem]">
-              <ComicPanel />
+              <ErrorBoundary name="Cómic" compact><ComicPanel /></ErrorBoundary>
             </div>
           )}
           {showColorToolsPanel && (
             <div className="border-b border-border overflow-y-auto max-h-[32rem]">
-              <ColorToolsPanel />
+              <ErrorBoundary name="Herramientas de color" compact><ColorToolsPanel /></ErrorBoundary>
             </div>
           )}
           {showAssetLibraryPanel && (
             <div className="border-b border-border overflow-y-auto max-h-[32rem]">
-              <AssetLibraryPanel />
+              <ErrorBoundary name="Biblioteca" compact><AssetLibraryPanel /></ErrorBoundary>
             </div>
           )}
           {showReferencesPanel && (
             <div className="border-b border-border overflow-y-auto max-h-[32rem]">
-              <ReferencesPanel />
+              <ErrorBoundary name="Referencias" compact><ReferencesPanel /></ErrorBoundary>
             </div>
           )}
           {showCloudSyncPanel && (
             <div className="border-b border-border overflow-y-auto max-h-[32rem] p-3">
-              <CloudSyncPanel />
+              <ErrorBoundary name="Nube" compact><CloudSyncPanel /></ErrorBoundary>
             </div>
           )}
           {showCustomizationPanel && (
             <div className="border-b border-border overflow-y-auto max-h-[32rem]">
-              <CustomizationPanel />
+              <ErrorBoundary name="Atajos" compact><CustomizationPanel /></ErrorBoundary>
             </div>
           )}
           {showPerspectivePanel && (
             <div className="border-b border-border overflow-y-auto max-h-[32rem]">
-              <PerspectivePanel />
+              <ErrorBoundary name="Perspectiva" compact><PerspectivePanel /></ErrorBoundary>
             </div>
           )}
           {showVersionsPanel && (
             <div className="border-b border-border overflow-y-auto max-h-[40rem]">
-              <VersionsPanel />
+              <ErrorBoundary name="Versiones" compact><VersionsPanel /></ErrorBoundary>
             </div>
           )}
           {showStudyPanel && (
             <div className="border-b border-border overflow-y-auto max-h-[40rem]">
-              <StudyPanel />
+              <ErrorBoundary name="Estudio" compact><StudyPanel /></ErrorBoundary>
             </div>
           )}
           {showBatchPanel && (
             <div className="border-b border-border overflow-y-auto max-h-[32rem] p-3">
-              <BatchPanel />
+              <ErrorBoundary name="Lotes" compact><BatchPanel /></ErrorBoundary>
             </div>
           )}
           {showLearningPanel && (
             <div className="border-b border-border overflow-y-auto max-h-[32rem]">
-              <LearningPanel />
+              <ErrorBoundary name="Aprender" compact><LearningPanel /></ErrorBoundary>
             </div>
           )}
           {showRecordingPanel && (
             <div className="border-b border-border overflow-y-auto max-h-[32rem]">
-              <RecordingPanel />
+              <ErrorBoundary name="Grabación" compact><RecordingPanel /></ErrorBoundary>
             </div>
           )}
           {showHistogramPanel && (
             <div className="border-b border-border overflow-y-auto">
-              <Histogram />
+              <ErrorBoundary name="Histograma" compact><Histogram /></ErrorBoundary>
             </div>
           )}
           {showHistoryPanel && (
             <div className="overflow-y-auto max-h-64">
-              <HistoryPanel />
+              <ErrorBoundary name="Historial" compact><HistoryPanel /></ErrorBoundary>
             </div>
           )}
           {showStatsPanel && (
             <div className="border-t border-border overflow-y-auto max-h-[32rem]">
-              <ProjectStatsPanel />
+              <ErrorBoundary name="Estadísticas" compact><ProjectStatsPanel /></ErrorBoundary>
             </div>
           )}
         </Suspense>

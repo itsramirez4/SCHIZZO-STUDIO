@@ -172,6 +172,7 @@ async function carveDimension(
 ): Promise<ImageData | null> {
   let current = imageData;
   const steps = Math.abs(delta);
+  let lastYield = performance.now();
   for (let i = 0; i < steps; i++) {
     if (opts.shouldCancel?.()) return null;
     const energy = computeEnergy(current.data, current.width, current.height);
@@ -179,7 +180,12 @@ async function carveDimension(
     current = delta < 0 ? removeVerticalSeam(current, seam) : insertVerticalSeam(current, seam);
     doneRef.done++;
     opts.onProgress?.(doneRef.done, total);
-    if (i % 2 === 0) await yieldToUI();
+    // Give the UI a frame only when ~12 ms of work has piled up: yielding on a fixed count capped the
+    // speed at the display's frame rate however small the image was.
+    if (performance.now() - lastYield > 12) {
+      await yieldToUI();
+      lastYield = performance.now();
+    }
   }
   return current;
 }
