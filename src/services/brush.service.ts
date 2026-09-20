@@ -79,8 +79,9 @@ function getTextureAlphaCanvas(dataUrl: string): HTMLCanvasElement | undefined {
 }
 
 /** Starts decoding a brush's stamp texture now, so its first stroke doesn't fall back to the plain circle. */
-export function preloadBrushTexture(dataUrl: string | undefined) {
+export function preloadBrushTexture(dataUrl: string | undefined, frames?: string[]) {
   if (dataUrl) getTextureAlphaCanvas(dataUrl);
+  frames?.forEach((f) => getTextureAlphaCanvas(f));
 }
 
 /** Recolors the (cached, shape-only) texture alpha mask with the brush's current color —
@@ -119,6 +120,34 @@ function getColoredTextureStamp(dataUrl: string, color: string): HTMLCanvasEleme
  * only affects anything when the brush's own `dynamics` opt into it: `sizeToPressure` scales
  * the radius, `opacityToPressure` scales `globalAlpha`, same as every other stylus-aware app.
  */
+/** Piecewise-linear response curve from flat [x0,y0,x1,y1,…] points (input clamped to 0–1). */
+export function evalCurve(points: number[] | undefined, x: number): number {
+  if (!points || points.length < 4) return x;
+  const t = Math.max(0, Math.min(1, x));
+  if (t <= points[0]) return points[1];
+  for (let i = 2; i < points.length; i += 2) {
+    if (t <= points[i]) {
+      const x0 = points[i - 2], y0 = points[i - 1], x1 = points[i], y1 = points[i + 1];
+      return x1 === x0 ? y1 : y0 + ((y1 - y0) * (t - x0)) / (x1 - x0);
+    }
+  }
+  return points[points.length - 1];
+}
+
+/** Per-brush counter for the "incremental" frame selection of animated tips. */
+const frameCounters = new Map<string, number>();
+
+function pickTexture(brush: Brush): string | undefined {
+  const frames = brush.textures;
+  if (!frames || frames.length < 2) return brush.texture;
+  if (brush.tipSelection === 'incremental') {
+    const n = frameCounters.get(brush.id) ?? 0;
+    frameCounters.set(brush.id, n + 1);
+    return frames[n % frames.length];
+  }
+  return frames[Math.floor(Math.random() * frames.length)];
+}
+
 export function applyBrushStamp(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -131,20 +160,22 @@ export function applyBrushStamp(
   tilt = 0
 ) {
   const jitterScale = 1 + ((Math.random() * 2 - 1) * brush.sizeJitter) / 100;
-  const sizePressureScale = brush.dynamics?.sizeToPressure ? Math.max(0.05, pressure) : 1;
+  const sizePressureScale = brush.dynamics?.sizeToPressure ? Math.max(0.05, evalCurve(brush.dynamics.sizeCurve, pressure)) : 1;
   const tiltScale = brush.dynamics?.tiltToSize ? 1 + Math.max(0, Math.min(1, tilt)) * 1.6 : 1;
   const radius = Math.max(0.5, (brush.size / 2) * jitterScale * sizePressureScale * tiltScale);
   const scatterOffset = brush.scatter * brush.size * (Math.random() - 0.5);
   const angle = Math.random() * Math.PI * 2;
   const sx = x + Math.cos(angle) * scatterOffset;
   const sy = y + Math.sin(angle) * scatterOffset;
-  const opacityPressureScale = brush.dynamics?.opacityToPressure ? Math.max(0.05, pressure) : 1;
+  const opacityPressureScale = brush.dynamics?.opacityToPressure ? Math.max(0.05, evalCurve(brush.dynamics.opacityCurve, pressure)) : 1;
 
   ctx.save();
   ctx.globalAlpha = brush.opacity * opacityPressureScale;
+  if (brush.blendMode) ctx.globalCompositeOperation = brush.blendMode === 'erase' ? 'destination-out' : brush.blendMode;
 
-  if (brush.texture) {
-    const stamp = getColoredTextureStamp(brush.texture, color);
+  const tipUrl = brush.texture ? pickTexture(brush) : undefined;
+  if (tipUrl) {
+    const stamp = getColoredTextureStamp(tipUrl, color);
     if (stamp) {
       // Rotation: follow the stroke direction if the brush opts in, plus a random spin up to
       // `angleJitter` degrees (dry media use it so repeated stamps don't visibly tile).

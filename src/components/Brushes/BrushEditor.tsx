@@ -8,7 +8,7 @@ import { isElectron } from '@/utils/fileUtils';
 import { Brush, BrushDynamics } from '@/types';
 import BrushPreview from './BrushPreview';
 import { importAbr } from '@/services/abrImport.service';
-import { importKritaBundle, importKritaPreset, importProcreateBrush } from '@/services/brushFormats.service';
+import { importGimpBrushFile, importKritaBundle, importKritaPreset, importProcreateBrush } from '@/services/brushFormats.service';
 
 const SLIDERS: { key: keyof Brush; label: string; min: number; max: number; pct?: boolean }[] = [
   { key: 'size', label: 'Tamaño', min: 1, max: 300 },
@@ -98,9 +98,28 @@ export default function BrushEditor() {
   async function handleAbrFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
     e.target.value = '';
+    const extOf = (f: File) => f.name.split('.').pop()?.toLowerCase();
+    // Tip files picked together with .kpp presets: they are what the presets point at by name.
+    const hasKpp = files.some((f) => extOf(f) === 'kpp');
+    const tipFiles = new Map<string, Uint8Array>();
+    if (hasKpp) for (const f of files) if (['gbr', 'gih', 'png'].includes(extOf(f) ?? '')) tipFiles.set(f.name.toLowerCase(), new Uint8Array(await f.arrayBuffer()));
     for (const file of files) {
       try {
-        const ext = file.name.split('.').pop()?.toLowerCase();
+        const ext = extOf(file);
+        if (ext === 'png' && hasKpp) continue; // consumed as a tip file
+        if (ext === 'png') {
+          toast(`${file.name}: para usar una imagen PNG como punta usa «Importar imágenes como pinceles»`, { icon: 'ℹ️' });
+          continue;
+        }
+        if (ext === 'gbr' || ext === 'gih') {
+          if (hasKpp) continue;
+          const g = importGimpBrushFile(await file.arrayBuffer(), file.name.replace(/\.[^.]+$/, ''));
+          addBrushToLibrary(g.brush);
+          setCurrentBrush(g.brush);
+          toast.success(`${file.name}: pincel importado`);
+          if (g.notes.length) toast(`Ten en cuenta: ${g.notes.join('; ')}`, { icon: 'ℹ️', duration: 7000 });
+          continue;
+        }
         if (ext === 'bundle') {
           const r = await importKritaBundle(await file.arrayBuffer());
           r.brushes.forEach((b) => addBrushToLibrary(b));
@@ -112,7 +131,7 @@ export default function BrushEditor() {
           continue;
         }
         if (ext === 'brush' || ext === 'kpp') {
-          const one = ext === 'brush' ? await importProcreateBrush(await file.arrayBuffer(), file.name.replace(/\.[^.]+$/, '')) : await importKritaPreset(await file.arrayBuffer(), file.name.replace(/\.[^.]+$/, ''));
+          const one = ext === 'brush' ? await importProcreateBrush(await file.arrayBuffer(), file.name.replace(/\.[^.]+$/, '')) : await importKritaPreset(await file.arrayBuffer(), file.name.replace(/\.[^.]+$/, ''), tipFiles);
           addBrushToLibrary(one.brush);
           setCurrentBrush(one.brush);
           toast.success(`${file.name}: pincel importado`);
@@ -264,9 +283,9 @@ export default function BrushEditor() {
             Importar imágenes como pinceles (PNG/JPG, varias a la vez)…
           </button>
           <p className="text-[10px] text-textDim mt-1">Cada imagen se convierte en una punta: lo claro pinta y lo oscuro no.</p>
-          <input ref={abrInputRef} type="file" accept=".abr,.brush,.kpp,.bundle" multiple className="hidden" onChange={handleAbrFiles} />
+          <input ref={abrInputRef} type="file" accept=".abr,.brush,.kpp,.bundle,.gbr,.gih,.png" multiple className="hidden" onChange={handleAbrFiles} />
           <button onClick={() => abrInputRef.current?.click()} className="w-full bg-panelLight text-xs rounded py-1.5 mt-2">
-            Importar pinceles (.abr, Procreate .brush, Krita .bundle/.kpp)…
+            Importar pinceles (.abr, Procreate .brush, Krita .bundle/.kpp, GIMP .gbr/.gih)…
           </button>
           <p className="text-[10px] text-textDim mt-1">.abr de Photoshop (CS y anteriores): puntas, tamaño, espaciado, dispersión y presión; la textura de papel y el pincel dual se integran de forma aproximada en la punta, los bordes húmedos y el ruido no. Procreate (.brush) y paquetes de Krita (.bundle): puntas, tamaño, espaciado, presión, orientación y dispersión (verificado con archivos reales); un .kpp suelto solo trae la punta si la lleva incrustada, y los .abr muy antiguos (v1/v2) solo se han probado con archivos sintéticos.</p>
         </div>

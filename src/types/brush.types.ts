@@ -4,6 +4,10 @@ export interface BrushDynamics {
   angleToDirection: boolean;
   /** Stylus tilt widens the stamp (a pencil held on its side lays down a broader mark). */
   tiltToSize?: boolean;
+  /** Pressure → size response curve as flat [x0,y0,x1,y1,…] control points in 0–1 (linear if absent). */
+  sizeCurve?: number[];
+  /** Pressure → opacity response curve, same format. */
+  opacityCurve?: number[];
 }
 
 export interface Brush {
@@ -30,4 +34,10 @@ export interface Brush {
   favorite?: boolean;
   /** Grouping shown in the brush picker (pencil, ink, paint, dry media, texture, ...). */
   category?: string;
+  /** Extra tip frames of an animated brush (GIMP .gih); `texture` is frame 0. */
+  textures?: string[];
+  /** How the next frame is chosen for each stamp. */
+  tipSelection?: 'random' | 'incremental';
+  /** Composite mode used while stamping; 'erase' removes paint instead of adding it. */
+  blendMode?: GlobalCompositeOperation | 'erase';
 }
