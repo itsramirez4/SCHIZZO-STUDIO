@@ -1,6 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { Layer, ProjectAnimation } from '@/types';
-import { MAX_HISTORY_STATES } from '@/utils/constants';
+import { HISTORY_IN_MEMORY } from '@/utils/constants';
+import { IdbStore } from '@/utils/idbStore';
 import {
   layerToDataUrl,
   loadLayerCanvasFromDataUrl,
@@ -22,6 +23,13 @@ export interface HistorySnapshot {
    * frame count/order/currentFrameIndex in lockstep with it across undo/redo.
    */
   animation?: ProjectAnimation;
+  /** True while `canvases`/`masks` have been moved to IndexedDB (empty in memory) to free RAM. */
+  spilled?: boolean;
+}
+
+interface SpilledPixels {
+  canvases: Record<string, string>;
+  masks: Record<string, string>;
 }
 
 /**
@@ -32,12 +40,24 @@ export interface HistorySnapshot {
 export class HistoryManager {
   private stack: HistorySnapshot[] = [];
   private pointer = -1;
+  /** Pixel data of snapshots outside the in-memory window lives here, keyed by snapshot id. */
+  private disk: IdbStore | null = typeof indexedDB !== 'undefined' ? new IdbStore('schizzo-undo-history') : null;
+  /** In-flight writes, so an undo that reaches a snapshot still being spilled waits for it. */
+  private pending = new Map<string, Promise<void>>();
+
+  constructor() {
+    // The undo history is per session: drop whatever a previous run left behind.
+    this.disk?.clear().catch(() => undefined);
+  }
 
   pushState(action: string, layers: Layer[], animation?: ProjectAnimation) {
     const canvases: Record<string, string> = {};
     const masks: Record<string, string> = {};
     for (const layer of layers) {
-      const dataUrl = layerToDataUrl(layer.id);
+      let dataUrl = layerToDataUrl(layer.id);
+      // Untouched layers produce an identical PNG: share the previous string instead of holding a copy.
+      const prev = this.stack[this.pointer]?.canvases[layer.id];
+      if (dataUrl && prev !== undefined && prev === dataUrl) dataUrl = prev;
       if (dataUrl) canvases[layer.id] = dataUrl;
       if (layer.hasMask) {
         const maskUrl = maskToDataUrl(layer.id);
@@ -55,12 +75,53 @@ export class HistoryManager {
       animation: animation ? { ...animation, frames: animation.frames.map((f) => ({ ...f })) } : undefined,
     };
 
+    // Pushing after undoing discards the redo branch — including its spilled data.
+    for (const dropped of this.stack.slice(this.pointer + 1)) this.dropFromDisk(dropped);
     this.stack = this.stack.slice(0, this.pointer + 1);
     this.stack.push(snapshot);
-    if (this.stack.length > MAX_HISTORY_STATES) {
-      this.stack.shift();
-    }
     this.pointer = this.stack.length - 1;
+    this.spillOld();
+  }
+
+  /** Moves the pixel data of snapshots far from the pointer to IndexedDB. */
+  private spillOld() {
+    if (!this.disk) return;
+    const lo = this.pointer - HISTORY_IN_MEMORY;
+    const hi = this.pointer + HISTORY_IN_MEMORY;
+    this.stack.forEach((snap, i) => {
+      if (snap.spilled || (i >= lo && i <= hi)) return;
+      const data: SpilledPixels = { canvases: snap.canvases, masks: snap.masks };
+      snap.spilled = true;
+      snap.canvases = {};
+      snap.masks = {};
+      const write = this.disk!.set(snap.id, data)
+        .then(() => undefined)
+        .catch(() => {
+          // Could not write (quota?): put the data back so this state stays restorable.
+          snap.canvases = data.canvases;
+          snap.masks = data.masks;
+          snap.spilled = false;
+        })
+        .finally(() => {
+          this.pending.delete(snap.id);
+        });
+      this.pending.set(snap.id, write);
+    });
+  }
+
+  private dropFromDisk(snap: HistorySnapshot) {
+    if (snap.spilled) this.disk?.delete(snap.id).catch(() => undefined);
+  }
+
+  private async restoreFromDisk(snap: HistorySnapshot) {
+    if (!snap.spilled) return;
+    await this.pending.get(snap.id);
+    if (!snap.spilled) return; // the write failed and rolled back
+    const data = await this.disk!.get<SpilledPixels>(snap.id);
+    if (!data) throw new Error('Un estado antiguo del historial ya no está en disco');
+    snap.canvases = data.canvases;
+    snap.masks = data.masks;
+    snap.spilled = false;
   }
 
   canUndo(): boolean {
@@ -92,6 +153,8 @@ export class HistoryManager {
 
   private async applyCurrent(): Promise<HistorySnapshot> {
     const snapshot = this.stack[this.pointer];
+    await this.restoreFromDisk(snapshot);
+    this.spillOld();
     await Promise.all(
       snapshot.layers.flatMap((layer) => {
         const tasks: Promise<void>[] = [];
@@ -113,6 +176,8 @@ export class HistoryManager {
   clear() {
     this.stack = [];
     this.pointer = -1;
+    this.pending.clear();
+    this.disk?.clear().catch(() => undefined);
   }
 
   getStack(): HistorySnapshot[] {

@@ -1,4 +1,6 @@
-export const MAX_HISTORY_STATES = 50;
+/** How many undo states keep their pixel data in memory. Older ones are spilled to IndexedDB, so
+ * the undo history itself has no fixed limit (it is bounded only by free disk space). */
+export const HISTORY_IN_MEMORY = 30;
 
 export const DEFAULT_CANVAS_WIDTH = 1920;
 export const DEFAULT_CANVAS_HEIGHT = 1080;
