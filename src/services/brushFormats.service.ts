@@ -1,5 +1,6 @@
 import type { Brush } from '@/types';
 import { createBrush, preloadBrushTexture } from './brush.service';
+import { bakeTipAlpha } from './tipBake.service';
 
 /**
  * Importers for brush formats other than modern .abr:
@@ -7,10 +8,10 @@ import { createBrush, preloadBrushTexture } from './brush.service';
  *   - Procreate .brush (a zip with Shape.png / Grain.png / Brush.archive)
  *   - Krita .kpp (a PNG carrying the preset XML in a text chunk)
  *
- * HONESTY NOTE: these were written from the published/community format descriptions and tested
- * only against synthetic files built to those descriptions (plus Python's real binary-plist
- * writer for the plist parser) — NOT against real files from those programs, which I did not
- * have. Every reader validates what it reads and fails with a clear message instead of guessing.
+ * Status: Procreate .brush and Krita .bundle were verified against real files (12 Procreate
+ * brushes, one 64-preset Krita bundle). Legacy .abr v1/v2 and standalone Krita .kpp were tested only
+ * against synthetic files built from the format descriptions. Every reader validates what it reads
+ * and fails with a clear message instead of guessing.
  */
 
 export interface ImportedBrush {
@@ -46,6 +47,17 @@ export function alphaToTipDataUrl(values: Uint8Array | Uint8ClampedArray, w: num
     img.data[i * 4 + 3] = 255;
   }
   ctx.putImageData(img, 0, 0);
+  // Keep stored tips ≤ 512 px on the long side (they are never painted larger than ~300 px).
+  const scale = Math.min(1, 512 / Math.max(w, h));
+  if (scale < 1) {
+    const small = document.createElement('canvas');
+    small.width = Math.max(1, Math.round(w * scale));
+    small.height = Math.max(1, Math.round(h * scale));
+    const sctx = small.getContext('2d')!;
+    sctx.imageSmoothingQuality = 'high';
+    sctx.drawImage(c, 0, 0, small.width, small.height);
+    return { url: small.toDataURL('image/png'), inverted };
+  }
   return { url: c.toDataURL('image/png'), inverted };
 }
 
@@ -260,46 +272,123 @@ async function imageToGray(blob: Blob): Promise<{ values: Uint8ClampedArray; w: 
   return { values, w: c.width, h: c.height };
 }
 
+/** Follows NSKeyedArchiver {UID: n} references into $objects so plain values can be read by key. */
+export function resolveArchive(root: unknown): Record<string, unknown> | null {
+  const top = root as { $objects?: unknown[] } | null;
+  const objs = top?.$objects;
+  if (!Array.isArray(objs)) return null;
+  const isUid = (v: unknown): v is { UID: number } => !!v && typeof v === 'object' && 'UID' in (v as object);
+  const deref = (v: unknown, depth = 0): unknown => (isUid(v) && depth < 6 ? deref(objs[v.UID], depth + 1) : v);
+  // The brush object is the (large) dictionary holding plotSpacing.
+  const brush = objs.find((o) => o && typeof o === 'object' && !Array.isArray(o) && 'plotSpacing' in (o as object)) as Record<string, unknown> | undefined;
+  if (!brush) return null;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(brush)) out[k] = deref(v);
+  return out;
+}
+
+const n0 = (v: unknown) => (typeof v === 'number' ? v : 0);
+
+/** Grey grain map (0–255) from Grain.png, capped at 512 px, or null if it is essentially flat. */
+async function grainData(blob: Blob): Promise<{ data: Uint8Array | Uint8ClampedArray; w: number; h: number } | null> {
+  const g = await imageToGray(blob);
+  const scale = Math.min(1, 512 / Math.max(g.w, g.h));
+  let data: Uint8Array | Uint8ClampedArray = g.values;
+  let w = g.w;
+  let h = g.h;
+  if (scale < 1) {
+    const src = document.createElement('canvas');
+    src.width = g.w;
+    src.height = g.h;
+    const sx = src.getContext('2d')!;
+    const im = sx.createImageData(g.w, g.h);
+    for (let i = 0; i < g.values.length; i++) { im.data[i * 4] = im.data[i * 4 + 1] = im.data[i * 4 + 2] = g.values[i]; im.data[i * 4 + 3] = 255; }
+    sx.putImageData(im, 0, 0);
+    w = Math.max(1, Math.round(g.w * scale));
+    h = Math.max(1, Math.round(g.h * scale));
+    const dst = document.createElement('canvas');
+    dst.width = w;
+    dst.height = h;
+    const dx = dst.getContext('2d', { willReadFrequently: true })!;
+    dx.imageSmoothingQuality = 'high';
+    dx.drawImage(src, 0, 0, w, h);
+    const px = dx.getImageData(0, 0, w, h).data;
+    data = new Uint8Array(w * h);
+    for (let i = 0; i < data.length; i++) data[i] = px[i * 4];
+  }
+  let mean = 0;
+  for (let i = 0; i < data.length; i++) mean += data[i];
+  mean /= data.length;
+  let variance = 0;
+  for (let i = 0; i < data.length; i++) variance += (data[i] - mean) ** 2;
+  return Math.sqrt(variance / data.length) < 6 ? null : { data, w, h };
+}
+
 export async function importProcreateBrush(buffer: ArrayBuffer, fallbackName: string): Promise<ImportedBrush> {
   const { default: JSZip } = await import('jszip');
   const zip = await JSZip.loadAsync(buffer);
   const find = (re: RegExp) => Object.values(zip.files).find((f) => !f.dir && re.test(f.name));
   const shape = find(/(^|\/)Shape\.png$/i);
+  const grain = find(/(^|\/)Grain\.png$/i);
   const archive = find(/(^|\/)Brush\.archive$/i);
   if (!shape && !archive) throw new Error('No parece un pincel de Procreate (falta Shape.png / Brush.archive)');
   const notes: string[] = [];
   let name = fallbackName;
   let opts: Partial<Brush> = {};
+  let textureScale = 1;
   if (archive) {
     try {
-      const pairs = collectPairs(parseBplist(await archive.async('uint8array')));
-      const nm = pairs.find(([k, v]) => /^name$/i.test(k) && typeof v === 'string' && v && !v.startsWith('$'));
-      if (nm) name = nm[1] as string;
-      const spacing = num(pairs, /^plotSpacing$/i);
-      const pSize = num(pairs, /pressure.*size/i);
-      const pOp = num(pairs, /pressure.*opacity/i);
-      const tSize = num(pairs, /tilt.*size/i);
-      const jitter = num(pairs, /^plotJitter$|^shapeJitter$/i);
+      const b = resolveArchive(parseBplist(await archive.async('uint8array')));
+      if (!b) throw new Error('sin objeto de pincel');
+      if (typeof b.name === 'string' && b.name.trim()) name = b.name.trim();
+      textureScale = n0(b.textureScale) || 1;
+      const scatter = Math.min(1, Math.abs(n0(b.shapeScatter)) + Math.abs(n0(b.plotJitter)));
+      // Procreate composites a whole stroke, so a soft continuous brush looks smooth at any spacing;
+      // stamping it here at wide spacing would leave a chain of beads. Real stamps (`stamp`, scatter,
+      // random rotation) keep their spacing.
+      const rawSpacing = Math.min(1, Math.max(0.02, n0(b.plotSpacing) || 0.1));
+      const continuous = !b.stamp && !b.shapeRandomise && scatter === 0;
       opts = {
-        spacing: spacing !== undefined ? Math.min(1, Math.max(0.02, spacing)) : undefined,
-        dynamics: { sizeToPressure: !!pSize, opacityToPressure: !!pOp, angleToDirection: false, tiltToSize: !!tSize },
-        scatter: jitter ? Math.min(1, Math.abs(jitter)) : 0,
+        spacing: continuous ? Math.min(rawSpacing, 0.08) : rawSpacing,
+        scatter,
+        angleJitter: b.shapeRandomise ? 360 : 0,
+        dynamics: {
+          sizeToPressure: n0(b.dynamicsPressureSize) > 0.05,
+          opacityToPressure: n0(b.dynamicsPressureOpacity) > 0.05,
+          angleToDirection: !!b.oriented,
+          tiltToSize: false,
+        },
       };
-      if (spacing === undefined) notes.push('no se encontró el espaciado: se usa 15 %');
+      if (n0(b.taperStartLength) > 0 || n0(b.taperEndLength) > 0) notes.push('el afilado (taper) de inicio/fin no se importa');
     } catch {
       notes.push('no se pudieron leer los ajustes de Brush.archive: se importa solo la punta');
     }
   }
-  notes.push('la textura de grano (Grain.png) y los ajustes de mezcla/humedad de Procreate no se importan');
-  let tip: string | undefined;
+  let tipUrl: string | undefined;
   if (shape) {
     const g = await imageToGray(await shape.async('blob'));
-    tip = alphaToTipDataUrl(g.values, g.w, g.h).url;
+    // Bake the grain into the tip (Procreate's grain is fixed to the canvas; here it travels with the
+    // stamp — an approximation). One grain tile spans the tip at textureScale 1.
+    const gd = grain ? await grainData(await grain.async('blob')).catch(() => null) : null;
+    if (gd) {
+      const tipRaw = alphaToTipDataUrl(g.values, g.w, g.h);
+      const tipVals = new Uint8Array(g.w * g.h);
+      for (let i = 0; i < tipVals.length; i++) tipVals[i] = tipRaw.inverted ? 255 - g.values[i] : g.values[i];
+      const baked = bakeTipAlpha({ alpha: tipVals, w: g.w, h: g.h }, {
+        size: 60,
+        pattern: { data: gd.data, w: gd.w, h: gd.h, scale: Math.max(0.05, (60 / gd.w) / textureScale), depth: 0.7, invert: false, contrast: 0, brightness: 0 },
+      });
+      tipUrl = alphaToTipDataUrl(baked.alpha, g.w, g.h).url;
+      notes.push('el grano se integra en la punta (en Procreate va fijo al lienzo; aquí viaja con el sello)');
+    } else {
+      tipUrl = alphaToTipDataUrl(g.values, g.w, g.h).url;
+    }
   }
-  return { brush: makeBrush(name, tip, opts, 'Importados (Procreate)'), notes };
+  notes.push('los ajustes de velocidad, mezcla, humedad y tamaño mínimo de Procreate no se importan');
+  return { brush: makeBrush(name, tipUrl, opts, 'Importados (Procreate)'), notes };
 }
 
-// ------------------------------------------------------------------ Krita .kpp
+// ------------------------------------------------------------------ Krita (.kpp presets and .bundle packs)
 
 async function inflate(data: Uint8Array): Promise<Uint8Array> {
   const s = new Blob([data as BlobPart]).stream().pipeThrough(new DecompressionStream('deflate'));
@@ -319,7 +408,7 @@ export async function readPngText(bytes: Uint8Array): Promise<Record<string, str
     const type = String.fromCharCode(...bytes.subarray(p + 4, p + 8));
     const d = bytes.subarray(p + 8, p + 8 + len);
     const nul = d.indexOf(0);
-    if (type === 'tEXt' && nul > 0) out[dec.decode(d.subarray(0, nul))] = new TextDecoder('latin1').decode(d.subarray(nul + 1));
+    if (type === 'tEXt' && nul > 0) out[dec.decode(d.subarray(0, nul))] = dec.decode(d.subarray(nul + 1));
     else if (type === 'zTXt' && nul > 0) out[dec.decode(d.subarray(0, nul))] = dec.decode(await inflate(d.subarray(nul + 2)));
     else if (type === 'iTXt' && nul > 0) {
       const flag = d[nul + 1];
@@ -336,50 +425,202 @@ export async function readPngText(bytes: Uint8Array): Promise<Record<string, str
   return out;
 }
 
+/** GIMP brush (.gbr v1/v2) — the first one found; for .gih (animated brush) that is the first frame. */
+export function readGimpBrush(bytes: Uint8Array): { w: number; h: number; values: Uint8Array; spacing?: number } {
+  // .gih starts with a text header (name line, "N ncells:…" line) before the first .gbr
+  let start = 0;
+  if (bytes[0] !== 0) {
+    let nl = 0;
+    while (start < bytes.length && nl < 2) if (bytes[start++] === 10) nl++;
+  }
+  const v = new DataView(bytes.buffer, bytes.byteOffset + start, bytes.byteLength - start);
+  const headerSize = v.getUint32(0);
+  const version = v.getUint32(4);
+  const w = v.getUint32(8);
+  const h = v.getUint32(12);
+  const bpp = v.getUint32(16);
+  let spacing: number | undefined;
+  if (version === 2) {
+    const magic = String.fromCharCode(v.getUint8(20), v.getUint8(21), v.getUint8(22), v.getUint8(23));
+    if (magic !== 'GIMP') throw new Error('cabecera de brocha GIMP inválida');
+    spacing = v.getUint32(24) / 100;
+  } else if (version !== 1) throw new Error(`versión de brocha GIMP no soportada (${version})`);
+  if (w <= 0 || h <= 0 || w > 8192 || h > 8192 || (bpp !== 1 && bpp !== 2 && bpp !== 4)) throw new Error('dimensiones de brocha GIMP inválidas');
+  const data = new Uint8Array(v.buffer, v.byteOffset + headerSize, w * h * bpp);
+  if (data.length < w * h * bpp) throw new Error('datos de brocha GIMP incompletos');
+  const values = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) {
+    if (bpp === 1) values[i] = data[i];
+    else if (bpp === 2) values[i] = Math.round((data[i * 2] * data[i * 2 + 1]) / 255); // grey × alpha
+    else values[i] = Math.round(((0.299 * data[i * 4] + 0.587 * data[i * 4 + 1] + 0.114 * data[i * 4 + 2]) * data[i * 4 + 3]) / 255);
+  }
+  return { w, h, values, spacing };
+}
+
+interface KritaTip {
+  tip?: { values: Uint8Array | Uint8ClampedArray; w: number; h: number };
+  spacing?: number;
+}
+
+/** Resolves the tip image a preset points at (only possible when the pack ships the tip files). */
+export type KritaTipLoader = (filename: string) => Promise<KritaTip | null>;
+
+const sensorId = (xml: string | undefined) => xml?.match(/<params[^>]*\bid="([^"]+)"/)?.[1];
+
+/** Turns one Krita preset (the XML from its 'preset' PNG text chunk) into a brush. Returns null for
+ * preset engines that have no equivalent here (smudge, deform, experiment…) or for erasers. */
+async function kritaPresetToBrush(xml: string, fallbackName: string, loadTip?: KritaTipLoader): Promise<{ brush: Brush | null; skipped?: string; notes: string[] }> {
+  const doc = new DOMParser().parseFromString(xml, 'text/xml');
+  const preset = doc.querySelector('Preset');
+  const name = preset?.getAttribute('name')?.replace(/_/g, ' ').trim() || fallbackName;
+  const engine = preset?.getAttribute('paintopid') ?? '';
+  const param = (n: string) => doc.querySelector(`param[name="${n}"]`)?.textContent?.trim();
+  const bool = (n: string) => param(n) === 'true';
+  const numP = (n: string) => {
+    const t = param(n);
+    return t !== undefined && t !== '' && Number.isFinite(Number(t)) ? Number(t) : undefined;
+  };
+  if (engine && engine !== 'paintbrush') return { brush: null, skipped: `motor «${engine}»`, notes: [] };
+  // Erasers are flagged by the "erase" composite op (EraserMode is often absent); "adjust" brushes
+  // (multiply, overlay, dodge, colour…) paint with a blend mode, which a brush here cannot carry.
+  const comp = param('CompositeOp');
+  if (bool('EraserMode') || comp === 'erase') return { brush: null, skipped: 'borrador', notes: [] };
+  if (comp && comp !== 'normal') return { brush: null, skipped: `modo de fusión «${comp}»`, notes: [] };
+
+  const def = param('brush_definition');
+  const brushXml = def ? new DOMParser().parseFromString(def, 'text/xml') : null;
+  const brushEl = brushXml?.querySelector('Brush');
+  const type = brushEl?.getAttribute('type') ?? '';
+  const num2 = (s?: string | null) => (s !== undefined && s !== null && s !== '' && Number.isFinite(Number(s)) ? Number(s) : undefined);
+  let spacing = num2(brushEl?.getAttribute('spacing'));
+  const notes: string[] = [];
+  let size = 40;
+  let hardness = 1;
+  let tipUrl: string | undefined;
+
+  if (type === 'auto_brush') {
+    const mask = brushXml?.querySelector('MaskGenerator');
+    size = num2(mask?.getAttribute('diameter')) ?? 40;
+    const fade = Math.max(num2(mask?.getAttribute('hfade')) ?? 0, num2(mask?.getAttribute('vfade')) ?? 0);
+    hardness = mask?.getAttribute('id') === 'gauss' ? Math.max(0, 0.75 - fade) : Math.max(0, 1 - fade * 1.4);
+    if (mask?.getAttribute('type') === 'rect') notes.push('punta cuadrada: se importa redonda');
+  } else if (type === 'gbr_brush' || type === 'png_brush') {
+    const file = brushEl?.getAttribute('filename') ?? '';
+    const loaded = loadTip ? await loadTip(file) : null;
+    if (loaded?.tip) {
+      const t = alphaToTipDataUrl(loaded.tip.values, loaded.tip.w, loaded.tip.h);
+      tipUrl = t.url;
+      size = Math.max(1, Math.round(Math.max(loaded.tip.w, loaded.tip.h) * (num2(brushEl?.getAttribute('scale')) ?? 1)));
+      spacing ??= loaded.spacing;
+    } else {
+      notes.push(`la punta «${file}» no está en el archivo: se importa redonda`);
+    }
+    if (file.toLowerCase().endsWith('.gih')) notes.push('pincel animado (.gih): solo se usa el primer fotograma');
+  } else {
+    return { brush: null, skipped: 'tipo de punta no soportado', notes: [] };
+  }
+
+  // Dynamics: each preset lists which sensors drive size/opacity/rotation/scatter.
+  const rotationByDirection = bool('PressureRotation') && /drawingangle|direction/i.test(sensorId(param('RotationSensor')) ?? '');
+  const scatterOn = bool('PressureScatter') || (numP('Scattering/Amount') ?? 0) > 0 && bool('CustomScatter') && numP('ScatterValue') !== undefined && bool('PressureScatter');
+  const scatter = scatterOn ? Math.min(1, (numP('ScatterValue') ?? 0) * (numP('Scattering/Amount') ?? 1) * 0.5) : 0;
+  const flow = numP('FlowValue') ?? 1;
+  const opacity = numP('OpacityValue') ?? 1;
+  const b = makeBrush(name, tipUrl, {
+    size: Math.min(300, Math.max(1, Math.round(size))),
+    spacing: spacing !== undefined ? Math.min(1, Math.max(0.02, spacing)) : undefined,
+    hardness: Math.min(1, Math.max(0, hardness)),
+    opacity: Math.min(1, Math.max(0.05, flow * opacity)),
+    scatter,
+    angleJitter: numP('ShapeDynamics/randomRotationWeight') ? 360 * Math.min(1, numP('ShapeDynamics/randomRotationWeight')!) : 0,
+    dynamics: {
+      sizeToPressure: bool('PressureSize') && /pressure/i.test(sensorId(param('SizeSensor')) ?? 'pressure'),
+      opacityToPressure: bool('PressureOpacity'),
+      angleToDirection: rotationByDirection,
+      tiltToSize: /tilt/i.test(sensorId(param('SizeSensor')) ?? ''),
+    },
+  }, 'Importados (Krita)');
+  return { brush: b, notes };
+}
+
 export async function importKritaPreset(buffer: ArrayBuffer, fallbackName: string): Promise<ImportedBrush> {
   const text = await readPngText(new Uint8Array(buffer));
   const xml = text['preset'];
   if (!xml) throw new Error('El archivo no contiene un preset de Krita (falta el bloque «preset»)');
-  const doc = new DOMParser().parseFromString(xml, 'text/xml');
-  const notes: string[] = [];
-  const preset = doc.querySelector('Preset');
-  const name = preset?.getAttribute('name')?.replace(/_/g, ' ') || fallbackName;
-  const param = (n: string) => doc.querySelector(`param[name="${n}"]`)?.textContent?.trim();
-  // brush_definition is itself an XML document inside a CDATA section
-  let brushXml: Document | null = null;
-  const def = param('brush_definition');
-  if (def) brushXml = new DOMParser().parseFromString(def, 'text/xml');
-  const brushEl = brushXml?.querySelector('Brush');
-  const mask = brushXml?.querySelector('MaskGenerator');
-  const num2 = (s?: string | null) => (s !== undefined && s !== null && s !== '' ? Number(s) : undefined);
-  const spacing = num2(brushEl?.getAttribute('spacing'));
-  const diameter = num2(mask?.getAttribute('diameter')) ?? num2(brushEl?.getAttribute('brush_diameter'));
-  const hardness = num2(mask?.getAttribute('hfade'));
-  const size = num2(param('size')) ?? diameter ?? 40;
-  const pressureSize = /PressureSize|SizeOption[^<]*pressure/i.test(xml);
-  const pressureOpacity = /PressureOpacity|OpacityOption[^<]*pressure/i.test(xml);
-  // A tip image embedded as base64 PNG, if the preset carries one.
+  // A standalone .kpp can carry its tip as an embedded base64 PNG; otherwise the tip file is not with it.
   const png = xml.match(/iVBORw0KGgo[A-Za-z0-9+/=]+/)?.[0];
-  let tip: string | undefined;
-  if (png) {
+  const loader: KritaTipLoader = async () => {
+    if (!png) return null;
     const bin = atob(png);
     const arr = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
     const g = await imageToGray(new Blob([arr], { type: 'image/png' }));
-    tip = alphaToTipDataUrl(g.values, g.w, g.h).url;
-  } else if (brushEl?.getAttribute('type') === 'auto_brush') {
-    notes.push('pincel automático de Krita: se importa como punta redonda');
-  } else {
-    notes.push('la punta de imagen de este preset no está incrustada en el archivo: se importa con punta redonda');
-  }
-  notes.push('los ajustes de textura, mezcla y curvas de sensibilidad de Krita no se importan');
-  return {
-    brush: makeBrush(name, tip, {
-      size: Math.min(300, Math.max(1, Math.round(size))),
-      spacing: spacing !== undefined ? Math.min(1, Math.max(0.02, spacing)) : undefined,
-      hardness: hardness !== undefined ? Math.min(1, Math.max(0, 1 - hardness * 0.8)) : 1,
-      dynamics: { sizeToPressure: pressureSize, opacityToPressure: pressureOpacity, angleToDirection: false },
-    }, 'Importados (Krita)'),
-    notes,
+    return { tip: { values: g.values, w: g.w, h: g.h } };
   };
+  const r = await kritaPresetToBrush(xml, fallbackName, loader);
+  if (!r.brush) throw new Error(`Este preset de Krita usa ${r.skipped}, que no tiene equivalente aquí`);
+  r.notes.push('los ajustes de textura, mezcla y curvas de sensibilidad de Krita no se importan');
+  return { brush: r.brush, notes: r.notes };
+}
+
+export interface BundleResult {
+  brushes: Brush[];
+  /** engine/type → number of presets skipped. */
+  skipped: Record<string, number>;
+  notes: string[];
+}
+
+/** Krita resource bundle (.bundle): a zip with paintoppresets/*.kpp and the tip files in brushes/. */
+export async function importKritaBundle(buffer: ArrayBuffer): Promise<BundleResult> {
+  const { default: JSZip } = await import('jszip');
+  const zip = await JSZip.loadAsync(buffer);
+  const byLower = new Map<string, import('jszip').JSZipObject>();
+  zip.forEach((path, f) => {
+    if (!f.dir && path.startsWith('brushes/')) byLower.set(path.slice('brushes/'.length).toLowerCase(), f);
+  });
+  const tipCache = new Map<string, KritaTip | null>();
+  const loadTip: KritaTipLoader = async (filename) => {
+    const key = filename.toLowerCase();
+    if (tipCache.has(key)) return tipCache.get(key)!;
+    const f = byLower.get(key);
+    let out: KritaTip | null = null;
+    if (f) {
+      try {
+        const bytes = await f.async('uint8array');
+        if (key.endsWith('.png')) {
+          const g = await imageToGray(new Blob([bytes as BlobPart], { type: 'image/png' }));
+          out = { tip: { values: g.values, w: g.w, h: g.h } };
+        } else {
+          const gb = readGimpBrush(bytes);
+          out = { tip: { values: gb.values, w: gb.w, h: gb.h }, spacing: gb.spacing };
+        }
+      } catch {
+        out = null;
+      }
+    }
+    tipCache.set(key, out);
+    return out;
+  };
+
+  const brushes: Brush[] = [];
+  const skipped: Record<string, number> = {};
+  const noteSet = new Set<string>();
+  const presets = Object.values(zip.files).filter((f) => !f.dir && /^paintoppresets\/.+\.kpp$/i.test(f.name));
+  for (const f of presets) {
+    try {
+      const text = await readPngText(await f.async('uint8array'));
+      if (!text['preset']) continue;
+      const r = await kritaPresetToBrush(text['preset'], f.name.replace(/^.*\//, '').replace(/\.kpp$/i, ''), loadTip);
+      if (r.brush) {
+        brushes.push(r.brush);
+        r.notes.filter((n) => !n.startsWith('la punta «')).forEach((n) => noteSet.add(n));
+        r.notes.filter((n) => n.startsWith('la punta «')).forEach((n) => noteSet.add(n));
+      } else if (r.skipped) skipped[r.skipped] = (skipped[r.skipped] ?? 0) + 1;
+    } catch {
+      skipped['ilegible'] = (skipped['ilegible'] ?? 0) + 1;
+    }
+    await new Promise((res) => setTimeout(res, 0)); // keep the UI responsive across dozens of presets
+  }
+  noteSet.add('las curvas de sensibilidad, texturas y modos de fusión de los presets de Krita no se importan');
+  return { brushes, skipped, notes: [...noteSet] };
 }

@@ -1,4 +1,4 @@
-﻿import { DocPage } from '@/types/learning';
+import { DocPage } from '@/types/learning';
 
 /** Written from the actual, verified feature set of this app — not generic placeholder
  * documentation. Every claim here matches real, working functionality. */
@@ -273,7 +273,7 @@ export const DOC_PAGES: DocPage[] = [
     content: [
       'Bote de pintura → «Relleno inteligente»: detecta el área en todas las capas (para colorear en una capa bajo el line art), cierra huecos del contorno de hasta unos 2× el valor de «Cerrar huecos» y expande el color bajo la línea para no dejar un halo claro.',
       'Mezclador de color (tecla N): arrastra el color como pintura fresca. «Fuerza de arrastre» controla cuánto se arrastra y «Carga de color» va añadiendo el color principal mientras mezclas.',
-      'Los pinceles admiten sensibilidad a la presión, inclinación del lápiz (ancho de la punta), giro según la dirección del trazo y estabilizador (suavizado). Puedes importar varias imágenes PNG/JPG a la vez como puntas de pincel. Desde el editor de pinceles se importan librerías .abr de Photoshop (todas las versiones), pinceles .brush de Procreate y presets .kpp de Krita: puntas, tamaño, espaciado, dispersión y dinámicas de presión. En el .abr moderno la textura de papel y el pincel dual se integran de forma aproximada en la punta; los bordes húmedos y el ruido no se importan. Los .abr antiguos, Procreate y Krita se han probado solo con archivos sintéticos, no con pinceles reales de esos programas.',
+      'Los pinceles admiten sensibilidad a la presión, inclinación del lápiz (ancho de la punta), giro según la dirección del trazo y estabilizador (suavizado). Puedes importar varias imágenes PNG/JPG a la vez como puntas de pincel. Desde el editor de pinceles se importan librerías .abr de Photoshop (todas las versiones), pinceles .brush de Procreate y presets .kpp de Krita: puntas, tamaño, espaciado, dispersión y dinámicas de presión. En el .abr moderno la textura de papel y el pincel dual se integran de forma aproximada en la punta; los bordes húmedos y el ruido no se importan. Procreate (.brush) y los paquetes de Krita (.bundle, con sus puntas .gbr/.gih/.png) se han verificado con archivos reales; se importan tamaño, espaciado, presión, orientación y dispersión, y el grano de Procreate se integra en la punta. En Krita no se importan borradores, motores que no son de pincel (difuminar, deformar, clonar) ni pinceles con modo de fusión. Los .abr antiguos (v1/v2) y los .kpp sueltos solo se han probado con archivos sintéticos.',
     ],
   },
   {

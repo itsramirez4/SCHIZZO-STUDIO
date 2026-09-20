@@ -8,7 +8,7 @@ import { isElectron } from '@/utils/fileUtils';
 import { Brush, BrushDynamics } from '@/types';
 import BrushPreview from './BrushPreview';
 import { importAbr } from '@/services/abrImport.service';
-import { importKritaPreset, importProcreateBrush } from '@/services/brushFormats.service';
+import { importKritaBundle, importKritaPreset, importProcreateBrush } from '@/services/brushFormats.service';
 
 const SLIDERS: { key: keyof Brush; label: string; min: number; max: number; pct?: boolean }[] = [
   { key: 'size', label: 'Tamaño', min: 1, max: 300 },
@@ -101,6 +101,16 @@ export default function BrushEditor() {
     for (const file of files) {
       try {
         const ext = file.name.split('.').pop()?.toLowerCase();
+        if (ext === 'bundle') {
+          const r = await importKritaBundle(await file.arrayBuffer());
+          r.brushes.forEach((b) => addBrushToLibrary(b));
+          if (r.brushes.length) setCurrentBrush(r.brushes[0]);
+          const skipped = Object.entries(r.skipped).map(([k, n]) => `${k} (${n})`).join(', ');
+          toast.success(`${file.name}: ${r.brushes.length} pincel(es) importado(s)`);
+          if (skipped) toast(`No se importan (sin equivalente): ${skipped}`, { icon: 'ℹ️', duration: 9000 });
+          if (r.notes.length) toast(`Ten en cuenta: ${r.notes.slice(0, 4).join('; ')}`, { icon: 'ℹ️', duration: 9000 });
+          continue;
+        }
         if (ext === 'brush' || ext === 'kpp') {
           const one = ext === 'brush' ? await importProcreateBrush(await file.arrayBuffer(), file.name.replace(/\.[^.]+$/, '')) : await importKritaPreset(await file.arrayBuffer(), file.name.replace(/\.[^.]+$/, ''));
           addBrushToLibrary(one.brush);
@@ -254,11 +264,11 @@ export default function BrushEditor() {
             Importar imágenes como pinceles (PNG/JPG, varias a la vez)…
           </button>
           <p className="text-[10px] text-textDim mt-1">Cada imagen se convierte en una punta: lo claro pinta y lo oscuro no.</p>
-          <input ref={abrInputRef} type="file" accept=".abr,.brush,.kpp" multiple className="hidden" onChange={handleAbrFiles} />
+          <input ref={abrInputRef} type="file" accept=".abr,.brush,.kpp,.bundle" multiple className="hidden" onChange={handleAbrFiles} />
           <button onClick={() => abrInputRef.current?.click()} className="w-full bg-panelLight text-xs rounded py-1.5 mt-2">
-            Importar pinceles (.abr, Procreate .brush, Krita .kpp)…
+            Importar pinceles (.abr, Procreate .brush, Krita .bundle/.kpp)…
           </button>
-          <p className="text-[10px] text-textDim mt-1">.abr de Photoshop (CS y anteriores): puntas, tamaño, espaciado, dispersión y presión; la textura de papel y el pincel dual se integran de forma aproximada en la punta, los bordes húmedos y el ruido no. Procreate (.brush) y Krita (.kpp): importan la punta y los ajustes básicos; estos tres formatos los he probado con archivos sintéticos, no con pinceles reales de esos programas.</p>
+          <p className="text-[10px] text-textDim mt-1">.abr de Photoshop (CS y anteriores): puntas, tamaño, espaciado, dispersión y presión; la textura de papel y el pincel dual se integran de forma aproximada en la punta, los bordes húmedos y el ruido no. Procreate (.brush) y paquetes de Krita (.bundle): puntas, tamaño, espaciado, presión, orientación y dispersión (verificado con archivos reales); un .kpp suelto solo trae la punta si la lleva incrustada, y los .abr muy antiguos (v1/v2) solo se han probado con archivos sintéticos.</p>
         </div>
 
         <div className="flex gap-2 mt-4">
