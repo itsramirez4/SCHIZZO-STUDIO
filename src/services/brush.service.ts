@@ -148,13 +148,19 @@ export function applyBrushStamp(
     if (stamp) {
       // Rotation: follow the stroke direction if the brush opts in, plus a random spin up to
       // `angleJitter` degrees (dry media use it so repeated stamps don't visibly tile).
+      // Non-square tips (whole-stroke stamps, flat brushes) keep their proportions: `radius` is half
+      // of the LONGER side.
+      const aspectW = stamp.width >= stamp.height ? 1 : stamp.width / stamp.height;
+      const aspectH = stamp.height >= stamp.width ? 1 : stamp.height / stamp.width;
+      const halfW = radius * aspectW;
+      const halfH = radius * aspectH;
       const rotation = (brush.dynamics?.angleToDirection ? direction : 0) + ((Math.random() * 2 - 1) * brush.angleJitter * Math.PI) / 360;
       if (rotation !== 0) {
         ctx.translate(sx, sy);
         ctx.rotate(rotation);
-        ctx.drawImage(stamp, -radius, -radius, radius * 2, radius * 2);
+        ctx.drawImage(stamp, -halfW, -halfH, halfW * 2, halfH * 2);
       } else {
-        ctx.drawImage(stamp, sx - radius, sy - radius, radius * 2, radius * 2);
+        ctx.drawImage(stamp, sx - halfW, sy - halfH, halfW * 2, halfH * 2);
       }
       ctx.restore();
       return;

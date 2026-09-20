@@ -135,6 +135,10 @@ export function bakeTipAlpha(main: AlphaImage, o: BakeOptions): AlphaImage {
 }
 
 /** Renders an ABR alpha tip as a grey PNG where brightness = paint amount (what the brush engine expects). */
+/** Longest side kept for a stored brush tip. Whole-stroke "painter" stamps come as ~2500×1700 px
+ * (4 MP each); at the ≤300 px they are ever painted at, 512 px is indistinguishable and ~20× lighter. */
+export const MAX_TIP_SIDE = 512;
+
 function tipToDataUrl(alpha: Uint8Array, w: number, h: number): string {
   const c = document.createElement('canvas');
   c.width = w;
@@ -146,7 +150,15 @@ function tipToDataUrl(alpha: Uint8Array, w: number, h: number): string {
     img.data[i * 4 + 3] = 255;
   }
   ctx.putImageData(img, 0, 0);
-  return c.toDataURL('image/png');
+  const scale = Math.min(1, MAX_TIP_SIDE / Math.max(w, h));
+  if (scale === 1) return c.toDataURL('image/png');
+  const small = document.createElement('canvas');
+  small.width = Math.max(1, Math.round(w * scale));
+  small.height = Math.max(1, Math.round(h * scale));
+  const sctx = small.getContext('2d')!;
+  sctx.imageSmoothingQuality = 'high';
+  sctx.drawImage(c, 0, 0, small.width, small.height);
+  return small.toDataURL('image/png');
 }
 
 /**
@@ -280,6 +292,8 @@ export async function importAbr(buffer: ArrayBuffer): Promise<AbrImportResult> {
     }
     f.lost.forEach((l) => (lostFeatures[l] = (lostFeatures[l] ?? 0) + 1));
     preloadBrushTexture(texture);
+    // Libraries can hold dozens of multi-megapixel tips: let the UI breathe between brushes.
+    await new Promise((r) => setTimeout(r, 0));
     brushes.push(
       createBrush({
         name: f.name,
