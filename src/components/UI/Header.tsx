@@ -1,4 +1,4 @@
-import { FilePlus, FolderOpen, Save, Download, Undo2, Redo2, ImagePlus, Boxes, View, Scaling, Crop, PackageOpen, LayoutGrid, History as HistoryIcon } from 'lucide-react';
+import { FilePlus, FolderOpen, Save, Download, Undo2, Redo2, ImagePlus, Boxes, View, Scaling, Crop, PackageOpen, LayoutGrid, Hand, History as HistoryIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Logo from '@/components/UI/Logo';
 import { useProject } from '@/hooks/useProject';
@@ -23,6 +23,8 @@ export default function Header() {
   const addLayer = useAppStore((s) => s.addLayer);
   const setWorkspaceMode = useWorkspaceStore((s) => s.setMode);
   const openAutoSaveDialog = useAutoSaveStore((s) => s.openDialog);
+  const leftHanded = useUIStore((s) => s.leftHanded);
+  const toggleLeftHanded = useUIStore((s) => s.toggleLeftHanded);
 
   async function handleImport() {
     const layerId = await importImagesAsLayers(addLayer);
@@ -98,6 +100,13 @@ export default function Header() {
         className="icon-btn disabled:opacity-30"
       >
         <LayoutGrid size={16} />
+      </button>
+      <button
+        onClick={toggleLeftHanded}
+        title={leftHanded ? 'Modo zurdo activado: volver al diseño normal' : 'Modo zurdo: herramientas a la derecha y paneles a la izquierda'}
+        className={`icon-btn ${leftHanded ? 'text-accent' : ''}`}
+      >
+        <Hand size={16} />
       </button>
       <div className="w-px h-5 bg-border mx-1" />
       <button onClick={undo} disabled={!canUndo} title="Deshacer (Ctrl+Z)" className="icon-btn disabled:opacity-30">

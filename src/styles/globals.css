@@ -66,3 +66,19 @@ body {
     display: block;
   }
 }
+
+/* Left-handed layout: the row is reversed in App.tsx, so the panel borders and the sidebar's own
+   tab strip must swap sides too. */
+[data-lefty='true'] .toolbox-root {
+  border-right-width: 0;
+  border-left-width: 1px;
+}
+[data-lefty='true'] .sidebar-root {
+  border-left-width: 0;
+  border-right-width: 1px;
+  flex-direction: row-reverse;
+}
+[data-lefty='true'] .sidebar-panel {
+  border-right-width: 0;
+  border-left-width: 1px;
+}

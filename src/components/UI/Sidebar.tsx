@@ -102,9 +102,9 @@ export default function Sidebar() {
     showStudyPanel;
 
   return (
-    <div className="flex border-l border-border bg-panel">
+    <div className="sidebar-root flex border-l border-border bg-panel">
       {anyOpen && (
-        <div className="w-64 border-r border-border flex flex-col">
+        <div className="sidebar-panel w-64 border-r border-border flex flex-col">
         <Suspense fallback={<div className="p-3 text-xs text-textDim">Cargando…</div>}>
           {showLayerPanel && (
             <div className="flex-1 min-h-0 border-b border-border overflow-y-auto">

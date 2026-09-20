@@ -27,6 +27,9 @@ interface UIState {
   showPerspectivePanel: boolean;
   showStatsPanel: boolean;
   showStudyPanel: boolean;
+  /** Left-handed layout: toolbox on the right, side panels on the left. */
+  leftHanded: boolean;
+  toggleLeftHanded: () => void;
 
   toggleLayerPanel: () => void;
   toggleBrushPanel: () => void;
@@ -62,6 +65,14 @@ interface UIState {
   toggleStudyPanel: () => void;
 }
 
+function readLeftHanded(): boolean {
+  try {
+    return localStorage.getItem('schizzo-left-handed') === '1';
+  } catch {
+    return false;
+  }
+}
+
 export const useUIStore = create<UIState>((set) => ({
   showLayerPanel: true,
   showBrushPanel: false,
@@ -89,6 +100,16 @@ export const useUIStore = create<UIState>((set) => ({
   showPerspectivePanel: false,
   showStatsPanel: false,
   showStudyPanel: false,
+  leftHanded: readLeftHanded(),
+  toggleLeftHanded: () =>
+    set((s) => {
+      try {
+        localStorage.setItem('schizzo-left-handed', s.leftHanded ? '0' : '1');
+      } catch {
+        // best-effort persistence
+      }
+      return { leftHanded: !s.leftHanded };
+    }),
 
   toggleLayerPanel: () => set((s) => ({ showLayerPanel: !s.showLayerPanel })),
   toggleBrushPanel: () => set((s) => ({ showBrushPanel: !s.showBrushPanel })),

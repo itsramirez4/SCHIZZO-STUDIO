@@ -70,6 +70,7 @@ export default function App() {
   const openNewProjectDialog = useUIStore((s) => s.openNewProjectDialog);
   const openExportDialog = useUIStore((s) => s.openExportDialog);
   const openModel3DViewer = useUIStore((s) => s.openModel3DViewer);
+  const leftHanded = useUIStore((s) => s.leftHanded);
   const showModel3DViewer = useUIStore((s) => s.showModel3DViewer);
   const showReference3DPanel = useUIStore((s) => s.showReference3DPanel);
   const showResizeDialog = useUIStore((s) => s.showResizeDialog);
@@ -351,7 +352,7 @@ export default function App() {
         ) : (
           <>
             <Header />
-            <div className="flex-1 flex min-h-0">
+            <div className={`flex-1 flex min-h-0 ${leftHanded ? 'flex-row-reverse' : ''}`} data-lefty={leftHanded}>
               <Toolbox />
               <Canvas2D />
               <Sidebar />

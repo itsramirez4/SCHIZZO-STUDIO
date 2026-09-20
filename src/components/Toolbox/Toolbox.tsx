@@ -70,7 +70,7 @@ export default function Toolbox() {
   const visibleTools = hidden ? TOOLS.filter((t) => !hidden.includes(t.id)) : TOOLS;
 
   return (
-    <div className="w-52 bg-panel border-r border-border flex flex-col items-stretch overflow-y-auto shrink-0">
+    <div className="toolbox-root w-52 bg-panel border-r border-border flex flex-col items-stretch overflow-y-auto shrink-0">
       <div className="grid grid-cols-4 gap-1 p-2">
         {visibleTools.map(({ id, label, icon: Icon }) => {
           const shortcut = shortcutLabel(id);
