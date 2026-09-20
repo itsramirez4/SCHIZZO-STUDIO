@@ -230,6 +230,8 @@ interface AppState {
   toggleRulerVisible: () => void;
   updatePerspectiveData: (data: import('@/types/perspective').PerspectiveProjectData) => void;
   updateStudyGuides: (guides: import('@/services/studyGuides.service').StudyGuide[]) => void;
+  updateProjectReferences: (refs: import('@/types/references').ReferenceImage[]) => void;
+  updateProjectPalettes: (palettes: import('@/types/assetLibrary').LibraryPalette[]) => void;
   finishContentAwareResize: (newWidth: number, newHeight: number, resizedFrames: HTMLCanvasElement[]) => void;
 
   enableAnimation: () => void;
@@ -1164,6 +1166,18 @@ export const useAppStore = create<AppState>((set, get) => ({
     const { project } = get();
     if (!project) return;
     set({ project: { ...project, studyGuides: guides } });
+  },
+
+  // Per-project references and palettes: saved with the project, not part of undo history.
+  updateProjectReferences: (refs) => {
+    const { project } = get();
+    if (!project) return;
+    set({ project: { ...project, references: refs } });
+  },
+  updateProjectPalettes: (palettes) => {
+    const { project } = get();
+    if (!project) return;
+    set({ project: { ...project, palettes } });
   },
 
   // Content-aware (seam-carve) resize is destructive by nature — a seam path threads

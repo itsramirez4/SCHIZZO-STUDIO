@@ -54,6 +54,10 @@ export interface Project {
   perspective?: PerspectiveProjectData;
   /** Construction guides (face, figure, room...) placed over the canvas; saved with the project. */
   studyGuides?: import('@/services/studyGuides.service').StudyGuide[];
+  /** Reference photos that belong to this project only (the global library is separate). */
+  references?: import('./references').ReferenceImage[];
+  /** Palettes that belong to this project only. */
+  palettes?: import('./assetLibrary').LibraryPalette[];
   /** Named snapshots of per-layer visibility/opacity/blendMode/effects — "layer comps". */
   layerComps?: LayerComp[];
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Star, Trash2, ExternalLink } from 'lucide-react';
+import { Star, Trash2, ExternalLink, FolderInput } from 'lucide-react';
+import { useAppStore } from '@/store/appStore';
 import { useReferenceLibraryStore } from '@/store/referenceLibraryStore';
 import { buildReferenceFromDataUrl } from '@/services/referenceImport.service';
 import { isElectron } from '@/utils/fileUtils';
@@ -11,13 +12,34 @@ import { ReferenceImage } from '@/types/references';
  * reference layer" (which lives only inside one project's layer stack and is gone once deleted).
  * Same Electron-fs-JSON persistence pattern as the Asset Library, in its own file. */
 export default function ReferenceLibraryPanel() {
-  const references = useReferenceLibraryStore((s) => s.references);
+  const globalRefs = useReferenceLibraryStore((s) => s.references);
   const loadLibrary = useReferenceLibraryStore((s) => s.loadLibrary);
-  const addReference = useReferenceLibraryStore((s) => s.addReference);
-  const removeReference = useReferenceLibraryStore((s) => s.removeReference);
-  const toggleFavorite = useReferenceLibraryStore((s) => s.toggleFavorite);
-  const setTags = useReferenceLibraryStore((s) => s.setTags);
-  const recordView = useReferenceLibraryStore((s) => s.recordView);
+  const addGlobal = useReferenceLibraryStore((s) => s.addReference);
+  const removeGlobal = useReferenceLibraryStore((s) => s.removeReference);
+  const toggleGlobalFavorite = useReferenceLibraryStore((s) => s.toggleFavorite);
+  const setGlobalTags = useReferenceLibraryStore((s) => s.setTags);
+  const recordGlobalView = useReferenceLibraryStore((s) => s.recordView);
+  const project = useAppStore((s) => s.project);
+  const updateProjectReferences = useAppStore((s) => s.updateProjectReferences);
+
+  // Two shelves: the global library (every project) and the references saved with this project.
+  const [scope, setScope] = useState<'global' | 'project'>('global');
+  const inProject = scope === 'project' && !!project;
+  const projectRefs = project?.references ?? [];
+  const references = inProject ? projectRefs : globalRefs;
+  const patchProject = (fn: (r: ReferenceImage) => ReferenceImage) => updateProjectReferences(projectRefs.map(fn));
+  const addReference = (r: ReferenceImage) => (inProject ? updateProjectReferences([r, ...projectRefs]) : addGlobal(r));
+  const removeReference = (id: string) => (inProject ? updateProjectReferences(projectRefs.filter((r) => r.id !== id)) : removeGlobal(id));
+  const toggleFavorite = (id: string) => (inProject ? patchProject((r) => (r.id === id ? { ...r, favorite: !r.favorite } : r)) : toggleGlobalFavorite(id));
+  const setTags = (id: string, tags: string[]) => (inProject ? patchProject((r) => (r.id === id ? { ...r, tags } : r)) : setGlobalTags(id, tags));
+  const recordView = (id: string) => (inProject ? patchProject((r) => (r.id === id ? { ...r, viewCount: r.viewCount + 1, lastViewedAt: Date.now() } : r)) : recordGlobalView(id));
+  /** Copies a reference to the other shelf (a project keeps its own copy of the pixels). */
+  const copyToOtherShelf = (ref: ReferenceImage) => {
+    const copy = { ...ref, id: `${ref.id}-${Date.now().toString(36)}` };
+    if (inProject) addGlobal(copy);
+    else updateProjectReferences([copy, ...projectRefs]);
+    toast.success(inProject ? 'Copiada a la biblioteca global' : 'Copiada a este proyecto');
+  };
 
   const [search, setSearch] = useState('');
   const [activeTag, setActiveTag] = useState<string | null>(null);
@@ -128,6 +150,18 @@ export default function ReferenceLibraryPanel() {
 
   return (
     <div className="space-y-3">
+      <div className="flex rounded overflow-hidden border border-border text-[11px]">
+        {(['global', 'project'] as const).map((s) => (
+          <button
+            key={s}
+            onClick={() => setScope(s)}
+            disabled={s === 'project' && !project}
+            className={`flex-1 py-1 disabled:opacity-40 ${scope === s ? 'bg-accent text-white' : 'bg-panel text-textDim hover:text-text'}`}
+          >
+            {s === 'global' ? 'Biblioteca global' : `Este proyecto (${projectRefs.length})`}
+          </button>
+        ))}
+      </div>
       <div className="grid grid-cols-2 gap-1.5">
         <button onClick={importFromFile} disabled={isImporting} className="text-[11px] bg-panelLight rounded py-1.5 disabled:opacity-40">
           Importar archivo…
@@ -223,6 +257,11 @@ Clic para guardar en tus referencias`} className="relative aspect-square overflo
                       >
                         <Star size={12} fill={ref.favorite ? 'currentColor' : 'none'} />
                       </button>
+                      {project && (
+                        <button onClick={() => copyToOtherShelf(ref)} className="text-textDim hover:text-text" title={inProject ? 'Copiar a la biblioteca global' : 'Copiar a este proyecto'}>
+                          <FolderInput size={12} />
+                        </button>
+                      )}
                       <button onClick={() => removeReference(ref.id)} className="text-textDim hover:text-red-400" title="Eliminar">
                         <Trash2 size={12} />
                       </button>

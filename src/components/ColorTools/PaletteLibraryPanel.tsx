@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
-import { Star, Trash2, Copy, Upload } from 'lucide-react';
+import { Star, Trash2, Copy, Upload, FolderInput } from 'lucide-react';
+import { useAppStore } from '@/store/appStore';
 import { useAssetLibraryStore } from '@/store/assetLibraryStore';
 import { useTools } from '@/hooks/useTools';
 import { encodePaletteCode, decodePaletteCode } from '@/services/paletteShare.service';
@@ -19,6 +20,13 @@ export default function PaletteLibraryPanel() {
   const addPalette = useAssetLibraryStore((s) => s.addPalette);
   const { setPrimaryColor } = useTools();
   const [importCode, setImportCode] = useState('');
+  const project = useAppStore((s) => s.project);
+  const updateProjectPalettes = useAppStore((s) => s.updateProjectPalettes);
+  const projectPalettes = project?.palettes ?? [];
+  const addToProject = (p: { name: string; colors: string[] }) => {
+    updateProjectPalettes([...projectPalettes, createPalette(p.name, p.colors)]);
+    toast.success('Guardada en este proyecto');
+  };
 
   function copyCode(name: string, colors: string[]) {
     const code = encodePaletteCode(name, colors);
@@ -76,6 +84,31 @@ export default function PaletteLibraryPanel() {
         </button>
       </div>
 
+      {project && (
+        <div className="space-y-1.5">
+          <div className="text-[10px] uppercase tracking-wide text-textDim">Paletas de este proyecto</div>
+          {projectPalettes.length === 0 ? (
+            <p className="text-[10px] text-textDim">Ninguna todavía: usa el icono de carpeta de una paleta para guardarla en el proyecto.</p>
+          ) : (
+            projectPalettes.map((p) => (
+              <div key={p.id} className="border border-accent/40 rounded p-1.5 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] truncate">{p.name}</span>
+                  <button onClick={() => updateProjectPalettes(projectPalettes.filter((x) => x.id !== p.id))} className="text-textDim hover:text-red-400" title="Quitar del proyecto">
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+                <div className="flex gap-1">
+                  {p.colors.map((hex, i) => (
+                    <button key={i} onClick={() => setPrimaryColor(hex)} className="flex-1 h-7 rounded border border-border" style={{ background: hex }} title={`${hex} — usar como color primario`} />
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
       {sorted.length === 0 ? (
         <p className="text-[10px] text-textDim">No hay paletas guardadas todavía.</p>
       ) : (
@@ -88,6 +121,11 @@ export default function PaletteLibraryPanel() {
                   <button onClick={() => copyCode(p.name, p.colors)} className="text-textDim hover:text-text" title="Copiar código para compartir">
                     <Copy size={12} />
                   </button>
+                  {project && (
+                    <button onClick={() => addToProject(p)} className="text-textDim hover:text-text" title="Guardar en este proyecto">
+                      <FolderInput size={12} />
+                    </button>
+                  )}
                   <button onClick={() => togglePaletteFavorite(p.id)} className={p.favorite ? 'text-accent' : 'text-textDim hover:text-text'} title="Favorita">
                     <Star size={12} fill={p.favorite ? 'currentColor' : 'none'} />
                   </button>
