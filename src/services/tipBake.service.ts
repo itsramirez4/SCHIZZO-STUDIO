@@ -10,7 +10,7 @@ export interface BakeOptions {
   /** Main tip diameter in brush px (relates the dual tip and the paper scale to the tip). */
   size: number;
   dual?: AlphaImage & { size: number };
-  pattern?: { data: Uint8Array | Uint8ClampedArray; w: number; h: number; scale: number; depth: number; invert: boolean; contrast: number; brightness: number };
+  pattern?: { data: Uint8Array | Uint8ClampedArray; w: number; h: number; scale: number; depth: number; invert: boolean; contrast: number; brightness: number; /** 'subtract' removes paint where the pattern is dark instead of scaling it. */ mode?: 'multiply' | 'subtract' };
 }
 
 /**
@@ -38,7 +38,7 @@ export function bakeTipAlpha(main: AlphaImage, o: BakeOptions): AlphaImage {
         let l = p.data[py * p.w + px] / 255;
         if (p.invert) l = 1 - l;
         l = Math.max(0, Math.min(1, (l - 0.5) * (1 + p.contrast / 100) + 0.5 + p.brightness / 200));
-        a *= 1 - p.depth * (1 - l);
+        a = p.mode === 'subtract' ? Math.max(0, a - p.depth * (1 - l)) : a * (1 - p.depth * (1 - l));
       }
       out[y * main.w + x] = Math.round(Math.max(0, Math.min(1, a)) * 255);
     }

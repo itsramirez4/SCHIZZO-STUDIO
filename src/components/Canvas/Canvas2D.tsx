@@ -9,7 +9,7 @@ import { useCanvas } from '@/hooks/useCanvas';
 import { useHistory } from '@/hooks/useHistory';
 import { useRecentColorsStore } from '@/store/recentColorsStore';
 import * as layerService from '@/services/layer.service';
-import { strokeBrush } from '@/services/brush.service';
+import { newBrushStroke, strokeBrush } from '@/services/brush.service';
 import { StrokeSession, needsStrokeBuffer } from '@/services/strokeBuffer.service';
 import { buildLinePoints, snapAngle, taperRamp } from '@/services/lineTools.service';
 import { hitTestVector, newVectorId, objectBounds, translateObject } from '@/services/vectorLayer.service';
@@ -91,7 +91,7 @@ export default function Canvas2D() {
   // Krita-style engine brushes run as the matching tool: smudge → colour mixer, deform → liquify,
   // clone → clone stamp; everything below just sees that tool.
   const engine = pickedTool === 'brush' ? currentBrush.engine : undefined;
-  const currentTool: ToolType = engine ? (engine.kind === 'smudge' ? 'smudge' : engine.kind === 'deform' ? 'warp' : 'clone') : pickedTool;
+  const currentTool: ToolType = engine ? (engine.kind === 'smudge' ? 'smudge' : engine.kind === 'deform' ? 'warp' : engine.kind === 'fillPath' ? 'fillPath' : 'clone') : pickedTool;
   const { zoom, panX, panY, canvasRotation, viewFlippedH, setZoom, setPan, zoomBy, setIsDrawing } = useCanvas();
   const { historyVersion } = useHistory();
   const pushHistory = useAppStore((s) => s.pushHistory);
@@ -285,6 +285,9 @@ export default function Canvas2D() {
   const cloneSourceRef = useRef<Point | null>(null);
   const cloneOffsetRef = useRef<{ dx: number; dy: number } | null>(null);
   const cloneBaseRef = useRef<HTMLCanvasElement | null>(null);
+  /** Experiment (fill-the-stroke) brushes: the layer before the stroke and the points so far. */
+  const fillBaseRef = useRef<HTMLCanvasElement | null>(null);
+  const fillPtsRef = useRef<Point[]>([]);
   // Unlike `lastPointRef` (cleared on every pointer-up), this survives across separate clicks —
   // it's the anchor for Shift+click straight lines (Photoshop/Krita/CSP convention): click once
   // to lay down a point, then Shift+click elsewhere to stroke a straight line from that point to
@@ -947,7 +950,7 @@ export default function Canvas2D() {
     if (session) {
       strokeWithSymmetry((p) => {
         session.touch(p);
-        strokeBrush(session.ctx, p, session.stampBrush, primaryColor, pixel);
+        strokeBrush(session.ctx, p, session.stampBrush, primaryColor, pixel, secondaryColor);
       }, pts);
       session.flush(selection, layer.lockAlpha);
       return;
@@ -955,7 +958,7 @@ export default function Canvas2D() {
     const ctx = canvasEl.getContext('2d')!;
     withAlphaLock(ctx, layer.lockAlpha, () => {
       withClip(ctx, selection, () => {
-        strokeWithSymmetry((p) => strokeBrush(ctx, p, currentBrush, primaryColor, pixel), pts);
+        strokeWithSymmetry((p) => strokeBrush(ctx, p, currentBrush, primaryColor, pixel, secondaryColor), pts);
       });
     });
   }
@@ -967,6 +970,7 @@ export default function Canvas2D() {
     const canvasEl = getActiveCanvas(currentLayer);
     if (!canvasEl) return;
     if (Math.hypot(draft.b.x - draft.a.x, draft.b.y - draft.a.y) < 1) return;
+    newBrushStroke();
     const pts = buildLinePoints(draft.a, draft.b, draft.c, currentBrush) as Point[];
     strokeSessionRef.current = needsStrokeBuffer(currentBrush) ? new StrokeSession(canvasEl, currentBrush) : null;
     paintBrushSegment(canvasEl, pts, currentLayer);
@@ -993,7 +997,7 @@ export default function Canvas2D() {
   /** Smudge parameters: the tool's own panel, or the imported brush's when it is a smudge brush. */
   function smudgeParams() {
     const sm = useSmudgeStore.getState();
-    return engine?.kind === 'smudge' ? { size: currentBrush.size, strength: engine.strength, paintLoad: engine.paintLoad } : { size: sm.size, strength: sm.strength, paintLoad: sm.paintLoad };
+    return engine?.kind === 'smudge' ? { size: currentBrush.size, strength: engine.strength, paintLoad: engine.paintLoad, dulling: engine.dulling } : { size: sm.size, strength: sm.strength, paintLoad: sm.paintLoad };
   }
   function liquifyParams() {
     return engine?.kind === 'deform'
@@ -1001,7 +1005,7 @@ export default function Canvas2D() {
       : { radius: warpRadius, strength: warpStrength / 100, mode: warpMode };
   }
   function cloneOptions() {
-    return { size: currentBrush.size, hardness: currentBrush.hardness, opacity: currentBrush.opacity, spacing: currentBrush.spacing };
+    return { size: currentBrush.size, hardness: currentBrush.hardness, opacity: currentBrush.opacity, spacing: currentBrush.spacing, healing: engine?.kind === 'clone' && engine.healing };
   }
 
   function getPos(e: React.PointerEvent): Point | null {
@@ -1116,6 +1120,7 @@ export default function Canvas2D() {
           endDrawing();
           break;
         }
+        newBrushStroke();
         strokeDistRef.current = 0;
         strokePtsRef.current = [posP];
         strokeBaseRef.current = null;
@@ -1180,6 +1185,16 @@ export default function Canvas2D() {
         const sm = useSmudgeStore.getState();
         lastPointRef.current = pos;
         smudgeRef.current = beginSmudge(canvasEl, pos.x, pos.y, { ...smudgeParams(), color: primaryColor });
+        break;
+      }
+      case 'fillPath': {
+        const base = document.createElement('canvas');
+        base.width = canvasEl.width;
+        base.height = canvasEl.height;
+        base.getContext('2d')!.drawImage(canvasEl, 0, 0);
+        fillBaseRef.current = base;
+        fillPtsRef.current = [pos];
+        lastPointRef.current = pos;
         break;
       }
       case 'clone': {
@@ -1376,6 +1391,32 @@ export default function Canvas2D() {
         smudgeSegment(canvasEl, smudgeRef.current!, lastPointRef.current!, pos, { ...smudgeParams(), color: primaryColor });
       });
       lastPointRef.current = pos;
+    } else if (currentTool === 'fillPath' && fillBaseRef.current && engine?.kind === 'fillPath') {
+      // The whole shape traced so far is filled again on top of the untouched layer.
+      fillPtsRef.current.push(pos);
+      const pts = fillPtsRef.current;
+      const ctx = canvasEl.getContext('2d')!;
+      ctx.save();
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+      ctx.drawImage(fillBaseRef.current, 0, 0);
+      ctx.restore();
+      if (pts.length >= 3) {
+        withAlphaLock(ctx, currentLayer.lockAlpha, () => {
+          withClip(ctx, selection, () => {
+            ctx.save();
+            ctx.globalAlpha = currentBrush.opacity;
+            ctx.fillStyle = primaryColor;
+            ctx.beginPath();
+            pts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+            ctx.closePath();
+            ctx.fill(engine.winding ? 'nonzero' : 'evenodd');
+            ctx.restore();
+          });
+        });
+      }
+      lastPointRef.current = pos;
     } else if (currentTool === 'clone' && lastPointRef.current && cloneBaseRef.current && cloneOffsetRef.current) {
       const off = cloneOffsetRef.current;
       withClip(canvasEl.getContext('2d')!, selection, () => {
@@ -1480,6 +1521,11 @@ export default function Canvas2D() {
       smudgeRef.current = null;
       layerService.syncLinkedInstances(layers, currentLayer.id);
       pushHistory('Mezclador de color');
+    }
+    if (isDrawingRef.current && currentTool === 'fillPath' && currentLayer) {
+      fillBaseRef.current = null;
+      layerService.syncLinkedInstances(layers, currentLayer.id);
+      pushHistory('Relleno de trazo');
     }
     if (isDrawingRef.current && currentTool === 'clone' && currentLayer) {
       cloneBaseRef.current = null;
@@ -1759,7 +1805,7 @@ export default function Canvas2D() {
   if (!project) return null;
 
   const topLevelLayers = layers.filter((l) => !l.parent).reverse();
-  const brushCursorActive = !isSpacePanning && (currentTool === 'brush' || currentTool === 'line' || currentTool === 'curve' || currentTool === 'eraser' || currentTool === 'warp' || currentTool === 'smudge' || currentTool === 'clone');
+  const brushCursorActive = !isSpacePanning && (currentTool === 'brush' || currentTool === 'line' || currentTool === 'curve' || currentTool === 'eraser' || currentTool === 'warp' || currentTool === 'smudge' || currentTool === 'clone' || currentTool === 'fillPath');
   const brushCursorDiameter = currentTool === 'warp' ? liquifyParams().radius * 2 * zoom : currentTool === 'smudge' ? smudgeParams().size * zoom : currentBrush.size * zoom;
   const brushCursorSquare = currentTool === 'brush' && project.type === 'pixelart';
 
@@ -1815,7 +1861,7 @@ export default function Canvas2D() {
                 ? 'zoom-in'
                 : currentTool === 'transform' || currentTool === 'pen'
                   ? 'default'
-                  : currentTool === 'brush' || currentTool === 'line' || currentTool === 'curve' || currentTool === 'eraser' || currentTool === 'warp' || currentTool === 'smudge' || currentTool === 'clone'
+                  : currentTool === 'brush' || currentTool === 'line' || currentTool === 'curve' || currentTool === 'eraser' || currentTool === 'warp' || currentTool === 'smudge' || currentTool === 'clone' || currentTool === 'fillPath'
                     ? 'none' // the size-accurate BrushCursor ring replaces the native pointer here
                     : 'crosshair',
         }}

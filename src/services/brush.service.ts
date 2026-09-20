@@ -1,5 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import { Brush } from '@/types';
+import { hexToRgba, rgbaToHex, rgbaToHsv, hsvToRgba } from '@/utils/colorUtils';
 import presetsJson from '@/assets/brushes/presets.json';
 import { buildArtPresets } from './brushPresets.service';
 
@@ -47,6 +48,30 @@ interface Point {
 const textureAlphaCache = new Map<string, HTMLCanvasElement>();
 const texturePendingLoads = new Set<string>();
 const coloredTextureCache = new Map<string, HTMLCanvasElement>();
+
+/** Random numbers shared by every stamp of one stroke (colour dynamics that are not "per tip"). */
+let strokeRand = [0.5, 0.5, 0.5, 0.5];
+export function newBrushStroke() {
+  strokeRand = [Math.random(), Math.random(), Math.random(), Math.random()];
+}
+
+/** The stamp colour after Photoshop-style colour dynamics; quantised so the coloured-tip cache stays small. */
+function dynamicColor(brush: Brush, color: string, secondary?: string): string {
+  const cd = brush.colorDynamics;
+  if (!cd) return color;
+  const rnd = (i: number) => (cd.perTip ? Math.random() : strokeRand[i]);
+  let rgb = hexToRgba(color);
+  if (cd.fgBg > 0 && secondary) {
+    const t = rnd(0) * cd.fgBg;
+    const bg = hexToRgba(secondary);
+    rgb = { ...rgb, r: rgb.r + (bg.r - rgb.r) * t, g: rgb.g + (bg.g - rgb.g) * t, b: rgb.b + (bg.b - rgb.b) * t };
+  }
+  const hsv = rgbaToHsv(rgb);
+  const h = hsv.h + (rnd(1) * 2 - 1) * cd.hue * 180;
+  const s = Math.max(0, Math.min(100, hsv.s + (rnd(2) * 2 - 1) * cd.saturation * 100 + cd.purity * 100));
+  const v = Math.max(0, Math.min(100, hsv.v + (rnd(3) * 2 - 1) * cd.brightness * 100));
+  return rgbaToHex(hsvToRgba(Math.round(h / 4) * 4, Math.round(s / 3) * 3, Math.round(v / 3) * 3));
+}
 
 /** Decodes a texture image into a white-RGB / luminance-as-alpha canvas — brighter areas of
  * the source image paint more opaquely, darker areas less, matching how a real chalk/paper
@@ -107,6 +132,7 @@ function getColoredTextureStamp(dataUrl: string, color: string): HTMLCanvasEleme
     cctx.fillStyle = color;
     cctx.fillRect(0, 0, colored.width, colored.height);
     coloredTextureCache.set(cacheKey, colored);
+    if (coloredTextureCache.size > 64) coloredTextureCache.delete(coloredTextureCache.keys().next().value as string);
   }
   return colored;
 }
@@ -160,8 +186,10 @@ export function applyBrushStamp(
   pressure = 1,
   direction = 0,
   tilt = 0,
-  sizeScale = 1
+  sizeScale = 1,
+  secondary?: string
 ) {
+  color = dynamicColor(brush, color, secondary);
   const jitterScale = 1 + ((Math.random() * 2 - 1) * brush.sizeJitter) / 100;
   const sizePressureScale = brush.dynamics?.sizeToPressure ? Math.max(0.05, evalCurve(brush.dynamics.sizeCurve, pressure)) : 1;
   const tiltScale = brush.dynamics?.tiltToSize ? 1 + Math.max(0, Math.min(1, tilt)) * 1.6 : 1;
@@ -252,17 +280,18 @@ export function strokeBrush(
   points: Point[],
   brush: Brush,
   color: string,
-  square = false
+  square = false,
+  secondary?: string
 ) {
   if (points.length === 0) return;
   if (points.length === 1) {
-    applyBrushStamp(ctx, points[0].x, points[0].y, brush, color, square, points[0].pressure ?? 1, 0, points[0].tilt ?? 0, points[0].scale ?? 1);
+    applyBrushStamp(ctx, points[0].x, points[0].y, brush, color, square, points[0].pressure ?? 1, 0, points[0].tilt ?? 0, points[0].scale ?? 1, secondary);
     return;
   }
 
   const step = Math.max(1, brush.size * Math.max(0.02, brush.spacing));
   let prev = points[0];
-  applyBrushStamp(ctx, prev.x, prev.y, brush, color, square, prev.pressure ?? 1, 0, 0, prev.scale ?? 1);
+  applyBrushStamp(ctx, prev.x, prev.y, brush, color, square, prev.pressure ?? 1, 0, 0, prev.scale ?? 1, secondary);
 
   for (let i = 1; i < points.length; i++) {
     const curr = points[i];
@@ -280,7 +309,7 @@ export function strokeBrush(
       const t = s / steps;
       const pressure = prevPressure + (currPressure - prevPressure) * t;
       const scale = (prev.scale ?? 1) + ((curr.scale ?? 1) - (prev.scale ?? 1)) * t;
-      applyBrushStamp(ctx, prev.x + dx * t, prev.y + dy * t, brush, color, square, pressure, direction, prevTilt + (currTilt - prevTilt) * t, scale);
+      applyBrushStamp(ctx, prev.x + dx * t, prev.y + dy * t, brush, color, square, pressure, direction, prevTilt + (currTilt - prevTilt) * t, scale, secondary);
     }
     prev = curr;
   }

@@ -31,6 +31,42 @@ export interface CloneOptions {
   hardness: number;
   opacity: number;
   spacing: number;
+  /** Healing: shift the copied patch so its average lightness matches what is already there. */
+  healing?: boolean;
+}
+
+/** Brings the patch's average lightness to that of the picture under it. */
+function heal(patch: HTMLCanvasElement, base: HTMLCanvasElement, dx: number, dy: number, d: number) {
+  const pctx = patch.getContext('2d', { willReadFrequently: true })!;
+  const src = pctx.getImageData(0, 0, d, d);
+  const under = document.createElement('canvas');
+  under.width = under.height = d;
+  const uctx = under.getContext('2d', { willReadFrequently: true })!;
+  uctx.drawImage(base, dx, dy, d, d, 0, 0, d, d);
+  const dst = uctx.getImageData(0, 0, d, d).data;
+  let wSum = 0;
+  const sAvg = [0, 0, 0];
+  const dAvg = [0, 0, 0];
+  for (let i = 0; i < d * d; i++) {
+    const w = (src.data[i * 4 + 3] / 255) * (dst[i * 4 + 3] / 255);
+    if (w <= 0) continue;
+    wSum += w;
+    for (let c = 0; c < 3; c++) {
+      sAvg[c] += src.data[i * 4 + c] * w;
+      dAvg[c] += dst[i * 4 + c] * w;
+    }
+  }
+  if (wSum < 1) return;
+  // Only the lightness is matched (like Krita): shifting each colour channel separately turns a patch
+  // with a different colour cast into a different hue instead of just a different brightness.
+  const luma = (a: number[]) => (0.299 * a[0] + 0.587 * a[1] + 0.114 * a[2]) / wSum;
+  const dl = luma(dAvg) - luma(sAvg);
+  const shift = [dl, dl, dl];
+  for (let i = 0; i < d * d; i++) {
+    if (!src.data[i * 4 + 3]) continue;
+    for (let c = 0; c < 3; c++) src.data[i * 4 + c] = Math.max(0, Math.min(255, src.data[i * 4 + c] + shift[c]));
+  }
+  pctx.putImageData(src, 0, 0);
 }
 
 /** One stamp centred on (x, y), taking its pixels from (x + dx, y + dy) of `base`. */
@@ -42,6 +78,7 @@ export function cloneStamp(layer: HTMLCanvasElement, base: HTMLCanvasElement, x:
   tctx.drawImage(base, x + dx - d / 2, y + dy - d / 2, d, d, 0, 0, d, d);
   tctx.globalCompositeOperation = 'destination-in';
   tctx.drawImage(softMask(d, o.hardness), 0, 0);
+  if (o.healing) heal(tmp, base, x - d / 2, y - d / 2, d);
   const ctx = layer.getContext('2d')!;
   ctx.save();
   ctx.globalAlpha = o.opacity;

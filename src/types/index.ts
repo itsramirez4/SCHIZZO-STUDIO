@@ -36,7 +36,8 @@ export type ToolType =
   | 'line'
   | 'curve'
   | 'vectorSelect'
-  | 'clone';
+  | 'clone'
+  | 'fillPath';
 
 export interface RGBA {
   r: number;

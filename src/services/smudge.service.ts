@@ -17,6 +17,8 @@ export interface SmudgeOptions {
   /** Fraction of the primary colour mixed into the carried paint on every step (0 = pure smudge). */
   paintLoad: number;
   color: string;
+  /** Krita "dulling": the brush carries the AVERAGE colour under it, so the colours melt together instead of being dragged. */
+  dulling?: boolean;
 }
 
 function softStamp(size: number): HTMLCanvasElement {
@@ -46,12 +48,29 @@ function getStamp(size: number) {
 }
 
 /** Copies the layer region under the brush into the carried buffer. */
+/** Average colour of the square under the brush (drawn down to one pixel). */
+function averageUnder(layer: HTMLCanvasElement, x: number, y: number, s: number): string {
+  const one = document.createElement('canvas');
+  one.width = one.height = 1;
+  const octx = one.getContext('2d', { willReadFrequently: true })!;
+  octx.imageSmoothingEnabled = true;
+  octx.imageSmoothingQuality = 'high';
+  octx.drawImage(layer, x - s / 2, y - s / 2, s, s, 0, 0, 1, 1);
+  const d = octx.getImageData(0, 0, 1, 1).data;
+  return `rgba(${d[0]},${d[1]},${d[2]},${d[3] / 255})`;
+}
+
 function pickUp(layer: HTMLCanvasElement, state: SmudgeState, x: number, y: number, amount: number, opts: SmudgeOptions) {
   const s = state.size;
   const ctx = state.carried.getContext('2d')!;
   ctx.save();
   ctx.globalAlpha = amount;
-  ctx.drawImage(layer, x - s / 2, y - s / 2, s, s, 0, 0, s, s);
+  if (opts.dulling) {
+    ctx.fillStyle = averageUnder(layer, x, y, s);
+    ctx.fillRect(0, 0, s, s);
+  } else {
+    ctx.drawImage(layer, x - s / 2, y - s / 2, s, s, 0, 0, s, s);
+  }
   if (opts.paintLoad > 0) {
     ctx.globalAlpha = opts.paintLoad;
     const { r, g, b } = hexToRgba(opts.color);

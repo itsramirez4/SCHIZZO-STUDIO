@@ -1,6 +1,7 @@
 import type { Brush } from '@/types';
 import { createBrush, preloadBrushTexture } from './brush.service';
 import { bakeTipAlpha } from './tipBake.service';
+import { generateSoftTip } from './tipShape.service';
 
 /**
  * Importers for brush formats other than modern .abr:
@@ -59,6 +60,20 @@ export function alphaToTipDataUrl(values: Uint8Array | Uint8ClampedArray, w: num
     return { url: small.toDataURL('image/png'), inverted };
   }
   return { url: c.toDataURL('image/png'), inverted };
+}
+
+/** Krita stores a texture pattern inside the preset as base64 (of a base64 PNG); returns its grey values. */
+async function decodeKritaPattern(stored: string): Promise<{ values: Uint8Array; w: number; h: number } | null> {
+  try {
+    let text = atob(stored.replace(/\s+/g, ''));
+    if (/^[A-Za-z0-9+/=\s]+$/.test(text) && text.startsWith('iVBOR')) text = atob(text);
+    const bytes = Uint8Array.from(text, (c) => c.charCodeAt(0));
+    if (bytes[0] !== 0x89 || bytes[1] !== 0x50) return null;
+    const g = await imageToGray(new Blob([bytes], { type: 'image/png' }));
+    return { values: new Uint8Array(g.values), w: g.w, h: g.h };
+  } catch {
+    return null;
+  }
 }
 
 function makeBrush(name: string, tipUrl: string | undefined, o: Partial<Brush>, category: string): Brush {
@@ -584,8 +599,8 @@ async function kritaPresetToBrush(xml: string, fallbackName: string, loadTip?: K
       // foreground colour (colour rate under pressure) paints while it smudges.
       const rate = numP('SmudgeRateValue') ?? 1;
       const paints = bool('PressureColorRate');
-      const b = makeBrush(name, undefined, { ...base, engine: { kind: 'smudge', strength: Math.min(1, Math.max(0.1, rate)), paintLoad: paints ? 0.2 : 0 } }, 'Importados (Krita)');
-      return { brush: b, notes: ['difuminado de Krita: se aproxima con el mezclador de color de la app (no hay modo «embotar» ni fusión de capas)'] };
+      const b = makeBrush(name, undefined, { ...base, engine: { kind: 'smudge', strength: Math.min(1, Math.max(0.1, rate)), paintLoad: paints ? 0.2 : 0, dulling: numP('SmudgeRateMode') === 1 } }, 'Importados (Krita)');
+      return { brush: b, notes: ['difuminado de Krita: se aproxima con el mezclador de color de la app' + (numP('SmudgeRateMode') === 1 ? ' (modo «embotar»: pinta con el color medio de la zona)' : '')] };
     }
     if (engine === 'deformbrush') {
       const ACTIONS: Record<number, [NonNullable<Extract<Brush['engine'], { kind: 'deform' }>['mode']>, string?]> = {
@@ -597,8 +612,14 @@ async function kritaPresetToBrush(xml: string, fallbackName: string, loadTip?: K
       return { brush: b, notes: note ? [note] : [] };
     }
     if (engine === 'duplicate') {
-      const b = makeBrush(name, undefined, { ...base, engine: { kind: 'clone' } }, 'Importados (Krita)');
-      return { brush: b, notes: ['clonado: con el pincel elegido, Alt+clic fija el punto de origen y se pinta con lo que hay ahí (sin modo de corrección «healing»)'] };
+      const b = makeBrush(name, undefined, { ...base, engine: { kind: 'clone', healing: bool('Duplicateop/Healing') } }, 'Importados (Krita)');
+      return { brush: b, notes: ['clonado: con el pincel elegido, Alt+clic fija el punto de origen y se pinta con lo que hay ahí' + (bool('Duplicateop/Healing') ? ' (con corrección «healing»)' : '')] };
+    }
+    if (engine === 'experimentbrush') {
+      // Krita's experiment brush fills the shape traced by the stroke; its speed, displacement and
+      // smoothing options are not reproduced.
+      const b = makeBrush(name, undefined, { ...base, engine: { kind: 'fillPath', winding: bool('Experiment/windingFill') } }, 'Importados (Krita)');
+      return { brush: b, notes: ['motor «experiment»: se importa como relleno del contorno del trazo (sin velocidad, desplazamiento ni suavizado)'] };
     }
     return { brush: null, skipped: `motor «${engine}»`, notes: [] };
   }
@@ -658,6 +679,40 @@ async function kritaPresetToBrush(xml: string, fallbackName: string, loadTip?: K
   const fuzzySize = /id="fuzzy"/.test(param('SizeSensor') ?? '');
   const flow = numP('FlowValue') ?? 1;
   const opacity = numP('OpacityValue') ?? 1;
+
+  // Texture ("paper grain"): Krita multiplies (or subtracts) a tiled pattern over the stroke. Here it is
+  // folded into the tip, like the Photoshop paper texture — the pattern travels inside the preset.
+  const storedPattern = param('Texture/Pattern/Pattern');
+  if (bool('Texture/Pattern/Enabled') && storedPattern) {
+    const pat = await decodeKritaPattern(storedPattern);
+    if (pat) {
+      let main: { alpha: Uint8Array; w: number; h: number };
+      if (tipUrl) {
+        const g = await imageToGray(await (await fetch(tipUrl)).blob());
+        main = { alpha: new Uint8Array(g.values), w: g.w, h: g.h };
+      } else {
+        main = generateSoftTip(Math.min(1, Math.max(0, hardness)), 1, 0);
+      }
+      const lo = numP('Texture/Pattern/CutoffLeft') ?? 0;
+      const hi = numP('Texture/Pattern/CutoffRight') ?? 255;
+      if (lo > 0 || hi < 255) {
+        for (let i = 0; i < pat.values.length; i++) pat.values[i] = Math.max(0, Math.min(255, Math.round(((pat.values[i] - lo) / Math.max(1, hi - lo)) * 255)));
+      }
+      const baked = bakeTipAlpha(main, {
+        size: Math.min(300, Math.max(1, Math.round(size))),
+        pattern: {
+          data: pat.values, w: pat.w, h: pat.h,
+          scale: numP('Texture/Pattern/Scale') ?? 1,
+          depth: Math.min(1, Math.max(0, numP('Texture/Pattern/Strength') ?? 1)),
+          invert: bool('Texture/Pattern/Invert'), contrast: 0, brightness: 0,
+          mode: numP('Texture/Pattern/TexturingMode') === 1 ? 'subtract' : 'multiply',
+        },
+      });
+      tipUrl = alphaToTipDataUrl(baked.alpha, baked.w, baked.h, false).url;
+      if (frameUrls) frameUrls = undefined; // an animated tip loses its extra frames under a texture
+      notes.push('textura de Krita integrada en la punta (aproximada: se repite con la punta y no se desplaza con el trazo)');
+    }
+  }
   const b = makeBrush(name, tipUrl, {
     size: Math.min(300, Math.max(1, Math.round(size))),
     spacing: spacing !== undefined ? Math.min(1, Math.max(0.02, spacing)) : undefined,
@@ -704,7 +759,7 @@ export async function importKritaPreset(buffer: ArrayBuffer, fallbackName: strin
   const r = await kritaPresetToBrush(xml, fallbackName, loader);
   if (!r.brush) throw new Error(`Este preset de Krita usa ${r.skipped}, que no tiene equivalente aquí`);
   if (r.notes.some((n) => n.startsWith('la punta «'))) r.notes.push('selecciona junto al .kpp los ficheros de punta (.gbr, .gih, .png) que usa para importarla con su forma');
-  r.notes.push('las texturas y otros ajustes avanzados de Krita no se importan');
+  r.notes.push('otros ajustes avanzados de Krita (dinámicas de color, escala del patrón por presión…) no se importan');
   return { brush: r.brush, notes: r.notes };
 }
 
@@ -744,7 +799,7 @@ export async function importKritaBundle(buffer: ArrayBuffer): Promise<BundleResu
     }
     await new Promise((res) => setTimeout(res, 0)); // keep the UI responsive across dozens of presets
   }
-  noteSet.add('las texturas y otros ajustes avanzados de los presets de Krita no se importan');
+  noteSet.add('otros ajustes avanzados de los presets de Krita (dinámicas de color, escala del patrón por presión…) no se importan');
   return { brushes, skipped, notes: [...noteSet] };
 }
 

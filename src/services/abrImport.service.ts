@@ -31,6 +31,7 @@ export interface AbrBrushFields {
   angle: number;
   noise: boolean;
   wetEdges: boolean;
+  colorDynamics?: NonNullable<Brush['colorDynamics']>;
   scatter: number;
   angleJitter: number;
   sizeJitter: number;
@@ -46,6 +47,21 @@ export interface AbrBrushFields {
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 const isControl = (d: DynamicsLike | undefined, ...names: string[]) => !!d?.control && names.includes(d.control);
 
+/** Photoshop's Color Dynamics group → ours (undefined when every jitter is zero). */
+function mapColorDynamics(cd: any): Brush['colorDynamics'] {
+  if (!cd) return undefined;
+  const f = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(0, Math.min(1, Math.abs(v))) : 0);
+  const out = {
+    fgBg: f(cd.foregroundBackground?.jitter),
+    hue: f(cd.hue),
+    saturation: f(cd.saturation),
+    brightness: f(cd.brightness),
+    purity: typeof cd.purity === 'number' && Number.isFinite(cd.purity) ? Math.max(-1, Math.min(1, cd.purity)) : 0,
+    perTip: !!cd.perTip,
+  };
+  return out.fgBg || out.hue || out.saturation || out.brightness || out.purity ? out : undefined;
+}
+
 /** Pure mapping from one parsed ABR brush to our fields (testable without a canvas). */
 export function mapAbrBrush(b: any): AbrBrushFields {
   const shape = b.shape ?? {};
@@ -59,7 +75,6 @@ export function mapAbrBrush(b: any): AbrBrushFields {
     if (b.texture) lost.push('textura de papel');
     if (b.dualBrush) lost.push('pincel dual');
   }
-  if (b.colorDynamics) lost.push('dinámica de color');
 
   const flow = (tool.flow ?? 100) / 100;
   const opacity = (tool.opacity ?? 100) / 100;
@@ -83,6 +98,7 @@ export function mapAbrBrush(b: any): AbrBrushFields {
     angle: shape.angle ?? 0,
     noise: !!b.noise,
     wetEdges: !!b.wetEdges,
+    colorDynamics: mapColorDynamics(b.colorDynamics),
     scatter: b.scatter ? clamp(scatterJitter > 0 ? scatterJitter : 0.15 + scatterCount * 0.05, 0, 1) : 0,
     angleJitter: clamp((sd?.angleDynamics?.jitter ?? 0) * 360, 0, 360),
     sizeJitter: clamp((sizeDyn?.jitter ?? 0) * 100, 0, 100),
@@ -286,6 +302,7 @@ export async function importAbr(buffer: ArrayBuffer): Promise<AbrImportResult> {
         opacity: f.opacity,
         flow: f.flow,
         wetEdges: f.wetEdges ? 0.7 : undefined,
+        colorDynamics: f.colorDynamics,
         scatter: f.scatter,
         angleJitter: f.angleJitter,
         sizeJitter: f.sizeJitter,

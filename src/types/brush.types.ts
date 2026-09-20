@@ -11,10 +11,24 @@ export interface BrushDynamics {
 }
 
 /** A brush that does not lay down paint but runs one of the editing tools (Krita's non-paint engines). */
+/** Photoshop "Color Dynamics": how much each stamp's colour varies (all 0–1 except purity, −1…1). */
+export interface ColorDynamics {
+  /** Random blend between the foreground and background colour. */
+  fgBg: number;
+  hue: number;
+  saturation: number;
+  brightness: number;
+  /** Global saturation shift: −1 = grey, +1 = fully saturated. */
+  purity: number;
+  /** New random colour for every stamp instead of once per stroke. */
+  perTip: boolean;
+}
+
 export type BrushEngine =
-  | { kind: 'smudge'; strength: number; paintLoad: number }
+  | { kind: 'smudge'; strength: number; paintLoad: number; /** Krita "dulling": paint with the average colour under the brush instead of dragging it. */ dulling?: boolean }
   | { kind: 'deform'; mode: 'push' | 'twirl' | 'pinch' | 'expand' | 'turbulence' | 'smooth'; amount: number }
-  | { kind: 'clone' };
+  | { kind: 'fillPath'; /** Fill rule where the path crosses itself. */ winding: boolean }
+  | { kind: 'clone'; /** Match the copied patch to the brightness and colour around it. */ healing?: boolean };
 
 export interface Brush {
   id: string;
@@ -47,6 +61,7 @@ export interface Brush {
   /** How much paint each stamp lays down (0–1). When set, `opacity` becomes a ceiling for the whole
    * stroke (Photoshop-style); when absent the brush keeps the classic per-stamp opacity. */
   flow?: number;
+  colorDynamics?: ColorDynamics;
   /** Set for smudge / deform / clone brushes: the brush drives that tool instead of painting. */
   engine?: BrushEngine;
   /** Watercolour-style edges, 0–1: paint pools at the rim of the stroke and is thinner in the middle. */
