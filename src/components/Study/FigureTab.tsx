@@ -42,7 +42,9 @@ export default function FigureTab() {
       if (r.landmarks) {
         setLandmarks(r.landmarks);
         setResult(null);
-        toast.success(`Puntos colocados (confianza ${Math.round(r.confidence * 100)} %). Revísalos y ajusta la coronilla y la barbilla: son una estimación.`, { duration: 6000 });
+        const how = r.method ? ` Se encontró convirtiendo el dibujo (${r.method}).` : '';
+        if (r.uncertain) toast(`Lectura aproximada (confianza ${Math.round(r.confidence * 100)} %).${how} Los puntos son un punto de partida: corrígelos a mano antes de analizar.`, { icon: '⚠️', duration: 9000 });
+        else toast.success(`Puntos colocados (confianza ${Math.round(r.confidence * 100)} %).${how} Revísalos y ajusta la coronilla y la barbilla: son una estimación.`, { duration: 7000 });
       } else {
         toast(r.reason ?? 'No se reconoció una figura.', { icon: 'ℹ️', duration: 8000 });
         if (!landmarks) placeDefault(proj.width, proj.height);

@@ -1,13 +1,13 @@
 import { isElectron } from '@/utils/fileUtils';
 import type { Landmarks } from './figureAnalysis.service';
+import { buildLineArtCandidates } from './poseLineArt.service';
 
 /**
  * Optional automatic placement of the figure landmarks with MoveNet (TensorFlow.js).
  *
- * IMPORTANT LIMIT: MoveNet is trained on photographs. It recognises realistic, shaded or painted
- * figures (and renders of the 3D mannequin) but NOT line-art sketches or flat cartoon shapes —
- * tested: full confidence on a shaded mannequin, nothing at all on a stick figure. So the result
- * carries a confidence score and callers must fall back to manual placement when it is low.
+ * MoveNet is trained on photographs, so line art is first converted into photo-like versions (see
+ * poseLineArt.service) and the most confident reading wins. The result still carries a confidence
+ * score and callers must fall back to manual placement when it is low.
  * The 12 MB model is downloaded once by the main process and cached on disk (works offline after).
  */
 
@@ -16,6 +16,10 @@ export interface DetectionResult {
   /** Mean confidence (0–1) of the 12 body joints. */
   confidence: number;
   reason?: string;
+  /** How the figure was found when the drawing had to be converted first (e.g. «silueta sombreada»). */
+  method?: string;
+  /** True when the reading is shaky: the points are a starting guess to correct, not a measurement. */
+  uncertain?: boolean;
 }
 
 let detectorPromise: Promise<any> | null = null;
@@ -65,17 +69,45 @@ export async function detectLandmarks(source: HTMLCanvasElement, background = '#
   ctx.fillRect(0, 0, c.width, c.height);
   ctx.drawImage(source, 0, 0);
 
-  const poses = await detector.estimatePoses(c, { flipHorizontal: false });
-  const kps: { name: string; x: number; y: number; score?: number }[] = poses[0]?.keypoints ?? [];
+  type Kp = { name: string; x: number; y: number; score?: number };
+  const BODY = ['left_shoulder', 'right_shoulder', 'left_elbow', 'right_elbow', 'left_wrist', 'right_wrist', 'left_hip', 'right_hip', 'left_knee', 'right_knee', 'left_ankle', 'right_ankle'];
+  /** Runs the detector on one picture; `map` sends its keypoints back to source-canvas pixels. */
+  const run = async (img: HTMLCanvasElement, map: (x: number, y: number) => { x: number; y: number }) => {
+    detector.reset?.(); // MoveNet tracks between frames; these are unrelated pictures
+    const poses = await detector.estimatePoses(img, { flipHorizontal: false });
+    const kps: Kp[] = (poses[0]?.keypoints ?? []).map((k: Kp) => ({ ...k, ...map(k.x, k.y) }));
+    const scores = BODY.map((n) => kps.find((k) => k.name === n)?.score ?? 0);
+    const confidence = scores.reduce((a, b) => a + b, 0) / scores.length;
+    const min = Math.min(...scores);
+    return { kps, confidence, ok: confidence >= 0.35 && min >= 0.15, loose: confidence >= 0.3 && min >= 0.05 };
+  };
+
+  let best = await run(c, (x, y) => ({ x, y }));
+  let method: string | undefined;
+  if (!best.ok) {
+    // Line art: try photo-like versions of the drawing (cropped to the figure, outline filled and
+    // shaded, lines thickened) and keep the most confident reading.
+    const cands = buildLineArtCandidates(c);
+    for (const cand of cands ?? []) {
+      const k = cand.crop.size / cand.side;
+      const r = await run(cand.canvas, (x, y) => ({ x: cand.crop.x + x * k, y: cand.crop.y + y * k }));
+      if (r.confidence > best.confidence || (r.ok && !best.ok)) {
+        best = r;
+        method = cand.name;
+      }
+      if (r.ok && r.confidence > 0.55) break; // good enough, no need to try the rest
+    }
+  }
+  const { kps, confidence } = best;
   const get = (n: string) => kps.find((k) => k.name === n);
-  const body = ['left_shoulder', 'right_shoulder', 'left_elbow', 'right_elbow', 'left_wrist', 'right_wrist', 'left_hip', 'right_hip', 'left_knee', 'right_knee', 'left_ankle', 'right_ankle'];
-  const scores = body.map((n) => get(n)?.score ?? 0);
-  const confidence = scores.reduce((a, b) => a + b, 0) / scores.length;
-  if (confidence < 0.35 || Math.min(...scores) < 0.15) {
+  // A converted drawing rarely reads as cleanly as a photo: a shaky but plausible reading is still
+  // worth showing (flagged, for the artist to correct) — better than placing 14 points from scratch.
+  const usable = best.ok || (!!method && best.loose);
+  if (!usable) {
     return {
       landmarks: null,
       confidence,
-      reason: 'No he reconocido una figura humana con seguridad. Este detector funciona con figuras realistas, sombreadas o pintadas, pero no con bocetos de línea ni formas planas: coloca los puntos a mano.',
+      reason: 'No he reconocido una figura humana con seguridad, ni siquiera convirtiendo el dibujo a una versión más parecida a una foto. Suele fallar con bocetos muy simples, figuras incompletas o poses raras: coloca los puntos a mano.',
     };
   }
   const p = (n: string) => ({ x: get(n)!.x, y: get(n)!.y });
@@ -108,6 +140,8 @@ export async function detectLandmarks(source: HTMLCanvasElement, background = '#
 
   return {
     confidence,
+    method,
+    uncertain: !best.ok,
     landmarks: {
       headTop, chin,
       shoulderL: p('left_shoulder'), shoulderR: p('right_shoulder'),
