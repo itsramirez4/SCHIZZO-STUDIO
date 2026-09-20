@@ -4,7 +4,7 @@ import { useUIStore } from '@/store/uiStore';
 import { useAppStore } from '@/store/appStore';
 import * as exportService from '@/services/export.service';
 
-type Format = 'png' | 'jpg' | 'webp' | 'avif' | 'bmp' | 'tiff' | 'svg' | 'psd';
+type Format = 'png' | 'jpg' | 'webp' | 'avif' | 'bmp' | 'tiff' | 'svg' | 'psd' | 'pdf';
 
 const FORMAT_INFO: Record<Format, { label: string; lossy: boolean; note?: string }> = {
   png: { label: 'PNG', lossy: false },
@@ -14,7 +14,8 @@ const FORMAT_INFO: Record<Format, { label: string; lossy: boolean; note?: string
   bmp: { label: 'BMP', lossy: false, note: 'Sin compresión — pensado para compatibilidad con software legacy.' },
   tiff: { label: 'TIFF', lossy: false, note: 'Sin compresión, con canal alfa — para impresión profesional.' },
   psd: { label: 'PSD', lossy: false, note: 'Con capas (nombre, opacidad, visibilidad y modo de fusión) para abrir en Photoshop, Krita o Clip Studio. No incluye máscaras, ajustes ni estilos de capa.' },
-  svg: { label: 'SVG', lossy: false, note: 'La imagen aplanada envuelta en un SVG — no es vectorial editable, esta app trabaja en píxeles.' },
+  pdf: { label: 'PDF', lossy: true, note: 'Una página con el tamaño físico según los DPI del proyecto (para imprimir o enviar). Con «sin pérdida» el archivo pesa más.' },
+  svg: { label: 'SVG', lossy: false },
 };
 
 export default function ExportDialog() {
@@ -24,6 +25,11 @@ export default function ExportDialog() {
   const [format, setFormat] = useState<Format>('png');
   const [quality, setQuality] = useState(92);
   const [exporting, setExporting] = useState(false);
+  const [pdfLossless, setPdfLossless] = useState(false);
+  const [svgVector, setSvgVector] = useState(true);
+  const [svgColors, setSvgColors] = useState(12);
+  const [svgDetail, setSvgDetail] = useState(1);
+  const [svgSmooth, setSvgSmooth] = useState(true);
 
   if (!show || !project) return null;
 
@@ -51,10 +57,15 @@ export default function ExportDialog() {
           result = await exportService.exportTIFF(project!);
           break;
         case 'svg':
-          result = await exportService.exportSVG(project!);
+          result = svgVector
+            ? await exportService.exportVectorSVG(project!, { colors: svgColors, tolerance: svgDetail, minArea: 6, smooth: svgSmooth })
+            : await exportService.exportSVG(project!);
           break;
         case 'psd':
           result = await exportService.exportPSD(project!);
+          break;
+        case 'pdf':
+          result = await exportService.exportPDF(project!, { lossless: pdfLossless, quality: quality / 100 });
           break;
       }
       if (!result.canceled) {
@@ -90,7 +101,39 @@ export default function ExportDialog() {
 
         {info.note && <p className="text-[11px] text-textDim mb-3">{info.note}</p>}
 
-        {info.lossy && (
+        {format === 'svg' && (
+          <div className="space-y-2 mb-3">
+            <label className="flex items-center gap-2 text-xs">
+              <input type="checkbox" checked={svgVector} onChange={(e) => setSvgVector(e.target.checked)} />
+              Vectorizar (formas editables, una capa SVG por capa)
+            </label>
+            {svgVector ? (
+              <>
+                <label className="block text-[11px] text-textDim">Colores por capa: {svgColors}
+                  <input type="range" min={2} max={32} value={svgColors} onChange={(e) => setSvgColors(Number(e.target.value))} className="w-full" />
+                </label>
+                <label className="block text-[11px] text-textDim">Detalle: {svgDetail <= 0.6 ? 'alto' : svgDetail <= 1.6 ? 'medio' : 'bajo (menos nodos)'}
+                  <input type="range" min={0.3} max={3} step={0.1} value={svgDetail} onChange={(e) => setSvgDetail(Number(e.target.value))} className="w-full" />
+                </label>
+                <label className="flex items-center gap-2 text-[11px] text-textDim">
+                  <input type="checkbox" checked={svgSmooth} onChange={(e) => setSvgSmooth(e.target.checked)} /> Suavizar contornos con curvas
+                </label>
+                <p className="text-[10px] text-textDim">Es un trazado automático: los degradados pasan a bandas de color plano, las transparencias parciales se vuelven opacas (la opacidad de cada capa sí se conserva) y la textura fina se pierde.</p>
+              </>
+            ) : (
+              <p className="text-[10px] text-textDim">La imagen aplanada dentro de un SVG: válido en cualquier sitio, pero no son formas editables.</p>
+            )}
+          </div>
+        )}
+
+        {format === 'pdf' && (
+          <label className="flex items-center gap-2 text-xs mb-3">
+            <input type="checkbox" checked={pdfLossless} onChange={(e) => setPdfLossless(e.target.checked)} />
+            Sin pérdida (más pesado)
+          </label>
+        )}
+
+        {info.lossy && !(format === 'pdf' && pdfLossless) && (
           <div className="mb-4">
             <div className="flex justify-between text-xs text-textDim mb-1">
               <span>Calidad</span>
@@ -101,7 +144,7 @@ export default function ExportDialog() {
         )}
 
         <p className="text-xs text-textDim mb-4">
-          {project.width} × {project.height}px
+          {project.width} × {project.height}px{format === 'pdf' ? ` · página de ${((project.width / (project.dpi || 72)) * 2.54).toFixed(1)} × ${((project.height / (project.dpi || 72)) * 2.54).toFixed(1)} cm a ${project.dpi || 72} DPI` : ''}
         </p>
 
         <div className="flex justify-end gap-2">

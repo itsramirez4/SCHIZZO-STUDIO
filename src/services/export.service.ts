@@ -1,6 +1,8 @@
 import { Project } from '@/types';
 import { flattenLayers, getLayerCanvas, renderFillLayer } from './layer.service';
 import { encodePsd, PsdLayerInput } from './psd.service';
+import { encodePdf } from './pdf.service';
+import { layersToSvg, SvgLayerInput, VectorizeOptions } from './vectorExport.service';
 import { encodeBmp } from './bmp.service';
 import { encodeTiff } from './tiff.service';
 import { canvasToDataUrl } from '@/utils/canvasUtils';
@@ -95,6 +97,24 @@ export async function exportTIFF(project: Project): Promise<{ canceled: boolean;
   return { canceled: false };
 }
 
+export async function exportPDF(project: Project, opts: { lossless: boolean; quality: number }): Promise<{ canceled: boolean; filePath?: string }> {
+  const canvas = flattenLayers(project.layers, project.width, project.height);
+  const bytes = await encodePdf(canvas, {
+    dpi: project.dpi || 72,
+    mode: opts.lossless ? 'lossless' : 'jpeg',
+    quality: opts.quality,
+    title: project.name,
+    background: project.settings.transparentBg ? '#ffffff' : (project.settings.backgroundColor ?? '#ffffff'),
+  });
+  const dataUrl = `data:application/pdf;base64,${uint8ToBase64(bytes)}`;
+  const filename = sanitizeFilename(project.name);
+  if (isElectron()) {
+    return window.electronAPI.exportImage(dataUrl, 'pdf', filename);
+  }
+  downloadDataUrl(dataUrl, `${filename}.pdf`);
+  return { canceled: false };
+}
+
 /**
  * Layered PSD: raster, text and fill layers become PSD layers (name, position, opacity,
  * visibility, blend mode). Groups are flattened into the list — a layer hidden by its group is
@@ -140,11 +160,41 @@ export async function exportPSD(project: Project): Promise<{ canceled: boolean; 
 }
 
 /**
- * Not a real vector export — this app has no persistent shape/path data to export (the pen
- * tool rasterizes to pixels the moment you commit a stroke), so an honest "SVG export" here
- * is the flattened PNG embedded in an <svg><image/></svg> wrapper: a valid SVG file, openable
- * and placeable anywhere SVGs are accepted, but not shape-editable the way a true vector
- * export would be.
+ * True vector SVG: every raster/text/fill layer is traced into flat-colour shapes (holes
+ * included) and written as its own <g>, keeping opacity, visibility and blend mode. It is an
+ * automatic trace — gradients become colour bands and fine texture is lost.
+ */
+export async function exportVectorSVG(project: Project, options: VectorizeOptions): Promise<{ canceled: boolean; filePath?: string }> {
+  const byId = new Map(project.layers.map((l) => [l.id, l]));
+  const shown = (l: (typeof project.layers)[number]): boolean => {
+    let cur = l.parent ? byId.get(l.parent) : undefined;
+    while (cur) {
+      if (!cur.visible) return false;
+      cur = cur.parent ? byId.get(cur.parent) : undefined;
+    }
+    return l.visible;
+  };
+  const layers: SvgLayerInput[] = [];
+  // project.layers is top-first; SVG paints in document order, so go bottom-up.
+  for (const l of [...project.layers].reverse()) {
+    if (l.type === 'group' || l.type === 'adjustment' || l.type === 'reference') continue;
+    const canvas = l.type === 'fill' ? renderFillLayer(l, project.width, project.height) : getLayerCanvas(l.linkedSourceId ?? l.id);
+    if (canvas) layers.push({ name: l.name, canvas, opacity: l.opacity, visible: shown(l), blendMode: l.blendMode, x: l.x, y: l.y });
+  }
+  const bg = project.settings.transparentBg ? undefined : (project.settings.backgroundColor ?? '#ffffff');
+  const svg = layersToSvg(project.width, project.height, layers, options, bg);
+  const dataUrl = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`;
+  const filename = sanitizeFilename(project.name);
+  if (isElectron()) {
+    return window.electronAPI.exportImage(dataUrl, 'svg', filename);
+  }
+  downloadDataUrl(dataUrl, `${filename}.svg`);
+  return { canceled: false };
+}
+
+/**
+ * Embedded-image SVG: the flattened PNG wrapped in an <svg><image/></svg> — a valid SVG that
+ * places anywhere SVGs are accepted, but NOT editable shapes (for those use `exportVectorSVG`).
  */
 export async function exportSVG(project: Project): Promise<{ canceled: boolean; filePath?: string }> {
   const canvas = flattenLayers(project.layers, project.width, project.height);
