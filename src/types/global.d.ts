@@ -24,6 +24,7 @@ declare global {
       exportGif: (base64: string, defaultName: string) => Promise<IpcResult>;
       exportPngSequence: (frames: string[], defaultName: string) => Promise<{ canceled: boolean; folderPath?: string }>;
       exportBatch: (files: { name: string; dataUrl: string }[], folderName: string) => Promise<{ canceled: boolean; folderPath?: string }>;
+      getPoseModel: () => Promise<{ ok: boolean; modelJson?: string; weights?: Uint8Array; error?: string }>;
       importModel3D: () => Promise<{ canceled: boolean; name?: string; dataUrl?: string; format?: string }>;
       loadAssetLibrary: () => Promise<{ json: string | null }>;
       saveAssetLibrary: (json: string) => Promise<{ ok: boolean }>;

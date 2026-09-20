@@ -4,10 +4,12 @@ import AnalyzeTab from './AnalyzeTab';
 import AcademyTab, { StudyTabId } from './AcademyTab';
 import StylesTab from './StylesTab';
 import ModesTab from './ModesTab';
+import FigureTab from './FigureTab';
 
 const TABS: { id: StudyTabId; label: string }[] = [
   { id: 'guides', label: 'Guías' },
   { id: 'analyze', label: 'Analizar' },
+  { id: 'figure', label: 'Figura' },
   { id: 'academy', label: 'Academia' },
   { id: 'styles', label: 'Estilos' },
   { id: 'modes', label: 'Modos' },
@@ -33,6 +35,7 @@ export default function StudyPanel() {
       <div className="flex-1 overflow-y-auto p-3">
         {tab === 'guides' && <GuidesTab />}
         {tab === 'analyze' && <AnalyzeTab />}
+        {tab === 'figure' && <FigureTab />}
         {tab === 'academy' && <AcademyTab goTab={setTab} />}
         {tab === 'styles' && <StylesTab />}
         {tab === 'modes' && <ModesTab />}

@@ -10,8 +10,8 @@
  */
 
 export type FindingSeverity = 'good' | 'info' | 'warning';
-export type FindingCategory = 'Valores' | 'Composición' | 'Líneas y perspectiva' | 'Color' | 'Simetría';
-export type FindingAction = 'gridThirds' | 'gridUniform' | 'mirrorView' | 'valueView';
+export type FindingCategory = 'Valores' | 'Composición' | 'Líneas y perspectiva' | 'Color' | 'Simetría' | 'Proporciones' | 'Anatomía y pose';
+export type FindingAction = 'gridThirds' | 'gridUniform' | 'mirrorView' | 'valueView' | 'figureGuide';
 
 export interface Finding {
   id: string;

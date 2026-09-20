@@ -7,7 +7,7 @@ import { useUIStore } from '@/store/uiStore';
 import { Rating, buildSession, dailyExercise, parseStudyGoal, skillFor, summarize } from '@/services/academy.service';
 
 type Sub = 'today' | 'plan' | 'poses' | 'challenges' | 'progress';
-export type StudyTabId = 'guides' | 'analyze' | 'academy' | 'styles' | 'modes';
+export type StudyTabId = 'guides' | 'analyze' | 'figure' | 'academy' | 'styles' | 'modes';
 
 const SUBS: { id: Sub; label: string }[] = [
   { id: 'today', label: 'Hoy' },

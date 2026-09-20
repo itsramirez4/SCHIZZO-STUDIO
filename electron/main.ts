@@ -4,6 +4,7 @@ import { registerFileHandlers } from './handlers/fileHandler';
 import { registerBrushHandlers } from './handlers/brushHandler';
 import { registerExportHandlers } from './handlers/exportHandler';
 import { registerModel3DHandlers } from './handlers/model3dHandler';
+import { registerPoseModelHandlers } from './handlers/poseModelHandler';
 import { registerAssetLibraryHandlers } from './handlers/assetLibraryHandler';
 import { registerReferenceLibraryHandlers } from './handlers/referenceLibraryHandler';
 import { registerReferenceWindowHandlers } from './handlers/referenceWindowHandler';
@@ -115,6 +116,7 @@ app.whenReady().then(() => {
   registerBrushHandlers(() => mainWindow);
   registerExportHandlers(() => mainWindow);
   registerModel3DHandlers(() => mainWindow);
+  registerPoseModelHandlers();
   registerAssetLibraryHandlers();
   registerReferenceLibraryHandlers();
   registerReferenceWindowHandlers(isDev);

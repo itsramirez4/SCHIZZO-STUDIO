@@ -30,6 +30,7 @@ const electronAPI = {
 
   // Modelos 3D
   importModel3D: () => ipcRenderer.invoke('model3d:import'),
+  getPoseModel: () => ipcRenderer.invoke('poseModel:get'),
 
   // Biblioteca de assets
   loadAssetLibrary: () => ipcRenderer.invoke('assetLibrary:load'),

@@ -42,6 +42,7 @@ import { warpImagePerspective } from '@/services/perspectiveTransform.service';
 import PerspectiveGridOverlay from '../PerspectiveTools/PerspectiveGridOverlay';
 import SymmetryOverlay from '../PerspectiveTools/SymmetryOverlay';
 import StudyGuidesOverlay from './StudyGuidesOverlay';
+import FigureOverlay from './FigureOverlay';
 import { useStudyGuidesStore } from '@/store/studyGuidesStore';
 import { smartFill } from '@/services/smartFill.service';
 import { beginSmudge, smudgeSegment, SmudgeState } from '@/services/smudge.service';
@@ -1568,6 +1569,7 @@ export default function Canvas2D() {
         <PerspectiveGridOverlay canvasWidth={project.width} canvasHeight={project.height} zoom={zoom} getProjectPoint={getProjectPoint} />
         <SymmetryOverlay canvasWidth={project.width} canvasHeight={project.height} zoom={zoom} getProjectPoint={getProjectPoint} />
         <StudyGuidesOverlay canvasWidth={project.width} canvasHeight={project.height} zoom={zoom} getProjectPoint={getProjectPoint} />
+        <FigureOverlay canvasWidth={project.width} canvasHeight={project.height} zoom={zoom} getProjectPoint={getProjectPoint} />
         <GuideLines canvasWidth={project.width} canvasHeight={project.height} zoom={zoom} getProjectPoint={getProjectPoint} />
         <MeshWarpOverlay canvasWidth={project.width} canvasHeight={project.height} zoom={zoom} getProjectPoint={getProjectPoint} />
         <GestureDetector targetRef={stageRef} onZoomBy={zoomBy} />
