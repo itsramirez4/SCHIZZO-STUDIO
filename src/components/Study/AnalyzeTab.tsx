@@ -7,13 +7,56 @@ import { useUIStore } from '@/store/uiStore';
 import * as layerService from '@/services/layer.service';
 import { analyzeDrawing, AnalysisResult, Finding, FindingAction } from '@/services/drawingAnalysis.service';
 import { LIGHT_TIPS } from '@/content/academy';
-import { detectVanishingPoints, DetectedVanishingPoint } from '@/services/autoPerspective.service';
+import { detectVanishingPoints, PerspectiveDetection } from '@/services/autoPerspective.service';
 import { usePerspectiveStore } from '@/store/perspectiveStore';
 
 type Preview = 'values' | 'flat';
 
 const ICONS = { good: CheckCircle2, info: Info, warning: AlertTriangle } as const;
 const COLORS = { good: 'text-green-400', info: 'text-sky-300', warning: 'text-amber-400' } as const;
+
+/** The drawing dimmed, with every straight line found: green = converges on a vanishing point, red = misses it. */
+function PerspectiveCheck({ flat, detection }: { flat: HTMLCanvasElement; detection: PerspectiveDetection }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const c = ref.current;
+    if (!c) return;
+    const scale = Math.min(1, 300 / flat.width);
+    c.width = Math.round(flat.width * scale);
+    c.height = Math.round(flat.height * scale);
+    const ctx = c.getContext('2d')!;
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.globalAlpha = 0.45;
+    ctx.drawImage(flat, 0, 0, c.width, c.height);
+    ctx.globalAlpha = 1;
+    detection.segments.forEach((s, i) => {
+      const color = s.status === 'ok' ? '#22c55e' : s.status === 'off' ? '#ef4444' : '#9ca3af';
+      ctx.strokeStyle = color;
+      ctx.lineWidth = s.status === 'off' ? 3 : 2;
+      ctx.beginPath();
+      ctx.moveTo(s.x1 * scale, s.y1 * scale);
+      ctx.lineTo(s.x2 * scale, s.y2 * scale);
+      ctx.stroke();
+      if (s.status === 'off') {
+        ctx.fillStyle = color;
+        ctx.font = 'bold 11px sans-serif';
+        ctx.fillText(String(detection.segments.filter((q, j) => j <= i && q.status === 'off').length), s.baseX * scale + 4, s.baseY * scale - 4);
+      }
+    });
+    detection.points.forEach((p, i) => {
+      const x = p.x * scale;
+      const y = p.y * scale;
+      if (x < -20 || y < -20 || x > c.width + 20 || y > c.height + 20) return;
+      ctx.fillStyle = '#3b82f6';
+      ctx.beginPath();
+      ctx.arc(x, y, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillText(`PF${i + 1}`, x + 7, y - 6);
+    });
+  }, [flat, detection]);
+  return <canvas ref={ref} className="w-full rounded border border-border" />;
+}
 
 function PreviewCanvas({ source }: { source: HTMLCanvasElement }) {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -39,7 +82,8 @@ export default function AnalyzeTab() {
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [applied, setApplied] = useState<Set<string>>(new Set());
   const grid = useGridOverlayStore();
-  const [vps, setVps] = useState<{ points: DetectedVanishingPoint[]; lines: number } | null>(null);
+  const [vps, setVps] = useState<PerspectiveDetection | null>(null);
+  const [vpsFlat, setVpsFlat] = useState<HTMLCanvasElement | null>(null);
   const showReferences = useUIStore((s) => s.showReferencesPanel);
   const toggleReferences = useUIStore((s) => s.toggleReferencesPanel);
 
@@ -73,6 +117,7 @@ export default function AnalyzeTab() {
     if (!project) return;
     const flat = layerService.flattenLayers(layers, project.width, project.height);
     const bg = project.settings.transparentBg ? '#ffffff' : (project.settings.backgroundColor ?? '#ffffff');
+    setVpsFlat(flat);
     setVps(detectVanishingPoints(flat, bg));
   }
 
@@ -192,6 +237,25 @@ export default function AnalyzeTab() {
               </div>
             ))}
             <button onClick={applyVanishingPoints} className="w-full bg-accent/80 text-white text-[10px] rounded py-1">Colocar en la cuadrícula de perspectiva</button>
+            {vpsFlat && <PerspectiveCheck flat={vpsFlat} detection={vps} />}
+            {(() => {
+              const off = vps.segments.filter((s) => s.status === 'off').sort((a, b) => b.deviation - a.deviation);
+              const ok = vps.segments.filter((s) => s.status === 'ok').length;
+              return (
+                <div className="space-y-1">
+                  <p className="text-[10px] text-textDim">
+                    <span className="text-green-400">Verde</span>: {ok} línea(s) convergen. <span className="text-red-400">Rojo</span>: {off.length} no apuntan al punto de fuga.
+                  </p>
+                  {off.map((s, i) => (
+                    <p key={i} className="text-[10px] text-textDim leading-relaxed">
+                      <b className="text-red-400">{i + 1}.</b> La línea que parte de ({Math.round(s.baseX)}, {Math.round(s.baseY)}) se desvía <b className="text-text">{s.deviation.toFixed(1)}°</b> de PF{s.vp + 1}: para que converja, gírala {s.turnClockwise ? 'en sentido horario' : 'en sentido antihorario'} pivotando en ese extremo.
+                    </p>
+                  ))}
+                  {off.length === 0 && <p className="text-[10px] text-green-400">Todas las líneas detectadas convergen bien.</p>}
+                  <p className="text-[9px] text-textDim">Solo se evalúan líneas rectas y claras; un error de menos de ~2° se da por bueno.</p>
+                </div>
+              );
+            })()}
           </div>
         )}
       </div>
