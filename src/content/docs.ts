@@ -296,6 +296,18 @@ export const DOC_PAGES: DocPage[] = [
     ],
   },
   {
+    id: 'lineart-vector',
+    title: 'Lineart, flujo, capas vectoriales y proyecto',
+    category: 'Fundamentos',
+    content: [
+      'Línea recta (Q) y Curva (C): arrastra para trazar la línea; con Mayús se ajusta a ángulos de 15°. En la curva, al soltar mueve el ratón para curvar y haz clic (o Intro) para fijarla; Esc cancela. Se pintan con el pincel actual, respetan la simetría y admiten «Afilado al empezar» y «Afilado al terminar» (en el pincel también funciona el afilado inicial a mano alzada).',
+      'Flujo: es la cantidad de pintura de cada sello. Si lo mueves, la opacidad pasa a ser un tope para todo el trazo (como en Photoshop) y los modos de fusión se aplican una vez por trazo. Mientras no lo toques, el pincel conserva su comportamiento clásico. Los pinceles importados de Photoshop y Krita traen su flujo por separado.',
+      'Capas vectoriales (icono de formas en el panel de Capas): las formas, el texto vectorial, el texto normal y los trazados de pluma que dibujes sobre ellas quedan como objetos editables. Con «Seleccionar objeto vectorial» (A) los mueves; en la lista de la capa cambias texto, tamaño, colores, trazo, posición, giro y orden, o los eliminas. Para pintar píxeles sobre una capa vectorial hay que rasterizarla antes.',
+      'Referencias y paletas por proyecto: en la pestaña Referencias y en las paletas guardadas puedes alternar entre la biblioteca global y «Este proyecto»; lo del proyecto se guarda dentro del archivo y viaja con él.',
+      'Luz 3D: además del sol y el contraluz, hay una segunda fuente a elegir entre lámpara (decae con la distancia), foco (haz dirigido con sombra) y luz de relleno, cada una con su posición, intensidad y temperatura de color.',
+    ],
+  },
+  {
     id: 'versions-undo',
     title: 'Versiones del proyecto, comparación y deshacer',
     category: 'Proyecto',
