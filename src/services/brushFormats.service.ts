@@ -112,14 +112,24 @@ function unpackBits(src: Uint8Array, expected: number): Uint8Array {
   return out;
 }
 
-/** Parses the sampled brushes of an ABR v1/v2 file; computed (parametric) brushes are counted and skipped. */
-export function readLegacyAbr(bytes: Uint8Array): { brushes: LegacySampled[]; skippedComputed: number; unreadable: number } {
+/** Parses the brushes of an ABR v1/v2 file: sampled (image) tips and computed (round) brushes. */
+export interface LegacyComputed {
+  name: string;
+  /** fractions of the diameter (0.25 = 25 %) */
+  spacing: number;
+  diameter: number;
+  roundness: number;
+  angle: number;
+  hardness: number;
+}
+
+export function readLegacyAbr(bytes: Uint8Array): { brushes: (LegacySampled | LegacyComputed)[]; skippedComputed: number; unreadable: number } {
   const v = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   let p = 0;
   const version = v.getUint16(p); p += 2;
   if (version !== 1 && version !== 2) throw new Error(`Versión de ABR no soportada por este lector (${version})`);
   const count = v.getUint16(p); p += 2;
-  const brushes: LegacySampled[] = [];
+  const brushes: (LegacySampled | LegacyComputed)[] = [];
   let skippedComputed = 0;
   let unreadable = 0;
   for (let i = 0; i < count && p + 6 <= bytes.length; i++) {
@@ -130,6 +140,24 @@ export function readLegacyAbr(bytes: Uint8Array): { brushes: LegacySampled[]; sk
     if (end > bytes.length) {
       unreadable++;
       break;
+    }
+    if (type === 1) {
+      // Computed (round) brush: misc i32, spacing, diameter, roundness, angle, hardness (all i16).
+      if (size >= 14) {
+        const spacing = v.getUint16(p + 4) / 100;
+        const diameter = v.getUint16(p + 6);
+        const roundness = v.getUint16(p + 8) / 100;
+        const angle = v.getInt16(p + 10);
+        const hardness = v.getUint16(p + 12) / 100;
+        if (diameter > 0 && diameter <= 10000) {
+          brushes.push({ name: `Pincel redondo ${diameter}px`, spacing, diameter, roundness: roundness || 1, angle, hardness });
+          p = end;
+          continue;
+        }
+      }
+      unreadable++;
+      p = end;
+      continue;
     }
     if (type !== 2) {
       skippedComputed++;
@@ -189,11 +217,18 @@ export function readLegacyAbr(bytes: Uint8Array): { brushes: LegacySampled[]; sk
 export function legacyAbrToBrushes(bytes: Uint8Array): { brushes: Brush[]; notes: string[] } {
   const { brushes, skippedComputed, unreadable } = readLegacyAbr(bytes);
   const notes: string[] = [];
-  if (skippedComputed) notes.push(`${skippedComputed} pincel(es) redondo(s) paramétrico(s) no se importan (solo las puntas de imagen)`);
+  if (skippedComputed) notes.push(`${skippedComputed} pincel(es) de un tipo desconocido se omitieron`);
   if (unreadable) notes.push(`${unreadable} pincel(es) con datos ilegibles se omitieron`);
   return {
     notes,
     brushes: brushes.map((b) => {
+      if ('diameter' in b) {
+        // Round brush: soft-edged by its hardness, squashed and turned by roundness / angle.
+        const flat = b.roundness < 0.98;
+        const soft = flat ? generateSoftTip(Math.min(1, b.hardness), b.roundness, b.angle) : undefined;
+        const url = soft ? alphaToTipDataUrl(soft.alpha, soft.w, soft.h, false).url : undefined;
+        return makeBrush(b.name, url, { size: Math.min(300, Math.max(1, b.diameter)), spacing: Math.min(1, Math.max(0.02, Math.min(b.spacing || 0.25, 0.06))), hardness: Math.min(1, b.hardness) }, 'Importados (ABR antiguo)');
+      }
       const tip = alphaToTipDataUrl(b.data, b.w, b.h);
       return makeBrush(b.name, tip.url, { size: Math.min(300, Math.max(b.w, b.h)), spacing: Math.min(1, Math.max(0.02, b.spacing || 0.25)) }, 'Importados (ABR antiguo)');
     }),
