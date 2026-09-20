@@ -1,5 +1,6 @@
 import { Brush } from '@/types';
 import { createBrush, preloadBrushTexture } from './brush.service';
+import { legacyAbrToBrushes } from './brushFormats.service';
 
 /**
  * Photoshop .abr import (brush libraries, v6+ 'samp' format, parsed with ag-psd).
@@ -210,9 +211,17 @@ export interface AbrImportResult {
   skipped: number;
   /** Paper-texture patterns that could not be decoded (their brushes import without the texture). */
   skippedPatterns: number;
+  /** Extra remarks about what was left out (legacy files). */
+  notes: string[];
 }
 
 export async function importAbr(buffer: ArrayBuffer): Promise<AbrImportResult> {
+  // Photoshop ≤ 7 files (version 1 / 2) use a different, simpler layout than CS+ (version 6+).
+  const ver = new DataView(buffer).getUint16(0);
+  if (ver === 1 || ver === 2) {
+    const legacy = legacyAbrToBrushes(new Uint8Array(buffer));
+    return { brushes: legacy.brushes, lostFeatures: {}, bakedFeatures: {}, skipped: 0, skippedPatterns: 0, notes: legacy.notes };
+  }
   const { readAbr } = await import('ag-psd');
   const { abr, skippedPatterns } = readAbrRobust(readAbr, new Uint8Array(buffer));
   const samples = new Map<string, AlphaImage>();
@@ -289,5 +298,5 @@ export async function importAbr(buffer: ArrayBuffer): Promise<AbrImportResult> {
       })
     );
   }
-  return { brushes, lostFeatures, bakedFeatures, skipped, skippedPatterns };
+  return { brushes, lostFeatures, bakedFeatures, skipped, skippedPatterns, notes: [] };
 }

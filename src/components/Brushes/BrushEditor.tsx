@@ -8,6 +8,7 @@ import { isElectron } from '@/utils/fileUtils';
 import { Brush, BrushDynamics } from '@/types';
 import BrushPreview from './BrushPreview';
 import { importAbr } from '@/services/abrImport.service';
+import { importKritaPreset, importProcreateBrush } from '@/services/brushFormats.service';
 
 const SLIDERS: { key: keyof Brush; label: string; min: number; max: number; pct?: boolean }[] = [
   { key: 'size', label: 'Tamaño', min: 1, max: 300 },
@@ -99,11 +100,21 @@ export default function BrushEditor() {
     e.target.value = '';
     for (const file of files) {
       try {
-        const { brushes, lostFeatures, bakedFeatures, skipped, skippedPatterns } = await importAbr(await file.arrayBuffer());
+        const ext = file.name.split('.').pop()?.toLowerCase();
+        if (ext === 'brush' || ext === 'kpp') {
+          const one = ext === 'brush' ? await importProcreateBrush(await file.arrayBuffer(), file.name.replace(/\.[^.]+$/, '')) : await importKritaPreset(await file.arrayBuffer(), file.name.replace(/\.[^.]+$/, ''));
+          addBrushToLibrary(one.brush);
+          setCurrentBrush(one.brush);
+          toast.success(`${file.name}: pincel importado`);
+          if (one.notes.length) toast(`Ten en cuenta: ${one.notes.join('; ')}`, { icon: 'ℹ️', duration: 9000 });
+          continue;
+        }
+        const { brushes, lostFeatures, bakedFeatures, skipped, skippedPatterns, notes } = await importAbr(await file.arrayBuffer());
         brushes.forEach((b) => addBrushToLibrary(b));
         if (brushes.length) setCurrentBrush(brushes[0]);
         const lost = Object.entries(lostFeatures).map(([k, n]) => `${k} (${n})`).join(', ');
         toast.success(`${file.name}: ${brushes.length} pincel(es) importado(s)${skipped ? `, ${skipped} sin punta legible` : ''}`);
+        if (notes.length) toast(`Ten en cuenta: ${notes.join('; ')}`, { icon: 'ℹ️', duration: 8000 });
         if (skippedPatterns) toast(`${skippedPatterns} textura(s) de papel con un formato no compatible: esos pinceles se importan sin ella`, { icon: 'ℹ️', duration: 7000 });
         const baked = Object.keys(bakedFeatures).join(' y ');
         if (baked) toast(`Aproximado dentro de la punta: ${baked} (el grano no queda fijo al lienzo como en Photoshop)`, { icon: 'ℹ️', duration: 8000 });
@@ -243,11 +254,11 @@ export default function BrushEditor() {
             Importar imágenes como pinceles (PNG/JPG, varias a la vez)…
           </button>
           <p className="text-[10px] text-textDim mt-1">Cada imagen se convierte en una punta: lo claro pinta y lo oscuro no.</p>
-          <input ref={abrInputRef} type="file" accept=".abr" multiple className="hidden" onChange={handleAbrFiles} />
+          <input ref={abrInputRef} type="file" accept=".abr,.brush,.kpp" multiple className="hidden" onChange={handleAbrFiles} />
           <button onClick={() => abrInputRef.current?.click()} className="w-full bg-panelLight text-xs rounded py-1.5 mt-2">
-            Importar librería de Photoshop (.abr)…
+            Importar pinceles (.abr, Procreate .brush, Krita .kpp)…
           </button>
-          <p className="text-[10px] text-textDim mt-1">Se importan puntas, tamaño, espaciado, dispersión y dinámicas de presión. La textura de papel y el pincel dual se integran de forma aproximada en la punta; los bordes húmedos y el ruido no se importan.</p>
+          <p className="text-[10px] text-textDim mt-1">.abr de Photoshop (CS y anteriores): puntas, tamaño, espaciado, dispersión y presión; la textura de papel y el pincel dual se integran de forma aproximada en la punta, los bordes húmedos y el ruido no. Procreate (.brush) y Krita (.kpp): importan la punta y los ajustes básicos; estos tres formatos los he probado con archivos sintéticos, no con pinceles reales de esos programas.</p>
         </div>
 
         <div className="flex gap-2 mt-4">
