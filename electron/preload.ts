@@ -34,6 +34,8 @@ const electronAPI = {
   aiSetEnabled: (on: boolean) => ipcRenderer.invoke('ai:setEnabled', on),
   aiHasKey: () => ipcRenderer.invoke('ai:hasKey'),
   aiSetKey: (key: string) => ipcRenderer.invoke('ai:setKey', key),
+  aiTestConnection: (args: unknown) => ipcRenderer.invoke('ai:testConnection', args),
+  aiRewriteText: (args: unknown) => ipcRenderer.invoke('ai:rewriteText', args),
   aiGenerateImage: (args: unknown) => ipcRenderer.invoke('ai:generateImage', args),
 
   // Biblioteca de assets

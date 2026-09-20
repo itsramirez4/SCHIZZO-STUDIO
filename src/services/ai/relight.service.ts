@@ -22,18 +22,20 @@ interface LightSpec {
   /** rim (edge) light from behind */
   rim?: number;
   blur?: number;
+  /** how strongly bumps cast shadows onto what lies behind them (0 = none) */
+  shadows?: number;
 }
 
 const SPECS: LightSpec[] = [
-  { id: 'left', label: 'Luz desde la izquierda', dir: [-0.85, -0.15, 0.5], ambient: 0.45, diffuse: 0.9, tint: [1, 1, 1] },
-  { id: 'right', label: 'Luz desde la derecha', dir: [0.85, -0.15, 0.5], ambient: 0.45, diffuse: 0.9, tint: [1, 1, 1] },
-  { id: 'top', label: 'Luz cenital (desde arriba)', dir: [0, -0.9, 0.45], ambient: 0.45, diffuse: 0.9, tint: [1, 1, 1] },
-  { id: 'bottom', label: 'Luz desde abajo (dramática)', dir: [0, 0.9, 0.45], ambient: 0.35, diffuse: 1, tint: [1, 0.96, 0.9] },
+  { id: 'left', label: 'Luz desde la izquierda', dir: [-0.85, -0.15, 0.5], ambient: 0.45, diffuse: 0.9, tint: [1, 1, 1], shadows: 0.8 },
+  { id: 'right', label: 'Luz desde la derecha', dir: [0.85, -0.15, 0.5], ambient: 0.45, diffuse: 0.9, tint: [1, 1, 1], shadows: 0.8 },
+  { id: 'top', label: 'Luz cenital (desde arriba)', dir: [0, -0.9, 0.45], ambient: 0.45, diffuse: 0.9, tint: [1, 1, 1], shadows: 0.7 },
+  { id: 'bottom', label: 'Luz desde abajo (dramática)', dir: [0, 0.9, 0.45], ambient: 0.35, diffuse: 1, tint: [1, 0.96, 0.9], shadows: 0.7 },
   { id: 'back', label: 'Contraluz', dir: [0, -0.3, -0.9], ambient: 0.35, diffuse: 0.4, tint: [1, 1, 1], rim: 1.1 },
   { id: 'soft', label: 'Luz suave (nublado)', dir: [-0.3, -0.5, 0.8], ambient: 0.8, diffuse: 0.35, tint: [0.97, 0.99, 1.03], blur: 2 },
-  { id: 'hard', label: 'Luz dura (mediodía)', dir: [-0.6, -0.7, 0.4], ambient: 0.2, diffuse: 1.3, tint: [1.02, 1, 0.97] },
-  { id: 'warm', label: 'Cálida (atardecer)', dir: [-0.8, -0.1, 0.55], ambient: 0.45, diffuse: 0.9, tint: [1.12, 0.98, 0.8] },
-  { id: 'cold', label: 'Fría (luna / sombra)', dir: [0.7, -0.4, 0.55], ambient: 0.45, diffuse: 0.85, tint: [0.82, 0.96, 1.16] },
+  { id: 'hard', label: 'Luz dura (mediodía)', dir: [-0.6, -0.7, 0.4], ambient: 0.2, diffuse: 1.3, tint: [1.02, 1, 0.97], shadows: 1 },
+  { id: 'warm', label: 'Cálida (atardecer)', dir: [-0.8, -0.1, 0.55], ambient: 0.45, diffuse: 0.9, tint: [1.12, 0.98, 0.8], shadows: 0.85 },
+  { id: 'cold', label: 'Fría (luna / sombra)', dir: [0.7, -0.4, 0.55], ambient: 0.45, diffuse: 0.85, tint: [0.82, 0.96, 1.16], shadows: 0.7 },
 ];
 
 function boxBlur(src: Float32Array, w: number, h: number, r: number): Float32Array {
@@ -94,6 +96,33 @@ function shade(src: HTMLCanvasElement, spec: LightSpec, maxSide: number): HTMLCa
   const ln = Math.hypot(lx, ly, lz);
   const L: [number, number, number] = [lx / ln, ly / ln, lz / ln];
   const shading = new Float32Array(w * h);
+  // Cast shadows: walk from each pixel toward the light over the brightness-as-height surface; if something along the
+  // way rises above the ray, the pixel is in shadow. Soft-edged, and only where the light comes from the front.
+  const castShadow = new Float32Array(w * h);
+  if (spec.shadows && L[2] > 0.05 && Math.hypot(L[0], L[1]) > 0.05) {
+    const planar = Math.hypot(L[0], L[1]);
+    const ux = L[0] / planar;
+    const uy = L[1] / planar;
+    const slope = L[2] / planar; // ray height gained per pixel travelled toward the light
+    const heightScale = 0.09 * Math.max(w, h);
+    const reach = 0.22 * Math.max(w, h);
+    const STEPS = 40;
+    const stepLen = reach / STEPS;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const h0 = height[y * w + x] * heightScale;
+        let worst = 0;
+        for (let k = 1; k <= STEPS; k++) {
+          const sx = Math.round(x + ux * stepLen * k);
+          const sy = Math.round(y + uy * stepLen * k);
+          if (sx < 0 || sy < 0 || sx >= w || sy >= h) break;
+          const over = height[sy * w + sx] * heightScale - (h0 + slope * stepLen * k);
+          if (over > worst) worst = over;
+        }
+        castShadow[y * w + x] = Math.min(1, worst / 2.5);
+      }
+    }
+  }
   let sum = 0;
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
@@ -107,7 +136,7 @@ function shade(src: HTMLCanvasElement, spec: LightSpec, maxSide: number): HTMLCa
       nx /= nl;
       ny /= nl;
       const nz = 1 / nl;
-      const lam = Math.max(0, nx * L[0] + ny * L[1] + nz * L[2]);
+      const lam = Math.max(0, nx * L[0] + ny * L[1] + nz * L[2]) * (1 - (spec.shadows ?? 0) * 0.9 * castShadow[i]);
       let v = spec.ambient + spec.diffuse * lam;
       if (spec.rim) v += spec.rim * Math.pow(1 - nz, 1.5) * 3;
       shading[i] = v;

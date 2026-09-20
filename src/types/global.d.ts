@@ -28,6 +28,8 @@ declare global {
       aiSetEnabled: (on: boolean) => Promise<boolean>;
       aiHasKey: () => Promise<boolean>;
       aiSetKey: (key: string) => Promise<boolean>;
+      aiTestConnection: (args: { kind: 'local-sd' | 'openai-compatible'; endpoint: string }) => Promise<{ ok: boolean; models?: string[]; error?: string }>;
+      aiRewriteText: (args: { endpoint: string; model: string; text: string; vocabulary: string; task: 'pose' | 'expression' }) => Promise<{ ok: boolean; text?: string; error?: string }>;
       aiGenerateImage: (args: { kind: 'local-sd' | 'openai-compatible'; endpoint: string; model: string; prompt: string; negative?: string; width: number; height: number }) => Promise<{ ok: boolean; dataUrl?: string; error?: string }>;
       importModel3D: () => Promise<{ canceled: boolean; name?: string; dataUrl?: string; format?: string }>;
       loadAssetLibrary: () => Promise<{ json: string | null }>;

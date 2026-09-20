@@ -78,7 +78,7 @@ export function separateLineArt(source: HTMLCanvasElement): SeparatedLayer[] {
     const mn = Math.min(r, g, b);
     // a dark stroke is dark AND not strongly coloured (a dark red fill is not a line)
     const sat = mx === 0 ? 0 : (mx - mn) / mx;
-    const dark = sat < 0.45 ? Math.max(0, Math.min(1, (T2 - luma) / (T2 - T1))) : 0;
+    const dark = sat < 0.22 ? Math.max(0, Math.min(1, (T2 - luma) / (T2 - T1))) : 0;
     if (dark > 0.05) {
       // the stroke keeps its own darkness as colour: near-black ink stays near-black
       const k = Math.min(1, luma / Math.max(1, T2));
@@ -88,9 +88,17 @@ export function separateLineArt(source: HTMLCanvasElement): SeparatedLayer[] {
       li.data[i * 4 + 3] = Math.round(255 * dark);
     }
     ci.data[i * 4] = r; ci.data[i * 4 + 1] = g; ci.data[i * 4 + 2] = b; ci.data[i * 4 + 3] = 255;
-    if (dark > 0.4) hole[i] = 1;
+    if (dark > 0.02) hole[i] = 1;
   }
-  fillHoles(ci.data, w, h, hole);
+  // one more ring around the ink: its anti-aliased edge must not survive on the colour layer as a faint outline
+  const ring = hole.slice();
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const i = y * w + x;
+      if (!hole[i] && (hole[i - 1] || hole[i + 1] || hole[i - w] || hole[i + w])) ring[i] = 1;
+    }
+  }
+  fillHoles(ci.data, w, h, ring);
   line.getContext('2d')!.putImageData(li, 0, 0);
   colour.getContext('2d')!.putImageData(ci, 0, 0);
   return [{ name: 'Línea', canvas: line }, { name: 'Color', canvas: colour }];

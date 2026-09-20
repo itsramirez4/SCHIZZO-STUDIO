@@ -29,7 +29,13 @@ function rng(seed = 12345) {
   };
 }
 
-export function fitMannequinPose(lm: Landmarks): FitResult {
+/** Which way a limb reaches in depth. A flat drawing cannot say (a foreshortened arm fits both), so the user can. */
+export type DepthHint = 'toward' | 'away';
+export interface FitOptions {
+  depth?: Partial<Record<'armL' | 'armR' | 'legL' | 'legR', DepthHint>>;
+}
+
+export function fitMannequinPose(lm: Landmarks, opts: FitOptions = {}): FitResult {
   const rig = new MannequinRig(defaultRigState('human'));
   const limits = new Map(getJointInfos('human').map((j) => [j.name, j.limits]));
   const bone = (n: string) => rig.bones.get(n)!;
@@ -106,7 +112,7 @@ export function fitMannequinPose(lm: Landmarks): FitResult {
 
   // ---- limbs: pattern search over the joint angles, several starts, on the front-view error
   const rand = rng();
-  const fitChain = (root: string, mids: string, tip: string, targetMid: P2, targetTip: P2, params: { joint: string; axis: 0 | 1 | 2 }[]) => {
+  const fitChain = (root: string, mids: string, tip: string, targetMid: P2, targetTip: P2, params: { joint: string; axis: 0 | 1 | 2 }[], hint?: DepthHint) => {
     const values = params.map(() => 0);
     const evalCost = (vals: number[]) => {
       // all the axes of one joint go into ONE rotation (setting them one by one would keep only the last)
@@ -124,7 +130,14 @@ export function fitMannequinPose(lm: Landmarks): FitResult {
       const dm = { x: m.x - r.x - targetMid.x, y: m.y - r.y - targetMid.y };
       const dt = { x: t.x - r.x - targetTip.x, y: t.y - r.y - targetTip.y };
       // a whisper of regularisation keeps limbs from twisting when the picture cannot tell
-      return dm.x * dm.x + dm.y * dm.y + dt.x * dt.x + dt.y * dt.y + 1e-7 * vals.reduce((s, v) => s + v * v, 0);
+      // depth hint: only the WRONG side is penalised, so a limb that is flat in the picture stays flat
+      let depthPenalty = 0;
+      if (hint) {
+        const z = m.z - r.z + (t.z - r.z);
+        const wrong = hint === 'toward' ? Math.max(0, -z) : Math.max(0, z);
+        depthPenalty = 25 * wrong * wrong;
+      }
+      return dm.x * dm.x + dm.y * dm.y + dt.x * dt.x + dt.y * dt.y + depthPenalty + 1e-7 * vals.reduce((s, v) => s + v * v, 0);
     };
     const bounds = params.map((p) => limits.get(p.joint)![p.axis]);
     let best = { v: values.slice(), c: Infinity };
@@ -190,11 +203,11 @@ export function fitMannequinPose(lm: Landmarks): FitResult {
     const sh = lm[`shoulder${S}`];
     fitChain(`shoulder${S}`, `elbow${S}`, `wrist${S}`, toWorld(sub(lm[`elbow${S}`], sh)), toWorld(sub(lm[`wrist${S}`], sh)), [
       { joint: `shoulder${S}`, axis: 0 }, { joint: `shoulder${S}`, axis: 1 }, { joint: `shoulder${S}`, axis: 2 }, { joint: `elbow${S}`, axis: 0 },
-    ]);
+    ], opts.depth?.[`arm${S}`]);
     const hp = lm[`hip${S}`];
     fitChain(`hip${S}`, `knee${S}`, `ankle${S}`, toWorld(sub(lm[`knee${S}`], hp)), toWorld(sub(lm[`ankle${S}`], hp)), [
       { joint: `hip${S}`, axis: 0 }, { joint: `hip${S}`, axis: 1 }, { joint: `hip${S}`, axis: 2 }, { joint: `knee${S}`, axis: 0 },
-    ]);
+    ], opts.depth?.[`leg${S}`]);
   }
 
   // ---- report how well the front view now matches

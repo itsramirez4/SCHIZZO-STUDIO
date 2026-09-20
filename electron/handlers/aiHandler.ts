@@ -48,11 +48,11 @@ export interface GenerateArgs {
 
 const snap = (n: number) => Math.max(256, Math.min(1024, Math.round(n / 64) * 64));
 
-async function post(url: string, body: unknown, headers: Record<string, string>) {
+async function post(url: string, body: unknown, headers: Record<string, string>, method: 'POST' | 'GET' = 'POST') {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), 180_000);
   try {
-    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body), signal: ctl.signal });
+    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json', ...headers }, ...(method === 'POST' ? { body: JSON.stringify(body) } : {}), signal: ctl.signal });
     const text = await res.text();
     if (!res.ok) throw new Error(`El servicio respondió ${res.status}: ${text.slice(0, 200)}`);
     return JSON.parse(text);
@@ -89,6 +89,39 @@ export async function generateImage(a: GenerateArgs): Promise<string> {
   throw new Error('El servicio no devolvió ninguna imagen.');
 }
 
+const authHeader = (): Record<string, string> => {
+  const key = readKey();
+  return key ? { Authorization: `Bearer ${key}` } : {};
+};
+
+/** Reaches the service and lists the models it offers (so the user learns at once whether the settings work). */
+export async function testConnection(a: { kind: GenerateArgs['kind']; endpoint: string }): Promise<string[]> {
+  if (!aiEnabled) throw new Error('La IA está desactivada.');
+  const base = checkEndpoint(a.endpoint).toString().replace(/\/+$/, '');
+  if (a.kind === 'local-sd') {
+    const j = await post(`${base}/sdapi/v1/sd-models`, null, {}, 'GET');
+    return (Array.isArray(j) ? j : []).map((m: { title?: string; model_name?: string }) => m.title ?? m.model_name ?? '').filter(Boolean);
+  }
+  const j = await post(`${base}/models`, null, authHeader(), 'GET');
+  return (Array.isArray(j?.data) ? j.data : []).map((m: { id?: string }) => m.id ?? '').filter(Boolean);
+}
+
+/**
+ * Rewrites a free-form description into the plain keywords the offline pose/expression interpreter understands.
+ * Only the user's own sentence is sent; the model's answer is treated as text (it is parsed by the same
+ * deterministic interpreter, so it can never inject joint angles or anything else).
+ */
+export async function rewriteText(a: { endpoint: string; model: string; text: string; vocabulary: string; task: 'pose' | 'expression' }): Promise<string> {
+  if (!aiEnabled) throw new Error('La IA está desactivada.');
+  if (!a.text.trim()) throw new Error('Escribe una descripción.');
+  const base = checkEndpoint(a.endpoint).toString().replace(/\/+$/, '');
+  const system = `Reescribe la descripción del usuario como una frase corta en español que use SOLO palabras de este vocabulario (${a.task === 'pose' ? 'poses' : 'emociones'}): ${a.vocabulary}. Si algo no se puede expresar, omítelo. Responde solo con la frase, sin explicaciones.`;
+  const j = await post(`${base}/chat/completions`, { model: a.model || undefined, temperature: 0, max_tokens: 80, messages: [{ role: 'system', content: system }, { role: 'user', content: a.text.slice(0, 500) }] }, authHeader());
+  const out = j?.choices?.[0]?.message?.content;
+  if (typeof out !== 'string' || !out.trim()) throw new Error('El servicio no devolvió texto.');
+  return out.trim().slice(0, 300);
+}
+
 export function registerAiHandlers() {
   ipcMain.handle('ai:setEnabled', (_e, on: unknown) => {
     aiEnabled = on === true;
@@ -102,6 +135,12 @@ export function registerAiHandlers() {
     }
     writeKey(key.trim());
     return true;
+  });
+  ipcMain.handle('ai:testConnection', async (_e, a: { kind: GenerateArgs['kind']; endpoint: string }) => {
+    try { return { ok: true, models: await testConnection(a) }; } catch (err) { return { ok: false, error: err instanceof Error ? err.message : String(err) }; }
+  });
+  ipcMain.handle('ai:rewriteText', async (_e, a: Parameters<typeof rewriteText>[0]) => {
+    try { return { ok: true, text: await rewriteText(a) }; } catch (err) { return { ok: false, error: err instanceof Error ? err.message : String(err) }; }
   });
   ipcMain.handle('ai:generateImage', async (_e, args: GenerateArgs) => {
     try {

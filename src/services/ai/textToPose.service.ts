@@ -79,7 +79,7 @@ const BODIES: { re: string[]; id: BodyTypeId; label: string }[] = [
 /** Words that carry no pose information — they must not be reported as "ignored". */
 const FILLER = new Set('un una el la los las de del con y o en a al su sus se que muy mas menos poco algo como mientras hacia sobre por para pero solo tambien'.split(' '));
 
-export function poseFromText(text: string): PoseResult {
+function poseCore(text: string): PoseResult {
   const t = normalize(text);
   const understood: string[] = [];
   const used = new Set<string>();
@@ -177,7 +177,7 @@ const EXPR_WORDS: { re: string[]; id: string; label: string }[] = [
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
 /** Blends every emotion found ("alegre pero cansado"), scaled by intensity words ("muy", "ligeramente"). */
-export function expressionFromText(text: string): ExpressionResult {
+function expressionCore(text: string): ExpressionResult {
   const t = normalize(text);
   const words = t.split(' ');
   const hits: { id: string; label: string; weight: number }[] = [];
@@ -222,3 +222,70 @@ export function expressionFromText(text: string): ExpressionResult {
 }
 
 export { BODY_TYPES };
+
+// ---------------------------------------------------------------- tolerance for typos
+
+const MODIFIER_WORDS = 'ambos los dos brazos brazo piernas pierna manos mano cabeza cuello espalda pecho arriba abajo alto alta izquierda derecha izquierdo derecho cruzados cruzadas abiertos abiertas levantados levantadas alzados extendidos mirando mira cielo suelo ladeada ladeando inclinada inclinado hacia delante adelante atras cintura caderas espalda encorvado encorvada erguido erguida recto recta apoyado apoyada rodillas arrodillado arrodillada paso adelantada muy ligeramente poco mucho'.split(' ');
+
+function vocabulary(): Set<string> {
+  const v = new Set<string>(MODIFIER_WORDS);
+  for (const list of [BASES, ANIMALS, ANIMAL_BASES, BODIES, EXPR_WORDS]) for (const e of list) for (const r of e.re) normalize(r).split(' ').forEach((w) => w.length > 3 && v.add(w));
+  return v;
+}
+let vocab: Set<string> | null = null;
+
+function distance(a: string, b: string, max: number): number {
+  if (Math.abs(a.length - b.length) > max) return max + 1;
+  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[b.length];
+}
+
+/** Fixes small typos ("corrindo", "sorprendio") by snapping unknown words to the single closest known word. */
+export function correctTypos(text: string): { text: string; fixes: string[] } {
+  vocab ??= vocabulary();
+  const fixes: string[] = [];
+  const out = normalize(text)
+    .split(' ')
+    .map((w) => {
+      if (w.length < 5 || vocab!.has(w) || FILLER.has(w)) return w;
+      const max = w.length > 7 ? 2 : 1;
+      let best: string | null = null;
+      let bd = max + 1;
+      let tie = false;
+      for (const k of vocab!) {
+        const d = distance(w, k, max);
+        if (d < bd) { bd = d; best = k; tie = false; } else if (d === bd && d <= max) tie = true;
+      }
+      if (best && bd <= max && !tie) {
+        fixes.push(`«${w}» → «${best}»`);
+        return best;
+      }
+      return w;
+    })
+    .join(' ');
+  return { text: out, fixes };
+}
+
+export function poseFromText(text: string): PoseResult {
+  const { text: fixed, fixes } = correctTypos(text);
+  const r = poseCore(fixed);
+  if (fixes.length) r.understood.push(`corregí ${fixes.join(', ')}`);
+  return r;
+}
+
+export function expressionFromText(text: string): ExpressionResult {
+  const { text: fixed, fixes } = correctTypos(text);
+  const r = expressionCore(fixed);
+  if (fixes.length) r.understood.push(`corregí ${fixes.join(', ')}`);
+  return r;
+}
+
+/** What the offline interpreter knows, as plain words — given to an optional language model so it can rewrite a free sentence. */
+export const POSE_VOCABULARY = [...BASES.map((b) => b.label), ...ANIMALS.map((a) => a.label), ...BODIES.map((b) => b.label), 'brazos arriba', 'brazos cruzados', 'manos en la cintura', 'manos a la espalda', 'mirando a la izquierda', 'mirando a la derecha', 'mirando arriba', 'mirando abajo', 'cabeza ladeada', 'encorvado', 'erguido', 'inclinado hacia delante', 'inclinado hacia atrás', 'piernas cruzadas', 'un paso adelante', 'de rodillas'].join(', ');
+export const EXPRESSION_VOCABULARY = [...EXPR_WORDS.map((e) => e.label), 'muy', 'ligeramente'].join(', ');
+

@@ -9,13 +9,14 @@ import { useFigureStore } from '@/store/figureStore';
 import { useGridOverlayStore } from '@/store/gridOverlayStore';
 import { useReferenceLibraryStore } from '@/store/referenceLibraryStore';
 import * as layerService from '@/services/layer.service';
+import type { Landmarks } from '@/services/figureAnalysis.service';
 import { analyzeFigure, FIGURE_TYPES, FigureType } from '@/services/figureAnalysis.service';
 import type { Finding } from '@/services/drawingAnalysis.service';
 import { buildReferenceFromDataUrl } from '@/services/referenceImport.service';
 import { dataUrlToImage } from '@/utils/canvasUtils';
 import { isElectron } from '@/utils/fileUtils';
-import { poseFromText, expressionFromText } from '@/services/ai/textToPose.service';
-import { fitMannequinPose } from '@/services/ai/poseFit.service';
+import { poseFromText, expressionFromText, POSE_VOCABULARY, EXPRESSION_VOCABULARY } from '@/services/ai/textToPose.service';
+import { fitMannequinPose, DepthHint } from '@/services/ai/poseFit.service';
 import { relightVariants, relightFull, LightVariant } from '@/services/ai/relight.service';
 import { paletteFromText, paletteFromImage, PaletteIdea } from '@/services/ai/paletteSuggest.service';
 import { analyzeComposition, CompositionResult } from '@/services/ai/composition.service';
@@ -88,6 +89,8 @@ export default function AssistantPanel() {
   const [exprText, setExprText] = useState('');
   const [exprInfo, setExprInfo] = useState<{ understood: string[]; ignored: string[] } | null>(null);
   const [fitInfo, setFitInfo] = useState<string | null>(null);
+  const [fitLm, setFitLm] = useState<Landmarks | null>(null);
+  const [depth, setDepth] = useState<Partial<Record<'armL' | 'armR' | 'legL' | 'legR', DepthHint>>>({});
   const [variants, setVariants] = useState<LightVariant[]>([]);
   const [palText, setPalText] = useState('');
   const [ideas, setIdeas] = useState<{ title: string; list: PaletteIdea[]; current?: string[] } | null>(null);
@@ -104,6 +107,8 @@ export default function AssistantPanel() {
   const [hasKey, setHasKey] = useState<boolean | null>(null);
   const [keyDraft, setKeyDraft] = useState('');
   const [generated, setGenerated] = useState<string | null>(null);
+  const [models, setModels] = useState<string[]>([]);
+  const [rewritten, setRewritten] = useState<string | null>(null);
 
   if (!project) return <p className="p-3 text-[11px] text-textDim">Abre un proyecto para usar el asistente.</p>;
   const proj = project;
@@ -136,17 +141,34 @@ export default function AssistantPanel() {
   }
 
   // ---------------------------------------------------------------- poses / expressions
-  function poseToViewer() {
-    const r = poseFromText(poseText);
+  const canRewrite = ai.provider.kind === 'openai-compatible' && ai.provider.endpoint.trim() !== '' && isElectron();
+  /** Free sentences: an optional language model rewrites them into the interpreter's vocabulary; the interpreter still does the parsing. */
+  async function rewrite(text: string, task: 'pose' | 'expression'): Promise<string> {
+    const res = await window.electronAPI.aiRewriteText({ endpoint: ai.provider.endpoint.trim(), model: ai.provider.model.trim(), text, vocabulary: task === 'pose' ? POSE_VOCABULARY : EXPRESSION_VOCABULARY, task });
+    if (!res.ok || !res.text) throw new Error(res.error ?? 'El proveedor no devolvió texto');
+    setRewritten(res.text);
+    return res.text;
+  }
+  function poseToViewer(text = poseText) {
+    const r = poseFromText(text);
     setPoseInfo({ understood: r.understood, ignored: r.ignored });
     if (!r.understood.length) return toast('No reconocí una pose en esa descripción. Prueba con «corriendo», «sentado con los brazos cruzados», «saltando»…', { icon: 'ℹ️' });
     sendViewer({ kind: r.kind, poseData: r.pose, bodyType: r.bodyType });
   }
-  function exprToViewer() {
-    const r = expressionFromText(exprText);
+  function exprToViewer(text = exprText) {
+    const r = expressionFromText(text);
     setExprInfo({ understood: r.understood, ignored: r.ignored });
     if (!r.understood.length) return toast('No reconocí una emoción. Prueba con «alegre», «muy sorprendido», «triste pero cansado»…', { icon: 'ℹ️' });
     sendViewer({ kind: 'human', expression: r.expression });
+  }
+  const poseSmart = () => run('rewrite', async () => { poseToViewer(await rewrite(poseText, 'pose')); });
+  const exprSmart = () => run('rewrite', async () => { exprToViewer(await rewrite(exprText, 'expression')); });
+
+  function applyFit(lm: Landmarks, source: string, hints: typeof depth) {
+    const fit = fitMannequinPose(lm, { depth: hints });
+    sendViewer({ kind: 'human', poseData: fit.pose });
+    setFitLm(lm);
+    setFitInfo(`Maniquí colocado a partir de ${source}. Ajuste de la vista frontal: error medio ${Math.round(fit.error * 100)} % del torso. Un dibujo plano no dice si un brazo o una pierna acortados apuntan hacia ti o hacia atrás: elígelo abajo y reajusta.`);
   }
 
   async function poseFromDrawing() {
@@ -162,9 +184,7 @@ export default function AssistantPanel() {
         figure.setLandmarks(lm);
         source = res.body.uncertain ? 'una lectura aproximada del dibujo' : 'lo detectado en el dibujo';
       }
-      const fit = fitMannequinPose(lm);
-      sendViewer({ kind: 'human', poseData: fit.pose });
-      setFitInfo(`Maniquí colocado a partir de ${source}. Ajuste de la vista frontal: error medio ${Math.round(fit.error * 100)} % del torso. Solo se lee la vista de frente: la profundidad (brazos hacia ti) no se puede deducir de un dibujo plano, ajústala tú en la ventana 3D.`);
+      applyFit(lm, source, depth);
     });
   }
 
@@ -291,13 +311,21 @@ export default function AssistantPanel() {
 
       <Card id="pose" title="Pose desde una descripción → modelo 3D" open={open} setOpen={setOpen}>
         <input className={inputCls} value={poseText} onChange={(e) => setPoseText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && poseToViewer()} placeholder="mujer corriendo con los brazos hacia arriba" />
-        <Btn primary onClick={poseToViewer} disabled={!poseText.trim()}>Colocar el maniquí 3D</Btn>
+        <div className="flex gap-1.5 flex-wrap">
+          <Btn primary onClick={() => poseToViewer()} disabled={!poseText.trim()}>Colocar el maniquí 3D</Btn>
+          {canRewrite && <Btn onClick={poseSmart} disabled={!poseText.trim() || busy === 'rewrite'}>{busy === 'rewrite' ? 'Interpretando…' : 'Entender frase libre'}</Btn>}
+        </div>
+        {!canRewrite && <Hint>Entiende palabras clave (con tolerancia a erratas). Para frases libres, configura una API compatible con OpenAI en «Proveedor de imágenes»: se le envía solo tu frase para reescribirla con esas palabras.</Hint>}
+        {rewritten && canRewrite && <Hint>Reescrita como: «{rewritten}»</Hint>}
         {poseInfo && <Hint>{poseInfo.understood.length ? `Entendido: ${poseInfo.understood.join(', ')}.` : 'Nada reconocido.'}{poseInfo.ignored.length ? ` Sin usar: ${poseInfo.ignored.join(', ')}.` : ''}</Hint>}
       </Card>
 
       <Card id="expr" title="Expresión facial → modelo 3D" open={open} setOpen={setOpen}>
         <input className={inputCls} value={exprText} onChange={(e) => setExprText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && exprToViewer()} placeholder="alegre pero cansado / muy sorprendido" />
-        <Btn primary onClick={exprToViewer} disabled={!exprText.trim()}>Poner la expresión</Btn>
+        <div className="flex gap-1.5 flex-wrap">
+          <Btn primary onClick={() => exprToViewer()} disabled={!exprText.trim()}>Poner la expresión</Btn>
+          {canRewrite && <Btn onClick={exprSmart} disabled={!exprText.trim() || busy === 'rewrite'}>{busy === 'rewrite' ? 'Interpretando…' : 'Entender frase libre'}</Btn>}
+        </div>
         {exprInfo && <Hint>{exprInfo.understood.length ? `Entendido: ${exprInfo.understood.join(', ')}.` : 'Nada reconocido.'}{exprInfo.ignored.length ? ` Sin usar: ${exprInfo.ignored.join(', ')}.` : ''}</Hint>}
       </Card>
 
@@ -305,6 +333,22 @@ export default function AssistantPanel() {
         <Hint>Usa los puntos de figura que ya colocaste (Estudio → Figura) o busca la figura en el dibujo. Coloca el maniquí en esa pose para verla desde otros ángulos.</Hint>
         <Btn primary onClick={poseFromDrawing} disabled={busy === 'fit'}>{busy === 'fit' ? 'Trabajando…' : 'Crear modelo 3D de esta pose'}</Btn>
         {fitInfo && <Hint>{fitInfo}</Hint>}
+        {fitLm && (
+          <div className="space-y-1">
+            <div className="grid grid-cols-2 gap-1">
+              {([['armL', 'Brazo izq.'], ['armR', 'Brazo der.'], ['legL', 'Pierna izq.'], ['legR', 'Pierna der.']] as const).map(([k, label]) => (
+                <label key={k} className="text-[10px] text-textDim">{label}
+                  <select className={inputCls} value={depth[k] ?? 'auto'} onChange={(e) => setDepth((d) => ({ ...d, [k]: e.target.value === 'auto' ? undefined : (e.target.value as DepthHint) }))}>
+                    <option value="auto">Como se ve</option>
+                    <option value="toward">Hacia ti</option>
+                    <option value="away">Hacia atrás</option>
+                  </select>
+                </label>
+              ))}
+            </div>
+            <Btn onClick={() => run('fit', () => applyFit(fitLm, 'los mismos puntos', depth))}>Reajustar con estas pistas</Btn>
+          </div>
+        )}
       </Card>
 
       <Card id="light" title="Variaciones de iluminación" open={open} setOpen={setOpen}>
@@ -441,6 +485,15 @@ export default function AssistantPanel() {
                 <Btn onClick={async () => { if (!isElectron()) return; await window.electronAPI.aiSetKey(keyDraft); setHasKey(keyDraft.trim() !== ''); setKeyDraft(''); toast.success(keyDraft.trim() ? 'Clave guardada cifrada en este equipo' : 'Clave borrada'); }}>{keyDraft.trim() ? 'Guardar' : 'Borrar'}</Btn>
               </div>
             )}
+            <div className="flex gap-1.5 items-center">
+              <Btn onClick={() => run('test', async () => {
+                const r = await window.electronAPI.aiTestConnection({ kind: ai.provider.kind as 'local-sd' | 'openai-compatible', endpoint: ai.provider.endpoint.trim() });
+                if (!r.ok) throw new Error(r.error ?? 'No se pudo conectar');
+                setModels(r.models ?? []);
+                toast.success(`Conectado${r.models?.length ? `: ${r.models.length} modelos disponibles` : ''}`);
+              })} disabled={!providerReady || busy === 'test'}>{busy === 'test' ? 'Probando…' : 'Probar conexión'}</Btn>
+              {models.length > 0 && <select className={inputCls} value={ai.provider.model} onChange={(e) => ai.setProvider({ model: e.target.value })}><option value="">(modelo por defecto)</option>{models.map((m) => <option key={m} value={m}>{m}</option>)}</select>}
+            </div>
             <Hint>La clave se guarda cifrada en tu equipo y solo la usa el proceso principal de la app; el resto de la interfaz nunca la ve. Las direcciones remotas deben ser https; http solo vale para localhost.</Hint>
           </>
         )}
