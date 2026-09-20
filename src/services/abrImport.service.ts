@@ -189,7 +189,7 @@ export async function importAbr(buffer: ArrayBuffer): Promise<AbrImportResult> {
     const legacy = legacyAbrToBrushes(new Uint8Array(buffer));
     return { brushes: legacy.brushes, lostFeatures: {}, bakedFeatures: {}, skipped: 0, skippedPatterns: 0, notes: legacy.notes };
   }
-  const { readAbr } = await import('ag-psd');
+  const { readAbr } = await import('@/vendor/agPsdAbr');
   const { abr, skippedPatterns } = readAbrRobust(readAbr, new Uint8Array(buffer));
   const samples = new Map<string, AlphaImage>();
   for (const sm of abr.samples ?? []) {
