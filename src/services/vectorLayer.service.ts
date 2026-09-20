@@ -3,6 +3,7 @@ import type { VectorObject } from '@/types/layer.types';
 import type { VectorFillStyle, VectorStrokeStyle } from '@/types/vectorShapes';
 import { paintShape } from './shapeGeometry.service';
 import { pathToSvgD } from './path.service';
+import { drawStyledText, drawTextAlongPath } from './text.service';
 
 export const newVectorId = () => uuid();
 
@@ -39,6 +40,19 @@ function drawText(ctx: CanvasRenderingContext2D, o: Extract<VectorObject, { kind
   ctx.rotate(o.angle);
   ctx.scale(o.scale, o.scale);
   ctx.translate(-width / 2, -height / 2);
+  if (o.effect && o.effect !== 'normal' && o.fill.enabled) {
+    // Effects (emboss, long shadow, neon) paint straight onto a canvas: draw on a padded scratch one
+    // and place it with the same transform as plain text.
+    const pad = Math.ceil(o.fontSize * 3);
+    const scratch = document.createElement('canvas');
+    scratch.width = Math.ceil(width) + pad * 2;
+    scratch.height = Math.ceil(height) + pad * 2;
+    drawStyledText(scratch, o.text, pad, pad, { font: o.font, size: o.fontSize, color: o.fill.color, align: 'left', weight: o.weight }, o.effect);
+    ctx.globalAlpha = o.fill.opacity;
+    ctx.drawImage(scratch, -pad, -pad);
+    ctx.restore();
+    return;
+  }
   ctx.font = `${o.weight} ${o.fontSize}px ${o.font}`;
   ctx.textBaseline = 'top';
   ctx.textAlign = 'left';
@@ -72,7 +86,16 @@ export function renderVectorLayer(canvas: HTMLCanvasElement, objects: VectorObje
     ctx.save();
     if (o.kind === 'shape') paintShape(ctx, o.draft, o.stroke, o.fill);
     else if (o.kind === 'text') drawText(ctx, o);
-    else if (o.path.points.length >= 2) applyStyle(ctx, new Path2D(pathToSvgD(o.path)), o.stroke, o.fill.enabled && o.path.closed ? o.fill : { ...o.fill, enabled: false });
+    else if (o.kind === 'pathText') {
+      if (o.fill.enabled) {
+        const scratch = document.createElement('canvas');
+        scratch.width = canvas.width;
+        scratch.height = canvas.height;
+        drawTextAlongPath(scratch, o.text, o.path, { font: o.font, size: o.fontSize, color: o.fill.color, align: 'left', weight: o.weight });
+        ctx.globalAlpha = o.fill.opacity;
+        ctx.drawImage(scratch, 0, 0);
+      }
+    } else if (o.path.points.length >= 2) applyStyle(ctx, new Path2D(pathToSvgD(o.path)), o.stroke, o.fill.enabled && o.path.closed ? o.fill : { ...o.fill, enabled: false });
     ctx.restore();
   }
   ctx.restore();
@@ -95,13 +118,14 @@ export function objectBounds(o: VectorObject): Bounds {
     const m = textMetrics(o);
     pts = rotatedCorners(o.x, o.y, m.width * o.scale, m.height * o.scale, o.angle);
   } else {
+    const pad = o.kind === 'pathText' ? o.fontSize : 0;
     pts = o.path.points.flatMap((p) => [p.anchor, p.controlIn, p.controlOut]);
   }
   const xs = pts.map((p) => p.x);
   const ys = pts.map((p) => p.y);
   const x = Math.min(...xs);
   const y = Math.min(...ys);
-  const pad = o.kind === 'text' ? 0 : ('stroke' in o && o.stroke.enabled ? o.stroke.width / 2 : 0);
+  const pad = o.kind === 'text' ? 0 : o.kind === 'pathText' ? o.fontSize : o.stroke.enabled ? o.stroke.width / 2 : 0;
   return { x: x - pad, y: y - pad, w: Math.max(...xs) - x + pad * 2, h: Math.max(...ys) - y + pad * 2 };
 }
 
@@ -132,6 +156,7 @@ export function translateObject(o: VectorObject, dx: number, dy: number): Vector
 
 export function objectLabel(o: VectorObject): string {
   if (o.kind === 'text') return `Texto: ${o.text.split('\n')[0].slice(0, 18) || '(vacío)'}`;
+  if (o.kind === 'pathText') return `Texto en trazo: ${o.text.slice(0, 16)}`;
   if (o.kind === 'path') return o.path.closed ? 'Trazado cerrado' : 'Trazado abierto';
   return { rectangle: 'Rectángulo', ellipse: 'Elipse', polygon: 'Polígono', star: 'Estrella' }[o.draft.kind];
 }

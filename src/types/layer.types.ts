@@ -22,6 +22,19 @@ export type VectorObject =
       weight: 'normal' | 'bold';
       fill: VectorFillStyle;
       stroke: VectorStrokeStyle;
+      /** Text effect (emboss, long shadow, neon); the text colour is the fill colour. */
+      effect?: 'normal' | 'emboss' | 'longShadow' | 'neon';
+    }
+  | {
+      id: string;
+      kind: 'pathText';
+      text: string;
+      path: PenPath;
+      font: string;
+      fontSize: number;
+      weight: 'normal' | 'bold';
+      fill: VectorFillStyle;
+      stroke: VectorStrokeStyle;
     }
   | { id: string; kind: 'path'; path: PenPath; stroke: VectorStrokeStyle; fill: VectorFillStyle };
 

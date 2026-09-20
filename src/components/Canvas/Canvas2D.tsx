@@ -268,6 +268,9 @@ export default function Canvas2D() {
   const vectorDragRef = useRef<{ id: string; last: Point; moved: boolean } | null>(null);
   /** Distance travelled by the current freehand stroke, for the start taper. */
   const strokeDistRef = useRef(0);
+  /** Freehand strokes with an end taper: every point plus the layer as it was, to redraw on release. */
+  const strokePtsRef = useRef<Point[]>([]);
+  const strokeBaseRef = useRef<HTMLCanvasElement | null>(null);
   /** Line / Curve tools: `a`→`b` is the drag; `c` (curve only) is the bend, chosen while `bend` is set. */
   const [lineDraft, setLineDraft] = useState<{ a: Point; b: Point; c: Point | null; bend: boolean } | null>(null);
   const lineDraftRef = useRef(lineDraft);
@@ -753,7 +756,27 @@ export default function Canvas2D() {
       setCurrentTool('brush');
       return;
     }
-    if (currentLayer.type === 'vector' && !(penTextMode && penText.trim())) {
+    if (currentLayer.type === 'vector' && penTextMode && penText.trim()) {
+      addVectorObject(
+        {
+          id: newVectorId(),
+          kind: 'pathText',
+          text: penText,
+          path: penPath,
+          font: DEFAULT_TEXT_OPTIONS.font,
+          fontSize: penTextSize,
+          weight: DEFAULT_TEXT_OPTIONS.weight,
+          fill: { enabled: true, color: primaryColor, opacity: 1 },
+          stroke: { enabled: false, color: primaryColor, width: 1, cap: 'round', join: 'round', dashed: false, opacity: 1 },
+        },
+        'Texto en trazo'
+      );
+      setPenPath(null);
+      setPenText('');
+      setCurrentTool('brush');
+      return;
+    }
+    if (currentLayer.type === 'vector') {
       addVectorObject(
         {
           id: newVectorId(),
@@ -1071,6 +1094,15 @@ export default function Canvas2D() {
           break;
         }
         strokeDistRef.current = 0;
+        strokePtsRef.current = [posP];
+        strokeBaseRef.current = null;
+        if (currentBrush.taperEnd) {
+          const base = document.createElement('canvas');
+          base.width = canvasEl.width;
+          base.height = canvasEl.height;
+          base.getContext('2d')!.drawImage(canvasEl, 0, 0);
+          strokeBaseRef.current = base;
+        }
         if (currentBrush.taperStart) posP.scale = taperRamp(0, currentBrush.taperStart);
         lastPointRef.current = posP;
         strokeSessionRef.current = needsStrokeBuffer(currentBrush) ? new StrokeSession(canvasEl, currentBrush) : null;
@@ -1283,6 +1315,7 @@ export default function Canvas2D() {
       strokeDistRef.current += Math.hypot(smoothedPos.x - lastPointRef.current.x, smoothedPos.y - lastPointRef.current.y);
       if (currentBrush.taperStart) smoothedPos.scale = taperRamp(strokeDistRef.current, currentBrush.taperStart);
       paintBrushSegment(canvasEl, [lastPointRef.current!, smoothedPos], currentLayer);
+      strokePtsRef.current.push(smoothedPos);
       lastPointRef.current = smoothedPos;
     } else if (currentTool === 'eraser' && lastPointRef.current) {
       const smoothedPos = applySmoothing(lastPointRef.current, pos, currentBrush.smoothing ?? 0);
@@ -1342,8 +1375,36 @@ export default function Canvas2D() {
     }
   }
 
+  /** The end of a freehand stroke is only known on release: put the layer back and redraw the whole
+   * stroke with its last `taperEnd` px narrowing to a point. */
+  function applyEndTaper() {
+    const base = strokeBaseRef.current;
+    const pts = strokePtsRef.current;
+    strokeBaseRef.current = null;
+    if (!base || pts.length < 2 || !currentLayer || !currentBrush.taperEnd) return;
+    const canvasEl = getActiveCanvas(currentLayer);
+    if (!canvasEl) return;
+    const cum = [0];
+    for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y));
+    const total = cum[cum.length - 1];
+    if (total < 2) return;
+    const len = Math.min(currentBrush.taperEnd, total);
+    const tapered = pts.map((p, i) => ({ ...p, scale: (p.scale ?? 1) * taperRamp(total - cum[i], len) }));
+    const ctx = canvasEl.getContext('2d')!;
+    ctx.save();
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+    ctx.drawImage(base, 0, 0);
+    ctx.restore();
+    strokeSessionRef.current = needsStrokeBuffer(currentBrush) ? new StrokeSession(canvasEl, currentBrush) : null;
+    paintBrushSegment(canvasEl, tapered, currentLayer);
+    strokeSessionRef.current = null;
+  }
+
   function handlePointerUp() {
     strokeSessionRef.current = null;
+    if (isDrawingRef.current && currentTool === 'brush') applyEndTaper();
     if (vectorDragRef.current?.moved) pushHistory('Mover objeto vectorial');
     vectorDragRef.current = null;
     if ((currentTool === 'line' || currentTool === 'curve') && lineDraftRef.current && !lineDraftRef.current.bend && isDrawingRef.current) {
@@ -1447,6 +1508,7 @@ export default function Canvas2D() {
           font: textStyle.font,
           fontSize: textStyle.size,
           weight: textStyle.weight,
+          effect: textEffect,
           fill: { enabled: true, color: primaryColor, opacity: 1 },
           stroke: { enabled: false, color: primaryColor, width: 1, cap: 'round', join: 'round', dashed: false, opacity: 1 },
         },

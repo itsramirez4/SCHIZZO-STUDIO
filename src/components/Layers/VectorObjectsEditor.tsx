@@ -59,6 +59,29 @@ export default function VectorObjectsEditor({ layer }: { layer: Layer }) {
             <button onClick={remove} className="flex-1 bg-panelLight rounded py-0.5 hover:text-red-400" title="Eliminar"><Trash2 size={12} className="mx-auto" /></button>
           </div>
           {selected.kind === 'text' && (
+            <select
+              value={selected.effect ?? 'normal'}
+              onChange={(e) => update((o) => (o.kind === 'text' ? { ...o, effect: e.target.value as typeof selected.effect } : o))}
+              className="w-full bg-panel border border-border rounded text-[11px] px-1.5 py-1"
+            >
+              <option value="normal">Sin efecto</option>
+              <option value="emboss">Relieve</option>
+              <option value="longShadow">Sombra larga</option>
+              <option value="neon">Neón</option>
+            </select>
+          )}
+          {selected.kind === 'pathText' && (
+            <>
+              <textarea
+                value={selected.text}
+                onChange={(e) => update((o) => (o.kind === 'pathText' ? { ...o, text: e.target.value } : o))}
+                rows={2}
+                className="w-full bg-panel border border-border rounded text-[11px] px-1.5 py-1"
+              />
+              <Num label="Tamaño" value={selected.fontSize} min={4} max={400} onChange={(v) => update((o) => (o.kind === 'pathText' ? { ...o, fontSize: v } : o))} />
+            </>
+          )}
+          {selected.kind === 'text' && (
             <>
               <textarea
                 value={selected.text}
