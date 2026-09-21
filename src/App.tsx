@@ -22,15 +22,16 @@ import StartScreen from '@/components/UI/StartScreen';
 import Toolbox from '@/components/Toolbox/Toolbox';
 import Canvas2D from '@/components/Canvas/Canvas2D';
 import NewProjectDialog from '@/components/Dialogs/NewProjectDialog';
-import ExportDialog from '@/components/Dialogs/ExportDialog';
 import AutoSaveDialog from '@/components/Dialogs/AutoSaveDialog';
-import BrushEditor from '@/components/Brushes/BrushEditor';
 import TourOverlay from '@/components/Learning/TourOverlay';
 
 // three.js pulls in a large bundle — only load it once the 3D dialog is actually opened.
 const Model3DViewer = lazy(() => import('@/components/Models3D/Model3DViewer'));
 const Reference3DPanel = lazy(() => import('@/components/Models3D/Reference3DPanel'));
 const ResizeDialog = lazy(() => import('@/components/Dialogs/ResizeDialog'));
+// Opened on demand only, so their code (and the brush-format/ABR importers) stays out of the startup chunk.
+const ExportDialog = lazy(() => import('@/components/Dialogs/ExportDialog'));
+const BrushEditor = lazy(() => import('@/components/Brushes/BrushEditor'));
 const ReplayDialog = lazy(() => import('@/components/Replay/ReplayDialog'));
 // The floating workspace is an opt-in alternate to the classic layout below (most sessions
 // never touch it) — it also drags in its own copies of Filters/Comic/Animation/Histogram/
@@ -80,6 +81,8 @@ export default function App() {
   const showReplayDialog = useUIStore((s) => s.showReplayDialog);
   const openResizeDialog = useUIStore((s) => s.openResizeDialog);
   const openBrushEditor = useUIStore((s) => s.openBrushEditor);
+  const showBrushEditor = useUIStore((s) => s.showBrushEditor);
+  const showExportDialog = useUIStore((s) => s.showExportDialog);
   const toggleLayerPanel = useUIStore((s) => s.toggleLayerPanel);
   const toggleFilterPanel = useUIStore((s) => s.toggleFilterPanel);
   const toggleHistoryPanel = useUIStore((s) => s.toggleHistoryPanel);
@@ -400,9 +403,21 @@ export default function App() {
 
       <TourOverlay />
       <ErrorBoundary name="Diálogo"><NewProjectDialog /></ErrorBoundary>
-      <ErrorBoundary name="Diálogo de exportación"><ExportDialog /></ErrorBoundary>
+      {showExportDialog && (
+        <ErrorBoundary name="Diálogo de exportación">
+          <Suspense fallback={null}>
+            <ExportDialog />
+          </Suspense>
+        </ErrorBoundary>
+      )}
       <ErrorBoundary name="Diálogo de copias"><AutoSaveDialog /></ErrorBoundary>
-      <ErrorBoundary name="Editor de pinceles"><BrushEditor /></ErrorBoundary>
+      {showBrushEditor && (
+        <ErrorBoundary name="Editor de pinceles">
+          <Suspense fallback={null}>
+            <BrushEditor />
+          </Suspense>
+        </ErrorBoundary>
+      )}
       {showModel3DViewer && (
         <Suspense fallback={null}>
           <Model3DViewer />

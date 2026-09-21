@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import VectorObjectsEditor from './VectorObjectsEditor';
+import { lazy, Suspense, useState } from 'react';
 import {
   Eye,
   EyeOff,
@@ -33,8 +32,10 @@ import { useAppStore } from '@/store/appStore';
 import * as layerService from '@/services/layer.service';
 import { flipHorizontal, flipVertical } from '@/services/canvas.service';
 import AdjustmentEditor from './AdjustmentEditor';
-import FillEditor from './FillEditor';
-import LayerEffectsEditor from './LayerEffectsEditor';
+// Inline editors only shown for fill/vector layers or when the effects section is open.
+const VectorObjectsEditor = lazy(() => import('./VectorObjectsEditor'));
+const FillEditor = lazy(() => import('./FillEditor'));
+const LayerEffectsEditor = lazy(() => import('./LayerEffectsEditor'));
 import { hasAnyEnabledEffect } from '@/services/layerEffects.service';
 
 interface Props {
@@ -370,8 +371,16 @@ export default function LayerItem({
             </div>
           )}
           {layer.type === 'adjustment' && <AdjustmentEditor layer={layer} />}
-          {layer.type === 'fill' && <FillEditor layer={layer} />}
-          {layer.type === 'vector' && <VectorObjectsEditor layer={layer} />}
+          {layer.type === 'fill' && (
+            <Suspense fallback={null}>
+              <FillEditor layer={layer} />
+            </Suspense>
+          )}
+          {layer.type === 'vector' && (
+            <Suspense fallback={null}>
+              <VectorObjectsEditor layer={layer} />
+            </Suspense>
+          )}
           {!isGroup && layer.hasMask && (
             <div className="flex gap-1">
               <button
@@ -390,7 +399,11 @@ export default function LayerItem({
               </button>
             </div>
           )}
-          {showEffects && (layer.type === 'raster' || layer.type === 'fill' || layer.type === 'vector') && <LayerEffectsEditor layer={layer} />}
+          {showEffects && (layer.type === 'raster' || layer.type === 'fill' || layer.type === 'vector') && (
+            <Suspense fallback={null}>
+              <LayerEffectsEditor layer={layer} />
+            </Suspense>
+          )}
           {!isGroup && otherGroups.length > 0 && (
             <select
               value={layer.parent ?? ''}
