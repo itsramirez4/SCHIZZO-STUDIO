@@ -37,7 +37,28 @@ npm run dev        # Vite + Electron con recarga en caliente
 npm run lint       # comprobación de tipos (tsc --noEmit)
 npm run build      # compila Electron y genera dist/
 npm start          # build + abrir la app
+npm run check      # batería local de comprobaciones (ver abajo)
 ```
+
+## Comprobaciones locales
+
+`npm run check` compila la app y la abre de verdad en Electron (perfil temporal, sin tocar tus proyectos) para hacer las operaciones críticas y comprobar el resultado. Tarda unos 3 minutos y no necesita servicios externos.
+
+| Grupo | Qué comprueba |
+| --- | --- |
+| `historial` | Deshacer/rehacer con píxeles reales, varios trazos, deshacer inmediato tras un trazo, crear/borrar capas. |
+| `archivo` | Guardar un `.drawing` con varias capas, reabrirlo y comparar píxeles; volver a guardar sobre el mismo archivo. |
+| `exportar` | PNG, JPG, WebP, BMP, SVG y PDF: formato, tamaño y que el dibujo no salga en blanco. |
+| `reproduccion` | Cada paso queda registrado, en orden, y el último fotograma contiene el dibujo. |
+| `tipos` | Los cuatro tipos de proyecto abren sin errores; el pincel dibuja en dibujo y pixel art. |
+| `rendimiento` | Lienzo de 12 MP con 5 capas: trazos fluidos y sin bloqueo al soltar. |
+
+```bash
+npm run check -- historial archivo   # solo algunos grupos
+node scripts/check.cjs --no-build    # reutiliza el build existente
+```
+
+Sale con código distinto de 0 si algo falla. Los diálogos de abrir/guardar se responden solos (`scripts/check/electron-entry.cjs`).
 
 ## Empaquetado (Windows)
 
