@@ -24,17 +24,68 @@ export function canvasToDataUrl(canvas: HTMLCanvasElement, type = 'image/png', q
   return canvas.toDataURL(type, quality);
 }
 
-/** PNG data URL encoded off the main thread (toBlob snapshots the pixels when called, encodes in the background). */
-export function canvasToDataUrlAsync(canvas: HTMLCanvasElement): Promise<string> {
+let encoder: Worker | null | undefined;
+let encodeSeq = 0;
+const encodeJobs = new Map<number, { resolve: (b: Blob) => void; reject: (e: Error) => void }>();
+
+function getEncoder(): Worker | null {
+  if (encoder !== undefined) return encoder;
+  try {
+    if (typeof Worker === 'undefined' || typeof OffscreenCanvas === 'undefined' || typeof createImageBitmap === 'undefined') return (encoder = null);
+    const w = new Worker(new URL('./encode.worker.ts', import.meta.url), { type: 'module' });
+    w.onmessage = (e: MessageEvent<{ id: number; blob?: Blob; error?: string }>) => {
+      const job = encodeJobs.get(e.data.id);
+      if (!job) return;
+      encodeJobs.delete(e.data.id);
+      if (e.data.blob) job.resolve(e.data.blob);
+      else job.reject(new Error(e.data.error ?? 'codificación fallida'));
+    };
+    w.onerror = () => {
+      // Worker unusable: fail what is in flight and fall back to toBlob from now on.
+      encodeJobs.forEach((j) => j.reject(new Error('worker de codificación caído')));
+      encodeJobs.clear();
+      encoder = null;
+    };
+    return (encoder = w);
+  } catch {
+    return (encoder = null);
+  }
+}
+
+function blobToDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (!blob) return reject(new Error('toBlob devolvió null'));
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(blob);
-    }, 'image/png');
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
   });
+}
+
+function canvasToBlobOnMainThread(canvas: HTMLCanvasElement, type: string, quality?: number): Promise<Blob> {
+  return new Promise((resolve, reject) => canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('toBlob devolvió null'))), type, quality));
+}
+
+/**
+ * Data URL of a canvas encoded off the main thread: the bitmap is copied (async, cheap) and a worker
+ * does the PNG/JPEG encoding. Reading the pixels back with `toBlob` froze the UI for ~80 ms per 12 MP
+ * layer. Falls back to `toBlob` when workers/OffscreenCanvas are unavailable.
+ */
+export async function canvasToDataUrlAsync(canvas: HTMLCanvasElement, type = 'image/png', quality?: number): Promise<string> {
+  const worker = getEncoder();
+  if (worker) {
+    try {
+      const bitmap = await createImageBitmap(canvas);
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        const id = ++encodeSeq;
+        encodeJobs.set(id, { resolve, reject });
+        worker.postMessage({ id, bitmap, type, quality }, [bitmap]);
+      });
+      return await blobToDataUrl(blob);
+    } catch {
+      /* fall through to the main-thread path */
+    }
+  }
+  return blobToDataUrl(await canvasToBlobOnMainThread(canvas, type, quality));
 }
 
 export function dataUrlToImage(dataUrl: string): Promise<HTMLImageElement> {

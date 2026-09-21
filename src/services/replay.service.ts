@@ -1,6 +1,7 @@
 import { Layer, Project } from '@/types';
 import { hasAnyEnabledEffect } from './layerEffects.service';
 import { IdbStore } from '@/utils/idbStore';
+import { canvasToDataUrlAsync } from '@/utils/canvasUtils';
 import { flattenLayers, flattenLayersFrom, type PixelSources } from './layer.service';
 import { isElectron, sanitizeFilename } from '@/utils/fileUtils';
 import { uint8ToBase64 } from '@/utils/binaryUtils';
@@ -69,21 +70,7 @@ function newFrameCanvas(project: Pick<Project, 'width' | 'height' | 'settings'>,
   return { c, ctx };
 }
 
-function canvasToJpeg(c: HTMLCanvasElement): Promise<string> {
-  return new Promise((resolve, reject) => {
-    c.toBlob(
-      (blob) => {
-        if (!blob) return reject(new Error('toBlob devolvió null'));
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(reader.error);
-        reader.readAsDataURL(blob);
-      },
-      'image/jpeg',
-      0.72
-    );
-  });
-}
+const canvasToJpeg = (c: HTMLCanvasElement) => canvasToDataUrlAsync(c, 'image/jpeg', 0.72);
 
 /** Layers that can be drawn straight at thumbnail size: plain pixel layers with no mask, clip, group or effects. */
 function isSimple(l: Layer) {
