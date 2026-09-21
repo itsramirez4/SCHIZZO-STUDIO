@@ -24,6 +24,19 @@ export function canvasToDataUrl(canvas: HTMLCanvasElement, type = 'image/png', q
   return canvas.toDataURL(type, quality);
 }
 
+/** PNG data URL encoded off the main thread (toBlob snapshots the pixels when called, encodes in the background). */
+export function canvasToDataUrlAsync(canvas: HTMLCanvasElement): Promise<string> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) return reject(new Error('toBlob devolvió null'));
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    }, 'image/png');
+  });
+}
+
 export function dataUrlToImage(dataUrl: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();

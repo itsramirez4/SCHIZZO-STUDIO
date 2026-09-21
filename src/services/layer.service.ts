@@ -508,6 +508,17 @@ function flattenSubtree(
   return out;
 }
 
+/** Copy of a layer's (or mask's) pixels right now, for encoding later without blocking the UI. */
+export function snapshotLayerCanvas(id: string): HTMLCanvasElement | undefined {
+  const canvas = canvasRegistry.get(id);
+  return canvas ? cloneCanvas(canvas) : undefined;
+}
+
+export function snapshotMaskCanvas(id: string): HTMLCanvasElement | undefined {
+  const canvas = maskRegistry.get(id);
+  return canvas ? cloneCanvas(canvas) : undefined;
+}
+
 export function layerToDataUrl(id: string): string | undefined {
   const canvas = canvasRegistry.get(id);
   return canvas ? canvasToDataUrl(canvas) : undefined;

@@ -2,10 +2,11 @@ import { v4 as uuid } from 'uuid';
 import { Layer, ProjectAnimation } from '@/types';
 import { HISTORY_IN_MEMORY } from '@/utils/constants';
 import { IdbStore } from '@/utils/idbStore';
+import { canvasToDataUrl, canvasToDataUrlAsync } from '@/utils/canvasUtils';
 import {
-  layerToDataUrl,
+  snapshotLayerCanvas,
+  snapshotMaskCanvas,
   loadLayerCanvasFromDataUrl,
-  maskToDataUrl,
   loadMaskFromDataUrl,
   removeMask,
 } from './layer.service';
@@ -25,6 +26,8 @@ export interface HistorySnapshot {
   animation?: ProjectAnimation;
   /** True while `canvases`/`masks` have been moved to IndexedDB (empty in memory) to free RAM. */
   spilled?: boolean;
+  /** Resolves once the PNGs are encoded into `canvases`/`masks` (done in the background after a push). */
+  ready?: Promise<void>;
 }
 
 interface SpilledPixels {
@@ -51,19 +54,21 @@ export class HistoryManager {
   }
 
   pushState(action: string, layers: Layer[], animation?: ProjectAnimation) {
-    const canvases: Record<string, string> = {};
-    const masks: Record<string, string> = {};
+    // Copy the pixels now (fast, GPU-side), encode them to PNG in the background: encoding every
+    // layer synchronously froze the UI for a second on big multi-layer canvases after each stroke.
+    const layerSources: Record<string, HTMLCanvasElement> = {};
+    const maskSources: Record<string, HTMLCanvasElement> = {};
     for (const layer of layers) {
-      let dataUrl = layerToDataUrl(layer.id);
-      // Untouched layers produce an identical PNG: share the previous string instead of holding a copy.
-      const prev = this.stack[this.pointer]?.canvases[layer.id];
-      if (dataUrl && prev !== undefined && prev === dataUrl) dataUrl = prev;
-      if (dataUrl) canvases[layer.id] = dataUrl;
+      const c = snapshotLayerCanvas(layer.id);
+      if (c) layerSources[layer.id] = c;
       if (layer.hasMask) {
-        const maskUrl = maskToDataUrl(layer.id);
-        if (maskUrl) masks[layer.id] = maskUrl;
+        const m = snapshotMaskCanvas(layer.id);
+        if (m) maskSources[layer.id] = m;
       }
     }
+    const previous = this.stack[this.pointer];
+    const canvases: Record<string, string> = {};
+    const masks: Record<string, string> = {};
 
     const snapshot: HistorySnapshot = {
       id: uuid(),
@@ -74,6 +79,32 @@ export class HistoryManager {
       masks,
       animation: animation ? { ...animation, frames: animation.frames.map((f) => ({ ...f })) } : undefined,
     };
+    const encode = async (src: HTMLCanvasElement) => {
+      try {
+        return await canvasToDataUrlAsync(src);
+      } catch {
+        return canvasToDataUrl(src);
+      }
+    };
+    snapshot.ready = (async () => {
+      await previous?.ready;
+      await Promise.all([
+        ...Object.entries(layerSources).map(async ([id, src]) => {
+          let url = await encode(src);
+          // Untouched layers produce an identical PNG: share the previous string instead of holding a copy.
+          const prev = previous?.canvases[id];
+          if (prev !== undefined && prev === url) url = prev;
+          canvases[id] = url;
+        }),
+        ...Object.entries(maskSources).map(async ([id, src]) => {
+          masks[id] = await encode(src);
+        }),
+      ]);
+    })()
+      .catch((err) => console.warn('No se pudo codificar un estado del historial', err))
+      .finally(() => {
+        snapshot.ready = undefined;
+      });
 
     // Pushing after undoing discards the redo branch — including its spilled data.
     for (const dropped of this.stack.slice(this.pointer + 1)) this.dropFromDisk(dropped);
@@ -89,7 +120,7 @@ export class HistoryManager {
     const lo = this.pointer - HISTORY_IN_MEMORY;
     const hi = this.pointer + HISTORY_IN_MEMORY;
     this.stack.forEach((snap, i) => {
-      if (snap.spilled || (i >= lo && i <= hi)) return;
+      if (snap.spilled || snap.ready || (i >= lo && i <= hi)) return;
       const data: SpilledPixels = { canvases: snap.canvases, masks: snap.masks };
       snap.spilled = true;
       snap.canvases = {};
@@ -153,6 +184,7 @@ export class HistoryManager {
 
   private async applyCurrent(): Promise<HistorySnapshot> {
     const snapshot = this.stack[this.pointer];
+    await snapshot.ready;
     await this.restoreFromDisk(snapshot);
     this.spillOld();
     await Promise.all(
