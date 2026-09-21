@@ -264,6 +264,26 @@ export async function loadMaskFromDataUrl(id: string, dataUrl: string, width: nu
 
 // --- Compositing ---
 
+/** Pixel sources a flatten reads from: the live registries, unless a frozen copy is being flattened. */
+export interface PixelSources {
+  canvases: Record<string, HTMLCanvasElement>;
+  masks: Record<string, HTMLCanvasElement>;
+}
+let sourceOverride: PixelSources | null = null;
+const compCanvas = (id: string) => (sourceOverride ? sourceOverride.canvases[id] : canvasRegistry.get(id));
+const compMask = (id: string) => (sourceOverride ? sourceOverride.masks[id] : maskRegistry.get(id));
+
+/** Flattens `layers` from a frozen copy of the pixels (see `snapshotLayerCanvas`), not the live canvases. */
+export function flattenLayersFrom(sources: PixelSources, layers: Layer[], width: number, height: number): HTMLCanvasElement {
+  sourceOverride = sources;
+  try {
+    return flattenSubtree(layers, undefined, width, height);
+  } finally {
+    sourceOverride = null;
+  }
+}
+
+
 /**
  * `destination-in` clips by the SOURCE's alpha channel, but a painted mask is always fully
  * opaque — painting black vs. white only changes RGB, never alpha. So a paint mask has to be
@@ -319,7 +339,7 @@ function compositeLayerOnto(ctx: CanvasRenderingContext2D, layer: Layer, canvas:
     content = clipped;
   }
 
-  const mask = layer.hasMask ? maskRegistry.get(layer.id) : undefined;
+  const mask = layer.hasMask ? compMask(layer.id) : undefined;
   if (mask) {
     const masked = createCanvas(content.width, content.height);
     const mctx = masked.getContext('2d')!;
@@ -405,7 +425,7 @@ function applyAdjustmentToAccumulator(out: HTMLCanvasElement, layer: Layer) {
   applyAdjustment(temp, (layer.adjustmentType ?? 'brightness-contrast') as AdjustmentType, layer.adjustmentParams ?? {});
   const after = temp.getContext('2d')!.getImageData(0, 0, out.width, out.height);
 
-  const mask = layer.hasMask ? maskRegistry.get(layer.id) : undefined;
+  const mask = layer.hasMask ? compMask(layer.id) : undefined;
   const maskAlpha = mask
     ? luminanceMaskToAlpha(mask).getContext('2d')!.getImageData(0, 0, out.width, out.height).data
     : undefined;
@@ -432,7 +452,7 @@ function applyAdjustmentToAccumulator(out: HTMLCanvasElement, layer: Layer) {
 function getOwnContentCanvas(allLayers: Layer[], layer: Layer, width: number, height: number): HTMLCanvasElement | undefined {
   if (layer.type === 'group') return flattenSubtree(allLayers, layer.id, width, height);
   if (layer.type === 'fill') return renderFillLayer(layer, width, height);
-  if (layer.type === 'raster' || layer.type === 'text' || layer.type === 'reference' || layer.type === 'vector') return canvasRegistry.get(layer.id);
+  if (layer.type === 'raster' || layer.type === 'text' || layer.type === 'reference' || layer.type === 'vector') return compCanvas(layer.id);
   return undefined;
 }
 
@@ -454,7 +474,7 @@ function paintLayerOnto(ctx: CanvasRenderingContext2D, allLayers: Layer[], layer
   } else if (layer.type === 'adjustment') {
     applyAdjustmentToAccumulator(ctx.canvas as HTMLCanvasElement, layer);
   } else {
-    const canvas = canvasRegistry.get(layer.id);
+    const canvas = compCanvas(layer.id);
     if (canvas) compositeLayerOnto(ctx, layer, canvas, clipAlpha);
   }
 }

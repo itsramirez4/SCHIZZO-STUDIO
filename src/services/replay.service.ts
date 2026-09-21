@@ -1,6 +1,7 @@
-import { Project } from '@/types';
+import { Layer, Project } from '@/types';
+import { hasAnyEnabledEffect } from './layerEffects.service';
 import { IdbStore } from '@/utils/idbStore';
-import { flattenLayers } from './layer.service';
+import { flattenLayers, flattenLayersFrom, type PixelSources } from './layer.service';
 import { isElectron, sanitizeFilename } from '@/utils/fileUtils';
 import { uint8ToBase64 } from '@/utils/binaryUtils';
 
@@ -55,10 +56,9 @@ export function replayIdle(projectId: string): Promise<void> {
   return queues.get(projectId) ?? Promise.resolve();
 }
 
-/** The flattened artwork scaled to fit `FRAME_MAX_SIDE`, on paper white, as a JPEG data URL. */
-function snapshot(project: Project): { jpg: string; width: number; height: number } {
-  const flat = flattenLayers(project.layers, project.width, project.height);
-  const k = Math.min(1, FRAME_MAX_SIDE / Math.max(project.width, project.height));
+type Frame = { jpg: string; width: number; height: number };
+
+function newFrameCanvas(project: Pick<Project, 'width' | 'height' | 'settings'>, k: number) {
   const c = document.createElement('canvas');
   c.width = Math.max(1, Math.round(project.width * k));
   c.height = Math.max(1, Math.round(project.height * k));
@@ -66,26 +66,91 @@ function snapshot(project: Project): { jpg: string; width: number; height: numbe
   ctx.fillStyle = project.settings?.transparentBg === false && project.settings.backgroundColor ? project.settings.backgroundColor : '#ffffff';
   ctx.fillRect(0, 0, c.width, c.height);
   ctx.imageSmoothingQuality = 'high';
+  return { c, ctx };
+}
+
+function canvasToJpeg(c: HTMLCanvasElement): Promise<string> {
+  return new Promise((resolve, reject) => {
+    c.toBlob(
+      (blob) => {
+        if (!blob) return reject(new Error('toBlob devolvió null'));
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(blob);
+      },
+      'image/jpeg',
+      0.72
+    );
+  });
+}
+
+/** Layers that can be drawn straight at thumbnail size: plain pixel layers with no mask, clip, group or effects. */
+function isSimple(l: Layer) {
+  return (l.type === 'raster' || l.type === 'text' || l.type === 'vector') && !l.clipTo && !l.hasMask && !hasAnyEnabledEffect(l.effects) && !l.parent;
+}
+
+/**
+ * The flattened artwork scaled to fit `FRAME_MAX_SIDE`, on paper white, as a JPEG data URL. Works from
+ * frozen pixel copies and yields to the UI before the heavy parts, so a step never blocks drawing.
+ * The common case (plain layers) is drawn directly at thumbnail size, a few ms per layer; documents
+ * with groups, masks, effects, fills or adjustments are flattened in full (deferred) so the frame
+ * still matches what the canvas shows.
+ */
+async function snapshot(project: Pick<Project, 'width' | 'height' | 'settings'>, layers: Layer[], sources: PixelSources): Promise<Frame> {
+  const k = Math.min(1, FRAME_MAX_SIDE / Math.max(project.width, project.height));
+  const visible = layers.filter((l) => l.visible && l.type !== 'reference');
+  const { c, ctx } = newFrameCanvas(project, k);
+  if (visible.every(isSimple)) {
+    // Stored topmost-first: paint from the bottom up.
+    for (const l of [...visible].reverse()) {
+      const src = sources.canvases[l.id];
+      if (!src) continue;
+      ctx.save();
+      ctx.globalAlpha = l.opacity;
+      ctx.globalCompositeOperation = l.blendMode;
+      ctx.drawImage(src, l.x * k, l.y * k, src.width * k, src.height * k);
+      ctx.restore();
+    }
+  } else {
+    await new Promise<void>((resolve) => setTimeout(resolve, 60));
+    ctx.drawImage(flattenLayersFrom(sources, layers, project.width, project.height), 0, 0, c.width, c.height);
+  }
+  return { jpg: await canvasToJpeg(c), width: c.width, height: c.height };
+}
+
+/** Reads the live canvases synchronously (used when no frozen copy exists, e.g. a new or loaded project). */
+function snapshotLive(project: Project): Frame {
+  const flat = flattenLayers(project.layers, project.width, project.height);
+  const k = Math.min(1, FRAME_MAX_SIDE / Math.max(project.width, project.height));
+  const { c, ctx } = newFrameCanvas(project, k);
   ctx.drawImage(flat, 0, 0, c.width, c.height);
   return { jpg: c.toDataURL('image/jpeg', 0.72), width: c.width, height: c.height };
 }
 
 /**
- * Records the current state of the artwork as a new step. The pixels are read right now (the layer
- * canvases can change or be swapped a moment later); only the storage is asynchronous.
+ * Records the current state of the artwork as a new step. With `sources` (the frozen pixel copies the
+ * undo history just took) nothing is read from the live canvases and the work happens in the
+ * background; without them the pixels are read right now. Storage is always asynchronous, and steps
+ * are stored in the order they were captured.
  */
-export function captureReplayFrame(project: Project, action: string) {
+export function captureReplayFrame(project: Project, action: string, sources?: PixelSources) {
   if (!project.id || typeof indexedDB === 'undefined') return;
-  let snap: ReturnType<typeof snapshot>;
-  try {
-    snap = snapshot(project);
-  } catch (err) {
-    console.warn('No se pudo capturar el paso del proceso', err);
-    return;
-  }
   const t = Date.now();
   const projectId = project.id;
+  const layers = project.layers.map((l) => ({ ...l }));
+  const dims = { width: project.width, height: project.height, settings: project.settings };
+  let live: Frame | null = null;
+  if (!sources) {
+    try {
+      live = snapshotLive(project);
+    } catch (err) {
+      console.warn('No se pudo capturar el paso del proceso', err);
+      return;
+    }
+  }
   void enqueue(projectId, async () => {
+    const snap = live ?? (await snapshot(dims, layers, sources!));
     const meta = (await store.get<ReplayMeta>(metaKey(projectId))) ?? { projectId, width: snap.width, height: snap.height, ids: [], nextId: 0 };
     meta.width = snap.width;
     meta.height = snap.height;

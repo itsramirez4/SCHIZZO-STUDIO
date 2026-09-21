@@ -1502,8 +1502,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   pushHistory: (action) => {
     const { project } = get();
     if (!project) return;
-    historyManager.pushState(action, project.layers, project.animation);
-    captureReplayFrame(project, action);
+    const sources = historyManager.pushState(action, project.layers, project.animation);
+    captureReplayFrame(project, action, sources);
     set((s) => ({
       historyVersion: s.historyVersion + 1,
       canUndo: historyManager.canUndo(),

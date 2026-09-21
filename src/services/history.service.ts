@@ -6,6 +6,7 @@ import { canvasToDataUrl, canvasToDataUrlAsync } from '@/utils/canvasUtils';
 import {
   snapshotLayerCanvas,
   snapshotMaskCanvas,
+  type PixelSources,
   loadLayerCanvasFromDataUrl,
   loadMaskFromDataUrl,
   removeMask,
@@ -53,7 +54,8 @@ export class HistoryManager {
     this.disk?.clear().catch(() => undefined);
   }
 
-  pushState(action: string, layers: Layer[], animation?: ProjectAnimation) {
+  /** Returns the frozen pixel copies it took, so callers (the replay recorder) can reuse them instead of copying again. */
+  pushState(action: string, layers: Layer[], animation?: ProjectAnimation): PixelSources {
     // Copy the pixels now (fast, GPU-side), encode them to PNG in the background: encoding every
     // layer synchronously froze the UI for a second on big multi-layer canvases after each stroke.
     const layerSources: Record<string, HTMLCanvasElement> = {};
@@ -112,6 +114,7 @@ export class HistoryManager {
     this.stack.push(snapshot);
     this.pointer = this.stack.length - 1;
     this.spillOld();
+    return { canvases: layerSources, masks: maskSources };
   }
 
   /** Moves the pixel data of snapshots far from the pointer to IndexedDB. */
