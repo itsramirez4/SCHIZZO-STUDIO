@@ -45,6 +45,7 @@ import { calculateSymmetricPoints } from '@/services/symmetryEngine.service';
 import { findSnapPoint } from '@/services/snapEngine.service';
 import { warpImagePerspective } from '@/services/perspectiveTransform.service';
 import PerspectiveGridOverlay from '../PerspectiveTools/PerspectiveGridOverlay';
+import HorizonOverlay from '../PerspectiveTools/HorizonOverlay';
 import SymmetryOverlay from '../PerspectiveTools/SymmetryOverlay';
 import StudyGuidesOverlay from './StudyGuidesOverlay';
 import FigureOverlay from './FigureOverlay';
@@ -1902,6 +1903,7 @@ export default function Canvas2D() {
         />
         <GridOverlay canvasWidth={project.width} canvasHeight={project.height} zoom={zoom} />
         <PerspectiveGridOverlay canvasWidth={project.width} canvasHeight={project.height} zoom={zoom} getProjectPoint={getProjectPoint} />
+        <HorizonOverlay canvasWidth={project.width} canvasHeight={project.height} zoom={zoom} getProjectPoint={getProjectPoint} />
         <SymmetryOverlay canvasWidth={project.width} canvasHeight={project.height} zoom={zoom} getProjectPoint={getProjectPoint} />
         <StudyGuidesOverlay canvasWidth={project.width} canvasHeight={project.height} zoom={zoom} getProjectPoint={getProjectPoint} />
         <FigureOverlay canvasWidth={project.width} canvasHeight={project.height} zoom={zoom} getProjectPoint={getProjectPoint} />

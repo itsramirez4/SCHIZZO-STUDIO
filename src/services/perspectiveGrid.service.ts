@@ -1,4 +1,28 @@
-import { PerspectiveGridSettings, PerspectiveGridType, VanishingPoint } from '@/types/perspective';
+import { HorizonSettings, PerspectiveGridSettings, PerspectiveGridType, VanishingPoint } from '@/types/perspective';
+
+/** The vanishing points that sit on the horizon (the "top" one of 3-point perspective does not). */
+export const HORIZON_POINT_IDS: VanishingPoint['id'][] = ['left', 'right', 'center'];
+
+export const DEFAULT_HORIZON_COLOR = '#ffd43b';
+
+/** The grid's horizon, or a hidden, unlinked default derived from where its points already are. */
+export function resolveHorizon(grid: PerspectiveGridSettings, canvasHeight: number): HorizonSettings {
+  if (grid.horizon) return grid.horizon;
+  const p = grid.points.center ?? grid.points.left ?? grid.points.right;
+  return { y: p?.y ?? canvasHeight / 2, visible: false, linked: false, color: DEFAULT_HORIZON_COLOR };
+}
+
+/** Moves the horizon and, when it is linked, drags every (unlocked) horizon vanishing point onto it. */
+export function applyHorizonY(grid: PerspectiveGridSettings, y: number, canvasHeight: number): PerspectiveGridSettings {
+  const horizon = { ...resolveHorizon(grid, canvasHeight), y };
+  if (!horizon.linked) return { ...grid, horizon };
+  const points = { ...grid.points };
+  for (const id of HORIZON_POINT_IDS) {
+    const p = points[id];
+    if (p && !p.locked) points[id] = { ...p, y };
+  }
+  return { ...grid, horizon, points };
+}
 
 const COLORS: Record<VanishingPoint['id'], string> = {
   left: '#ff6b6b',

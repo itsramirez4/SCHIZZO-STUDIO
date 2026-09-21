@@ -37,11 +37,16 @@ export default function Model3DViewer() {
   const [modelVersion, setModelVersion] = useState(0);
   const [wireframe, setWireframe] = useState(false);
   const [fov, setFov] = useState(45);
+  // The engine lives in a ref (created in the effect below), so nothing re-renders once it exists:
+  // without this bump the mannequin controls, which need the engine, stayed hidden until the user
+  // happened to touch another control.
+  const [, setEngineVersion] = useState(0);
 
   useEffect(() => {
     if (!show || !canvasRef.current) return;
     const engine = new Model3DViewerEngine(canvasRef.current, VIEWER_WIDTH, VIEWER_HEIGHT);
     engineRef.current = engine;
+    setEngineVersion((v) => v + 1);
     setHasModel(false);
     setModelName(null);
     return () => {

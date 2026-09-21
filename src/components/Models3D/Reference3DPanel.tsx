@@ -10,7 +10,7 @@ import MannequinControls from './MannequinControls';
 import { usePoseSessionStore } from '@/store/poseSessionStore';
 import { useViewerRequestStore } from '@/store/viewerRequestStore';
 import { getPoses } from '@/services/mannequin.service';
-import { HAND_PRESETS, defaultRigState, randomPose, BODY_TYPES, BodyTypeId } from '@/services/mannequin.service';
+import { HAND_PRESETS, FOOT_PRESETS, defaultRigState, randomPose, BODY_TYPES, BodyTypeId } from '@/services/mannequin.service';
 
 const PANEL_WIDTH = 300;
 const PANEL_HEIGHT = 260;
@@ -81,12 +81,14 @@ export default function Reference3DPanel() {
     const base = engine.getRig()?.state ?? defaultRigState('human');
     const bodies = Object.keys(BODY_TYPES) as BodyTypeId[];
     const hand = () => [...HAND_PRESETS[Math.floor(Math.random() * HAND_PRESETS.length)].curls];
+    const foot = () => [...FOOT_PRESETS[Math.floor(Math.random() * FOOT_PRESETS.length)].curls];
     engine.setRigState({
       ...base,
       kind: 'human',
       bodyType: bodies[Math.floor(Math.random() * bodies.length)],
       pose: randomPose('human'),
       hands: { L: hand(), R: hand() },
+      feet: { L: foot(), R: foot() },
     });
     setModelVersion((v) => v + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps

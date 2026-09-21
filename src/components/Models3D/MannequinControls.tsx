@@ -6,6 +6,9 @@ import {
   EXPRESSION_PRESETS,
   Expression,
   FINGER_NAMES,
+  FOOT_PRESETS,
+  TOE_NAMES,
+  SUBJECT_LABELS,
   HAND_PRESETS,
   AnatomyView,
   DEFAULT_ANATOMY,
@@ -20,19 +23,28 @@ import {
   randomPose,
 } from '@/services/mannequin.service';
 import NumberSlider from './NumberSlider';
+import PoseLibrary from './PoseLibrary';
 
 const SUBJECTS: { id: SubjectKind | 'none'; label: string }[] = [
   { id: 'none', label: 'Sin maniquí' },
-  { id: 'human', label: 'Figura humana' },
-  { id: 'dog', label: 'Perro' },
-  { id: 'cat', label: 'Gato' },
-  { id: 'horse', label: 'Caballo' },
+  ...(Object.keys(SUBJECT_LABELS) as SubjectKind[]).map((id) => ({ id, label: SUBJECT_LABELS[id] })),
 ];
 
 const OUTFIT_LABELS: Record<keyof Outfit, string> = {
   shirt: 'Camiseta',
+  jacket: 'Chaqueta',
+  tie: 'Corbata',
+  scarf: 'Bufanda',
   pants: 'Pantalón',
+  shorts: 'Pantalón corto',
+  skirt: 'Falda',
+  belt: 'Cinturón',
+  shoes: 'Zapatos',
+  boots: 'Botas',
+  gloves: 'Guantes',
   hat: 'Sombrero',
+  cap: 'Gorra',
+  helmet: 'Casco',
   glasses: 'Gafas',
   backpack: 'Mochila',
   cape: 'Capa',
@@ -66,6 +78,7 @@ export default function MannequinControls({ engine, onSceneChange }: Props) {
   const state = rig?.state ?? null;
   const [jointName, setJointName] = useState('head');
   const [handSide, setHandSide] = useState<'L' | 'R'>('R');
+  const [footSide, setFootSide] = useState<'L' | 'R'>('R');
   const [propId, setPropId] = useState<number | null>(null);
 
   if (!engine) return null;
@@ -78,10 +91,7 @@ export default function MannequinControls({ engine, onSceneChange }: Props) {
       const prev = eng.getRig()?.state;
       const next = defaultRigState(id);
       if (prev && prev.kind === id) Object.assign(next, prev);
-      else if (prev) {
-        next.outfit = prev.outfit;
-        next.skin = prev.skin;
-      }
+      else if (prev) next.outfit = prev.outfit;
       eng.setRigState(next);
       setJointName(id === 'human' ? 'head' : 'neck');
     }
@@ -174,6 +184,8 @@ export default function MannequinControls({ engine, onSceneChange }: Props) {
             </button>
           </div>
 
+          <PoseLibrary engine={eng} onSceneChange={onSceneChange} refresh={refresh} />
+
           {joint && (
             <div className="space-y-1">
               <select
@@ -260,7 +272,82 @@ export default function MannequinControls({ engine, onSceneChange }: Props) {
                     }}
                   />
                 ))}
-                <p className="text-[9px] text-textDim">Pies: usa la articulación «Tobillo» (puntillas, talón, giro).</p>
+              </div>
+
+              <div className="border-t border-border pt-2 space-y-1">
+                <div className="text-[10px] text-textDim uppercase tracking-wide">Pies</div>
+                <div className="flex gap-1">
+                  {(['L', 'R'] as const).map((side) => (
+                    <button
+                      key={side}
+                      onClick={() => setFootSide(side)}
+                      className={`flex-1 text-[10px] rounded py-0.5 ${footSide === side ? 'bg-accent text-white' : 'bg-panelLight text-textDim'}`}
+                    >
+                      {side === 'L' ? 'Izquierdo' : 'Derecho'}
+                    </button>
+                  ))}
+                </div>
+                <select
+                  value=""
+                  onChange={(e) => {
+                    const preset = FOOT_PRESETS.find((f) => f.id === e.target.value);
+                    if (!preset) return;
+                    rig.setFoot(footSide, preset.curls);
+                    if (preset.ankleX !== undefined) rig.setJoint(`ankle${footSide}`, 0, preset.ankleX);
+                    refresh();
+                  }}
+                  className="w-full bg-panel border border-border rounded text-[10px] px-1 py-0.5"
+                >
+                  <option value="">Posición del pie…</option>
+                  {FOOT_PRESETS.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.label}
+                    </option>
+                  ))}
+                </select>
+                {(() => {
+                  const toes = state.feet[footSide];
+                  const avg = toes.reduce((a, b) => a + b, 0) / toes.length;
+                  return (
+                    <NumberSlider
+                      label="Todos"
+                      value={Math.round(avg * 100)}
+                      min={-100}
+                      max={100}
+                      onChange={(v) => {
+                        rig.setFoot(footSide, toes.map(() => v / 100));
+                        refresh();
+                      }}
+                    />
+                  );
+                })()}
+                {TOE_NAMES.map((name, f) => (
+                  <NumberSlider
+                    key={name}
+                    label={name}
+                    value={Math.round(state.feet[footSide][f] * 100)}
+                    min={-100}
+                    max={100}
+                    onChange={(v) => {
+                      const curls = [...state.feet[footSide]];
+                      curls[f] = v / 100;
+                      rig.setFoot(footSide, curls);
+                      refresh();
+                    }}
+                  />
+                ))}
+                <button
+                  onClick={() => {
+                    const other = footSide === 'L' ? 'R' : 'L';
+                    rig.setFoot(other, state.feet[footSide]);
+                    rig.setJoint(`ankle${other}`, 0, (state.pose[`ankle${footSide}`] ?? [0, 0, 0])[0]);
+                    refresh();
+                  }}
+                  className="w-full bg-panelLight text-[10px] rounded py-0.5"
+                >
+                  Copiar al otro pie
+                </button>
+                <p className="text-[9px] text-textDim">Valores negativos levantan el dedo; positivos lo doblan hacia el suelo. La inclinación del pie se ajusta en la articulación «Tobillo».</p>
               </div>
 
               <div className="border-t border-border pt-2 space-y-1">
@@ -358,7 +445,7 @@ export default function MannequinControls({ engine, onSceneChange }: Props) {
               <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
                 {(Object.keys(OUTFIT_LABELS) as (keyof Outfit)[]).map((k) => (
                   <label key={k} className="flex items-center gap-1 text-[10px] text-textDim">
-                    <input type="checkbox" checked={state.outfit[k]} onChange={(e) => patchState({ outfit: { ...state.outfit, [k]: e.target.checked } })} />
+                    <input type="checkbox" checked={!!state.outfit[k]} onChange={(e) => patchState({ outfit: { ...state.outfit, [k]: e.target.checked } })} />
                     {OUTFIT_LABELS[k]}
                   </label>
                 ))}
@@ -414,7 +501,7 @@ export default function MannequinControls({ engine, onSceneChange }: Props) {
             <NumberSlider label="X" value={Number(selectedProp.group.position.x.toFixed(1))} min={-6} max={6} step={0.1} onChange={(v) => { eng.updateProp(selectedProp.id, { x: v }); refresh(); }} />
             <NumberSlider label="Z" value={Number(selectedProp.group.position.z.toFixed(1))} min={-6} max={6} step={0.1} onChange={(v) => { eng.updateProp(selectedProp.id, { z: v }); refresh(); }} />
             <NumberSlider label="Giro" value={Math.round((selectedProp.group.rotation.y * 180) / Math.PI)} min={-180} max={180} onChange={(v) => { eng.updateProp(selectedProp.id, { rotY: v }); refresh(); }} />
-            <NumberSlider label="Escala" value={Number(selectedProp.group.scale.x.toFixed(2))} min={0.2} max={3} step={0.05} onChange={(v) => { eng.updateProp(selectedProp.id, { scale: v }); refresh(); }} />
+            <NumberSlider label="Escala" value={Number(selectedProp.group.scale.x.toFixed(2))} min={0.2} max={6} step={0.05} onChange={(v) => { eng.updateProp(selectedProp.id, { scale: v }); refresh(); }} />
             <button
               onClick={() => {
                 eng.removeProp(selectedProp.id);

@@ -19,7 +19,8 @@ const GOALS: Record<ReferenceGoal, { label: string; style: string }> = {
 const TRANSLATE: [RegExp, string][] = [
   [/\bmujer\b/, 'woman'], [/\bhombre\b/, 'man'], [/\bnino\b|\bnina\b/, 'child'], [/\banciano\b|\banciana\b/, 'elderly person'],
   [/\bcorriendo\b/, 'running'], [/\bsaltando\b/, 'jumping'], [/\bsentad[oa]\b/, 'sitting'], [/\bde pie\b/, 'standing'], [/\bcaminando\b/, 'walking'],
-  [/\bperro\b/, 'dog'], [/\bgato\b/, 'cat'], [/\bcaballo\b/, 'horse'],
+  [/\bperro\b/, 'dog'], [/\bgato\b/, 'cat'], [/\bcaballo\b/, 'horse'], [/\blobo\b/, 'wolf'], [/\bleon\b/, 'lion'], [/\boso\b/, 'bear'],
+  [/\bciervo\b|\bvenado\b/, 'deer'], [/\bvaca\b|\btoro\b/, 'cow'], [/\bcerdo\b/, 'pig'], [/\bconejo\b/, 'rabbit'], [/\belefante\b/, 'elephant'], [/\bjirafa\b/, 'giraffe'],
   [/\balegre\b/, 'happy'], [/\btriste\b/, 'sad'], [/\benfadad[oa]\b/, 'angry'], [/\bsorprendid[oa]\b/, 'surprised'],
   [/\blluvia\b/, 'rain'], [/\bnoche\b/, 'night'], [/\batardecer\b/, 'sunset'], [/\bbosque\b/, 'forest'],
 ];

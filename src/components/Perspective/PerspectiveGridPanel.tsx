@@ -4,6 +4,7 @@ import { useAppStore } from '@/store/appStore';
 import { usePerspectiveStore } from '@/store/perspectiveStore';
 import { PerspectiveGridType, VanishingPoint } from '@/types/perspective';
 import { Lock, Unlock, Eye, EyeOff, Trash2 } from 'lucide-react';
+import { DEFAULT_HORIZON_COLOR, resolveHorizon } from '@/services/perspectiveGrid.service';
 
 const GRID_TYPES: { id: PerspectiveGridType; label: string }[] = [
   { id: 'onePoint', label: '1 punto' },
@@ -18,6 +19,8 @@ export default function PerspectiveGridPanel() {
   const toggleGridEnabled = usePerspectiveStore((s) => s.toggleGridEnabled);
   const updateGridSettings = usePerspectiveStore((s) => s.updateGridSettings);
   const moveVanishingPoint = usePerspectiveStore((s) => s.moveVanishingPoint);
+  const setHorizonY = usePerspectiveStore((s) => s.setHorizonY);
+  const updateHorizon = usePerspectiveStore((s) => s.updateHorizon);
   const toggleVanishingPointLocked = usePerspectiveStore((s) => s.toggleVanishingPointLocked);
   const toggleVanishingPointVisible = usePerspectiveStore((s) => s.toggleVanishingPointVisible);
   const presets = usePerspectiveStore((s) => s.presets);
@@ -34,6 +37,8 @@ export default function PerspectiveGridPanel() {
 
   if (!project) return null;
   const points = Object.values(grid.points).filter((p): p is VanishingPoint => !!p);
+  const horizon = resolveHorizon(grid, project.height);
+  const H = project.height;
 
   function handleSavePreset() {
     const name = newPresetName.trim();
@@ -45,6 +50,65 @@ export default function PerspectiveGridPanel() {
 
   return (
     <div className="space-y-3">
+      <div className="space-y-1.5 bg-panel rounded p-2" data-testid="horizon-controls">
+        <h4 className="text-[10px] font-semibold text-textDim">Horizonte (nivel de los ojos)</h4>
+        <label className="flex items-center gap-2 text-[11px]">
+          <input
+            type="checkbox"
+            checked={horizon.visible}
+            onChange={(e) => updateHorizon(e.target.checked && !grid.horizon ? { visible: true, linked: true } : { visible: e.target.checked }, H)}
+          />
+          Mostrar línea de horizonte
+        </label>
+        <label className="flex items-center gap-2 text-[9px] text-textDim">
+          <span className="w-12">Altura</span>
+          <input
+            type="range"
+            min={-50}
+            max={150}
+            step={1}
+            value={Math.round((horizon.y / H) * 100)}
+            onChange={(e) => setHorizonY(Math.round((Number(e.target.value) / 100) * H), H)}
+            className="flex-1"
+          />
+          <input
+            type="number"
+            value={Math.round(horizon.y)}
+            onChange={(e) => setHorizonY(Number(e.target.value), H)}
+            className="w-14 bg-panelLight border border-border rounded px-1 py-0.5 text-[10px]"
+          />
+        </label>
+        <div className="flex gap-1">
+          {(
+            [
+              ['Vista alta', 0.3],
+              ['Centro', 0.5],
+              ['Vista baja', 0.7],
+            ] as [string, number][]
+          ).map(([label, frac]) => (
+            <button key={label} onClick={() => setHorizonY(Math.round(H * frac), H)} className="flex-1 bg-panelLight hover:bg-border text-[9px] rounded py-1">
+              {label}
+            </button>
+          ))}
+        </div>
+        <label className="flex items-center gap-2 text-[10px]">
+          <input type="checkbox" checked={horizon.linked} onChange={(e) => updateHorizon({ linked: e.target.checked }, H)} />
+          Mantener los puntos de fuga sobre el horizonte
+        </label>
+        <label className="flex items-center gap-2 text-[9px] text-textDim">
+          <span className="w-12">Color</span>
+          <input
+            type="color"
+            value={horizon.color || DEFAULT_HORIZON_COLOR}
+            onChange={(e) => updateHorizon({ color: e.target.value }, H)}
+            className="flex-1 h-5 bg-panelLight border border-border rounded"
+          />
+        </label>
+        <p className="text-[9px] text-textDim">
+          Lo que queda por encima del horizonte se ve desde abajo, y lo de debajo, desde arriba. Arrastra la pestaña «Horizonte» en el lienzo o usa la barra. En perspectiva de 1 y 2 puntos, los puntos de fuga viven siempre sobre esta línea.
+        </p>
+      </div>
+
       <label className="flex items-center gap-2 text-[11px]">
         <input type="checkbox" checked={grid.enabled} onChange={toggleGridEnabled} />
         Mostrar grilla de perspectiva

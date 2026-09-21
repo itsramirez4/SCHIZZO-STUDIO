@@ -55,6 +55,15 @@ const ANIMALS: { re: string[]; kind: SubjectKind; label: string }[] = [
   { re: ['perro', 'perra', 'cachorro', 'can'], kind: 'dog', label: 'perro' },
   { re: ['gato', 'gata', 'gatito', 'felino'], kind: 'cat', label: 'gato' },
   { re: ['caballo', 'yegua', 'potro', 'equino'], kind: 'horse', label: 'caballo' },
+  { re: ['lobo', 'loba'], kind: 'wolf', label: 'lobo' },
+  { re: ['leon', 'leona'], kind: 'lion', label: 'león' },
+  { re: ['oso', 'osa', 'osezno'], kind: 'bear', label: 'oso' },
+  { re: ['ciervo', 'cierva', 'venado', 'corzo'], kind: 'deer', label: 'ciervo' },
+  { re: ['vaca', 'toro', 'buey', 'ternero'], kind: 'cow', label: 'vaca' },
+  { re: ['cerdo', 'cerda', 'puerco', 'cochino'], kind: 'pig', label: 'cerdo' },
+  { re: ['conejo', 'coneja', 'liebre'], kind: 'rabbit', label: 'conejo' },
+  { re: ['elefante'], kind: 'elephant', label: 'elefante' },
+  { re: ['jirafa'], kind: 'giraffe', label: 'jirafa' },
 ];
 const ANIMAL_BASES: { re: string[]; id: string; label: string }[] = [
   { re: ['galopando', 'galope', 'corriendo', 'corre'], id: 'gallop', label: 'galope' },

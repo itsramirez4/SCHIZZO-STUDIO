@@ -7,6 +7,8 @@ export interface ReferenceImage {
   width: number;
   height: number;
   sourceUrl?: string;
+  /** Folder the reference is filed in (references without one are "Sin carpeta"). */
+  folder?: string;
   created: number;
   viewCount: number;
   lastViewedAt?: number;

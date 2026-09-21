@@ -198,6 +198,23 @@ export class Model3DViewerEngine {
     return this.renderer.domElement;
   }
 
+  /** Small JPEG of the current view (figure + props), used by the saved-pose library. */
+  captureThumbnail(size = 128): string | null {
+    this.renderer.render(this.scene, this.camera);
+    const src = this.renderer.domElement;
+    if (!src.width || !src.height) return null;
+    // Centre square crop: the figure is framed in the middle, and a square card wastes less space.
+    const side = Math.min(src.width, src.height);
+    const out = document.createElement('canvas');
+    out.width = size;
+    out.height = size;
+    const ctx = out.getContext('2d')!;
+    ctx.fillStyle = '#3a3a40';
+    ctx.fillRect(0, 0, size, size);
+    ctx.drawImage(src, (src.width - side) / 2, (src.height - side) / 2, side, side, 0, 0, size, size);
+    return out.toDataURL('image/jpeg', 0.75);
+  }
+
   /** Azimuth/elevation in degrees, on a fixed-radius sphere around the model — an intuitive
    * "sun direction" control for lighting a pose reference, rather than raw xyz coordinates. */
   setLighting(azimuthDeg: number, elevationDeg: number, intensity: number, ambientIntensity: number) {

@@ -16,6 +16,8 @@ interface ReferenceLibraryStore {
   toggleFavorite: (id: string) => void;
   setTags: (id: string, tags: string[]) => void;
   recordView: (id: string) => void;
+  /** Applies `fn` to every reference (used to move or rename folders in one go). */
+  mapReferences: (fn: (r: ReferenceImage) => ReferenceImage) => void;
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -63,6 +65,10 @@ export const useReferenceLibraryStore = create<ReferenceLibraryStore>((set, get)
   },
   setTags: (id, tags) => {
     set((s) => ({ references: s.references.map((r) => (r.id === id ? { ...r, tags } : r)) }));
+    schedulePersist(get);
+  },
+  mapReferences: (fn) => {
+    set((s) => ({ references: s.references.map(fn) }));
     schedulePersist(get);
   },
   recordView: (id) => {

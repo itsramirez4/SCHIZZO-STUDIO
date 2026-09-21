@@ -240,10 +240,11 @@ export const DOC_PAGES: DocPage[] = [
     title: 'Maniquí 3D, animales y objetos',
     category: 'Estudio',
     content: [
-      'En el visor 3D y en la ventana de Referencia 3D encontrarás la sección «Maniquí de referencia»: figura humana de 8 tipos de cuerpo, perro, gato y caballo.',
-      'Cada articulación tiene sus tres giros con los rangos de una articulación real. Puedes elegir poses predefinidas, una pose aleatoria plausible o espejar la pose. Las manos tienen posiciones predefinidas y un control por dedo; el rostro tiene expresiones y sliders de cejas, ojos y boca.',
-      'La ropa (camiseta, pantalón, sombrero, gafas, mochila, capa) y los objetos de escena (muebles, coche, casa, espada, guitarra…) son volúmenes simplificados para estudiar proporciones y perspectiva, no modelos detallados. También puedes importar tus propios .glb, .gltf, .obj u .fbx (con esqueleto y texturas; las animaciones del archivo se ignoran).',
+      'En el visor 3D y en la ventana de Referencia 3D encontrarás la sección «Maniquí de referencia»: figura humana de 8 tipos de cuerpo y 12 animales (perro, gato, caballo, lobo, león, oso, ciervo, vaca, cerdo, conejo, elefante y jirafa).',
+      'Cada articulación tiene sus tres giros con los rangos de una articulación real. Puedes elegir poses predefinidas, una pose aleatoria plausible o espejar la pose. Las manos tienen posiciones predefinidas y un control por dedo; los pies tienen cinco dedos con control individual y posiciones predefinidas (puntillas, punta de ballet, dedos levantados o agarrando…), y su inclinación se ajusta en «Tobillo». El rostro tiene expresiones y sliders de cejas, ojos y boca.',
+      'La ropa (camiseta, chaqueta, corbata, bufanda, pantalón, pantalón corto, falda, cinturón, zapatos, botas, guantes, sombrero, gorra, casco, gafas, mochila, capa) y los más de 50 objetos de escena (muebles, coches, autobús, moto, bicicleta, velero, avión, rascacielos, castillo, iglesia, puente, armas, instrumentos, bodegón, rocas…) son volúmenes simplificados para estudiar proporciones y perspectiva, no modelos detallados. También puedes importar tus propios .glb, .gltf, .obj u .fbx (con esqueleto y texturas; las animaciones del archivo se ignoran).',
       'La iluminación admite dirección, intensidad, temperatura de color en Kelvin, contraluz, sombras proyectadas y una vista de valores en gris para estudiar luz y sombra. La perspectiva de cámara se controla con el ángulo de visión y presets de vista.',
+      'Mis poses y figuras: guarda la pose actual con un nombre y una miniatura (se conserva entre sesiones y proyectos). «Pose» aplica solo articulaciones, manos, pies y cara a la figura actual; «Figura» carga todo (especie, cuerpo, ropa y color). Se pueden renombrar, borrar, exportar a un archivo .json y importar en otro equipo.',
     ],
   },
   {
@@ -282,6 +283,7 @@ export const DOC_PAGES: DocPage[] = [
     category: 'Estudio',
     content: [
       'En Estudio → Guías hay perspectiva curvilínea de 5 puntos, un generador de habitación de 1 punto con suelo y techo en baldosas, y un asistente de edificio de 2 puntos con plantas y columnas. Se mueven, giran y escalan; se guardan con el proyecto.',
+      'Perspectiva → Horizonte: la línea del horizonte (nivel de los ojos) se muestra en el lienzo con una pestaña «Horizonte» que arrastras hacia arriba o abajo (también hay barra, valor exacto y atajos «Vista alta / Centro / Vista baja»). Con «Mantener los puntos de fuga sobre el horizonte», los puntos de 1 y 2 puntos suben y bajan con ella, como en la perspectiva real.',
       'En Estudio → Analizar, «Detectar puntos de fuga» busca líneas rectas que convergen y propone hasta dos puntos, que puedes colocar en la cuadrícula de perspectiva. Necesita líneas de construcción claras (edificios, habitaciones, calles): en dibujos orgánicos no encontrará nada.',
     ],
   },
@@ -313,7 +315,8 @@ export const DOC_PAGES: DocPage[] = [
     category: 'Proyecto',
     content: [
       'El panel «Versiones» guarda copias completas del proyecto (capas, máscaras y ajustes) que sobreviven al cierre de la app: puedes volver a «la versión del martes». Se crea un «Estado inicial» automático la primera vez que abres un proyecto, una versión automática cada vez que guardas y otra cada 10 minutos de trabajo (se conservan las 20 últimas automáticas). Antes de restaurar una versión, tu estado actual se guarda para no perderlo.',
-      'Comparar enfrenta dos versiones (o la versión inicial y el estado actual) con un deslizador, lado a lado, parpadeo o un mapa de diferencias que indica qué porcentaje de la imagen cambió.',
+      'Comparar enfrenta dos versiones (o la versión inicial y el estado actual) con un deslizador, superposición semitransparente, lado a lado, parpadeo o un mapa de diferencias que indica qué porcentaje de la imagen cambió. También compara tu dibujo con una referencia: en Referencias, el botón de comparar de cada imagen abre la misma ventana con tu dibujo y la referencia ajustada al lienzo (y una copia volteada en espejo para detectar errores).',
+      'Referencias: puedes ordenarlas en carpetas (dentro de la biblioteca global o de la del proyecto); lo que importes se guarda en la carpeta abierta. La ventana flotante de una referencia se puede ampliar (rueda o botones), girar, mover arrastrando y voltear.',
       'El deshacer/rehacer no tiene límite fijo: los estados recientes están en memoria y los antiguos se guardan en disco, así que la única cota es el espacio libre. El historial es de la sesión y se vacía al cerrar.',
     ],
   },

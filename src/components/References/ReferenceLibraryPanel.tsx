@@ -1,12 +1,40 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Star, Trash2, ExternalLink, FolderInput } from 'lucide-react';
+import { Star, Trash2, ExternalLink, FolderInput, GitCompare, Folder } from 'lucide-react';
 import { useAppStore } from '@/store/appStore';
 import { useReferenceLibraryStore } from '@/store/referenceLibraryStore';
 import { buildReferenceFromDataUrl } from '@/services/referenceImport.service';
 import { isElectron } from '@/utils/fileUtils';
 import { searchReferences, fetchAsDataUrl, ReferenceSearchResult } from '@/services/referenceSearch.service';
 import { ReferenceImage } from '@/types/references';
+import * as layerService from '@/services/layer.service';
+import CompareDialog, { CompareSource } from '@/components/Versions/CompareDialog';
+
+const NO_FOLDER = '\u0000none';
+
+/** The reference scaled to fit inside a `w`×`h` canvas (centred, transparent margins), optionally
+ * mirrored — so it lines up with the drawing in every comparison mode. */
+async function fitToCanvas(dataUrl: string, w: number, h: number, mirror: boolean): Promise<string> {
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const i = new Image();
+    i.onload = () => resolve(i);
+    i.onerror = reject;
+    i.src = dataUrl;
+  });
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext('2d')!;
+  const scale = Math.min(w / img.naturalWidth, h / img.naturalHeight);
+  const dw = img.naturalWidth * scale;
+  const dh = img.naturalHeight * scale;
+  if (mirror) {
+    ctx.translate(w, 0);
+    ctx.scale(-1, 1);
+  }
+  ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
+  return c.toDataURL('image/png');
+}
 
 /** A persistent, cross-project library of reference photos — distinct from the existing "locked
  * reference layer" (which lives only inside one project's layer stack and is gone once deleted).
@@ -19,17 +47,33 @@ export default function ReferenceLibraryPanel() {
   const toggleGlobalFavorite = useReferenceLibraryStore((s) => s.toggleFavorite);
   const setGlobalTags = useReferenceLibraryStore((s) => s.setTags);
   const recordGlobalView = useReferenceLibraryStore((s) => s.recordView);
+  const mapGlobal = useReferenceLibraryStore((s) => s.mapReferences);
   const project = useAppStore((s) => s.project);
   const updateProjectReferences = useAppStore((s) => s.updateProjectReferences);
 
   // Two shelves: the global library (every project) and the references saved with this project.
-  const [scope, setScope] = useState<'global' | 'project'>('global');
+  // (Opens on the project's own shelf when a project is open — references are studied per drawing.)
+  const [scope, setScope] = useState<'global' | 'project'>(project ? 'project' : 'global');
+  const [activeFolder, setActiveFolder] = useState<string | null>(null);
+  const [extraFolders, setExtraFolders] = useState<string[]>([]);
+  const [compare, setCompare] = useState<{ sources: CompareSource[] } | null>(null);
+  // Electron has no window.prompt, so folder names are typed into an inline field instead.
+  const [folderEditor, setFolderEditor] = useState<{ mode: 'new' | 'rename'; value: string; old?: string; forRefId?: string } | null>(null);
   const inProject = scope === 'project' && !!project;
   const projectRefs = project?.references ?? [];
   const references = inProject ? projectRefs : globalRefs;
-  const patchProject = (fn: (r: ReferenceImage) => ReferenceImage) => updateProjectReferences(projectRefs.map(fn));
-  const addReference = (r: ReferenceImage) => (inProject ? updateProjectReferences([r, ...projectRefs]) : addGlobal(r));
-  const removeReference = (id: string) => (inProject ? updateProjectReferences(projectRefs.filter((r) => r.id !== id)) : removeGlobal(id));
+  // Always read the project's shelf at call time: several imports in a row (a multi-file import) would
+  // otherwise each start from the same stale list and the last one would overwrite the others.
+  const freshProjectRefs = () => useAppStore.getState().project?.references ?? [];
+  const patchProject = (fn: (r: ReferenceImage) => ReferenceImage) => updateProjectReferences(freshProjectRefs().map(fn));
+  // New references go into the folder currently open.
+  const addReference = (raw: ReferenceImage) => {
+    const r = activeFolder && activeFolder !== NO_FOLDER ? { ...raw, folder: activeFolder } : raw;
+    return inProject ? updateProjectReferences([r, ...freshProjectRefs()]) : addGlobal(r);
+  };
+  const mapRefs = (fn: (r: ReferenceImage) => ReferenceImage) => (inProject ? patchProject(fn) : mapGlobal(fn));
+  const setFolder = (id: string, folder: string | undefined) => mapRefs((r) => (r.id === id ? { ...r, folder } : r));
+  const removeReference = (id: string) => (inProject ? updateProjectReferences(freshProjectRefs().filter((r) => r.id !== id)) : removeGlobal(id));
   const toggleFavorite = (id: string) => (inProject ? patchProject((r) => (r.id === id ? { ...r, favorite: !r.favorite } : r)) : toggleGlobalFavorite(id));
   const setTags = (id: string, tags: string[]) => (inProject ? patchProject((r) => (r.id === id ? { ...r, tags } : r)) : setGlobalTags(id, tags));
   const recordView = (id: string) => (inProject ? patchProject((r) => (r.id === id ? { ...r, viewCount: r.viewCount + 1, lastViewedAt: Date.now() } : r)) : recordGlobalView(id));
@@ -37,7 +81,7 @@ export default function ReferenceLibraryPanel() {
   const copyToOtherShelf = (ref: ReferenceImage) => {
     const copy = { ...ref, id: `${ref.id}-${Date.now().toString(36)}` };
     if (inProject) addGlobal(copy);
-    else updateProjectReferences([copy, ...projectRefs]);
+    else updateProjectReferences([copy, ...freshProjectRefs()]);
     toast.success(inProject ? 'Copiada a la biblioteca global' : 'Copiada a este proyecto');
   };
 
@@ -138,8 +182,62 @@ export default function ReferenceLibraryPanel() {
   }
 
   const allTags = Array.from(new Set(references.flatMap((r) => r.tags))).sort();
+  const folders = Array.from(new Set([...references.map((r) => r.folder).filter((f): f is string => !!f), ...extraFolders])).sort();
+  const folderCount = (f: string) => references.filter((r) => (f === NO_FOLDER ? !r.folder : r.folder === f)).length;
+
+  const newFolder = () => setFolderEditor({ mode: 'new', value: '' });
+  const renameFolder = (old: string) => setFolderEditor({ mode: 'rename', value: old, old });
+  function commitFolderEditor() {
+    if (!folderEditor) return;
+    const name = folderEditor.value.trim();
+    const { mode, old, forRefId } = folderEditor;
+    setFolderEditor(null);
+    if (!name) return;
+    if (mode === 'rename' && old) {
+      if (name !== old) {
+        mapRefs((r) => (r.folder === old ? { ...r, folder: name } : r));
+        setExtraFolders((f) => f.map((x) => (x === old ? name : x)));
+      }
+      setActiveFolder(name);
+      return;
+    }
+    setExtraFolders((f) => (f.includes(name) ? f : [...f, name]));
+    if (forRefId) setFolder(forRefId, name);
+    else setActiveFolder(name);
+  }
+  function removeFolder(old: string) {
+    if (!window.confirm(`¿Quitar la carpeta «${old}»? Sus referencias no se borran: pasan a «Sin carpeta».`)) return;
+    mapRefs((r) => (r.folder === old ? { ...r, folder: undefined } : r));
+    setExtraFolders((f) => f.filter((x) => x !== old));
+    setActiveFolder(null);
+  }
+
+  /** Puts the drawing and this reference (fitted to the canvas, plus a mirrored copy) into the compare dialog. */
+  async function compareWithDrawing(ref: ReferenceImage) {
+    if (!project) {
+      toast.error('Abre un proyecto para comparar');
+      return;
+    }
+    try {
+      const drawing = layerService.flattenLayers(project.layers, project.width, project.height).toDataURL('image/png');
+      const [fit, mirrored] = await Promise.all([
+        fitToCanvas(ref.dataUrl, project.width, project.height, false),
+        fitToCanvas(ref.dataUrl, project.width, project.height, true),
+      ]);
+      setCompare({
+        sources: [
+          { id: 'drawing', label: 'Tu dibujo (estado actual)', url: drawing },
+          { id: 'ref', label: `Referencia · ${ref.name}`, url: fit },
+          { id: 'ref-mirrored', label: `Referencia volteada (espejo) · ${ref.name}`, url: mirrored },
+        ],
+      });
+    } catch {
+      toast.error('No se pudo preparar la comparación');
+    }
+  }
 
   const filtered = references.filter((r) => {
+    if (activeFolder === NO_FOLDER ? !!r.folder : activeFolder && r.folder !== activeFolder) return false;
     if (activeTag && !r.tags.includes(activeTag)) return false;
     if (search.trim()) {
       const q = search.trim().toLowerCase();
@@ -162,6 +260,69 @@ export default function ReferenceLibraryPanel() {
           </button>
         ))}
       </div>
+      <div className="space-y-1" data-testid="reference-folders">
+        <div className="flex flex-wrap gap-1 items-center">
+          {([[null, 'Todas', references.length], [NO_FOLDER, 'Sin carpeta', folderCount(NO_FOLDER)]] as [string | null, string, number][]).map(([key, label, n]) => (
+            <button
+              key={label}
+              onClick={() => setActiveFolder(key)}
+              className={`text-[10px] rounded px-2 py-0.5 border ${activeFolder === key ? 'bg-accent text-white border-accent' : 'bg-panel border-border text-textDim'}`}
+            >
+              {label} ({n})
+            </button>
+          ))}
+          {folders.map((f) => (
+            <button
+              key={f}
+              onClick={() => setActiveFolder(f)}
+              className={`text-[10px] rounded px-2 py-0.5 border flex items-center gap-1 ${activeFolder === f ? 'bg-accent text-white border-accent' : 'bg-panel border-border text-textDim'}`}
+            >
+              <Folder size={10} />
+              {f} ({folderCount(f)})
+            </button>
+          ))}
+          <button onClick={newFolder} className="text-[10px] rounded px-2 py-0.5 border border-dashed border-border text-textDim hover:text-text">
+            + Carpeta
+          </button>
+        </div>
+        {folderEditor && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              commitFolderEditor();
+            }}
+            className="flex gap-1"
+            data-testid="folder-editor"
+          >
+            <input
+              autoFocus
+              value={folderEditor.value}
+              onChange={(e) => setFolderEditor({ ...folderEditor, value: e.target.value })}
+              onKeyDown={(e) => e.key === 'Escape' && setFolderEditor(null)}
+              placeholder={folderEditor.mode === 'new' ? 'Nombre de la carpeta (p. ej. «Manos»)…' : 'Nuevo nombre…'}
+              className="flex-1 min-w-0 bg-panel border border-border rounded text-[10px] px-1.5 py-0.5"
+            />
+            <button type="submit" className="text-[10px] bg-accent text-white rounded px-2">
+              Aceptar
+            </button>
+            <button type="button" onClick={() => setFolderEditor(null)} className="text-[10px] bg-panelLight rounded px-2">
+              Cancelar
+            </button>
+          </form>
+        )}
+        {activeFolder && activeFolder !== NO_FOLDER && !folderEditor && (
+          <div className="flex gap-3 text-[9px] text-textDim">
+            <span>Lo que importes ahora se guarda en «{activeFolder}».</span>
+            <button onClick={() => renameFolder(activeFolder)} className="underline hover:text-text">
+              Renombrar
+            </button>
+            <button onClick={() => removeFolder(activeFolder)} className="underline hover:text-red-400">
+              Quitar carpeta
+            </button>
+          </div>
+        )}
+      </div>
+
       <div className="grid grid-cols-2 gap-1.5">
         <button onClick={importFromFile} disabled={isImporting} className="text-[11px] bg-panelLight rounded py-1.5 disabled:opacity-40">
           Importar archivo…
@@ -250,6 +411,9 @@ Clic para guardar en tus referencias`} className="relative aspect-square overflo
                       <button onClick={() => openWindow(ref)} className="text-textDim hover:text-text" title="Abrir en ventana flotante">
                         <ExternalLink size={12} />
                       </button>
+                      <button onClick={() => compareWithDrawing(ref)} className="text-textDim hover:text-text" title="Comparar con mi dibujo (superposición, deslizador, espejo…)" data-testid="compare-reference">
+                        <GitCompare size={12} />
+                      </button>
                       <button
                         onClick={() => toggleFavorite(ref.id)}
                         className={ref.favorite ? 'text-accent' : 'text-textDim hover:text-text'}
@@ -270,6 +434,23 @@ Clic para guardar en tus referencias`} className="relative aspect-square overflo
                   <div className="text-[9px] text-textDim">
                     {ref.width}×{ref.height} · {ref.viewCount} vista(s)
                   </div>
+                  <select
+                    value={ref.folder ?? ''}
+                    onChange={(e) => {
+                      if (e.target.value === '\u0000new') setFolderEditor({ mode: 'new', value: '', forRefId: ref.id });
+                      else setFolder(ref.id, e.target.value || undefined);
+                    }}
+                    className="w-full bg-panel border border-border rounded text-[9px] px-1 py-0.5"
+                    title="Carpeta"
+                  >
+                    <option value="">Sin carpeta</option>
+                    {folders.map((f) => (
+                      <option key={f} value={f}>
+                        {f}
+                      </option>
+                    ))}
+                    <option value={'\u0000new'}>+ Nueva carpeta…</option>
+                  </select>
                   <input
                     type="text"
                     defaultValue={ref.tags.join(', ')}
@@ -282,6 +463,19 @@ Clic para guardar en tus referencias`} className="relative aspect-square overflo
             </div>
           ))}
         </div>
+      )}
+
+      {compare && (
+        <CompareDialog
+          sources={compare.sources}
+          initialA="drawing"
+          initialB="ref"
+          title="Comparar dibujo y referencia"
+          labelA="Dibujo"
+          labelB="Referencia"
+          initialMode="overlay"
+          onClose={() => setCompare(null)}
+        />
       )}
     </div>
   );

@@ -12,7 +12,16 @@ import {
   SymmetrySettings,
   VanishingPoint,
 } from '@/types/perspective';
-import { createDefaultGrid, gridPointsFromFractions, gridPointsToFractions, pointsForType } from '@/services/perspectiveGrid.service';
+import {
+  HORIZON_POINT_IDS,
+  applyHorizonY,
+  createDefaultGrid,
+  gridPointsFromFractions,
+  gridPointsToFractions,
+  pointsForType,
+  resolveHorizon,
+} from '@/services/perspectiveGrid.service';
+import { HorizonSettings } from '@/types/perspective';
 import { useAppStore } from '@/store/appStore';
 import { Project } from '@/types';
 import { isElectron } from '@/utils/fileUtils';
@@ -48,6 +57,8 @@ interface PerspectiveStore {
   toggleGridEnabled: () => void;
   updateGridSettings: (updates: Partial<Pick<PerspectiveGridSettings, 'color' | 'opacity' | 'divisions'>>) => void;
   moveVanishingPoint: (id: VanishingPoint['id'], x: number, y: number) => void;
+  setHorizonY: (y: number, canvasHeight: number) => void;
+  updateHorizon: (updates: Partial<HorizonSettings>, canvasHeight: number) => void;
   toggleVanishingPointLocked: (id: VanishingPoint['id']) => void;
   toggleVanishingPointVisible: (id: VanishingPoint['id']) => void;
 
@@ -111,7 +122,11 @@ export const usePerspectiveStore = create<PerspectiveStore>((set, get) => ({
   },
 
   setGridType: (type, canvasWidth, canvasHeight) => {
-    set((s) => ({ grid: { ...s.grid, type, points: pointsForType(type, canvasWidth, canvasHeight, s.grid.points) } }));
+    set((s) => {
+      const grid = { ...s.grid, type, points: pointsForType(type, canvasWidth, canvasHeight, s.grid.points) };
+      // Newly seeded points join the horizon when it is linked.
+      return { grid: s.grid.horizon?.linked ? applyHorizonY(grid, s.grid.horizon.y, canvasHeight) : grid };
+    });
     persist(get);
   },
   toggleGridEnabled: () => {
@@ -126,7 +141,21 @@ export const usePerspectiveStore = create<PerspectiveStore>((set, get) => ({
     set((s) => {
       const point = s.grid.points[id];
       if (!point || point.locked) return s;
-      return { grid: { ...s.grid, points: { ...s.grid.points, [id]: { ...point, x, y } } } };
+      const grid = { ...s.grid, points: { ...s.grid.points, [id]: { ...point, x, y } } };
+      // With a linked horizon, dragging one horizon point up or down moves the whole horizon.
+      return { grid: s.grid.horizon?.linked && HORIZON_POINT_IDS.includes(id) ? applyHorizonY(grid, y, 0) : grid };
+    });
+    persist(get);
+  },
+  setHorizonY: (y, canvasHeight) => {
+    set((s) => ({ grid: applyHorizonY(s.grid, y, canvasHeight) }));
+    persist(get);
+  },
+  updateHorizon: (updates, canvasHeight) => {
+    set((s) => {
+      const next = { ...resolveHorizon(s.grid, canvasHeight), ...updates };
+      const grid = { ...s.grid, horizon: next };
+      return { grid: next.linked ? applyHorizonY(grid, next.y, canvasHeight) : grid };
     });
     persist(get);
   },

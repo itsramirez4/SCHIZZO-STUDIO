@@ -12,7 +12,8 @@ import * as THREE from 'three';
  *   - rotation Z  > 0 swings a limb toward +X (outward for left limbs, inward for right ones).
  */
 
-export type SubjectKind = 'human' | 'dog' | 'cat' | 'horse';
+export type AnimalKind = 'dog' | 'cat' | 'horse' | 'wolf' | 'lion' | 'bear' | 'deer' | 'cow' | 'pig' | 'rabbit' | 'elephant' | 'giraffe';
+export type SubjectKind = 'human' | AnimalKind;
 export type Vec3Deg = [number, number, number];
 
 export interface Expression {
@@ -35,6 +36,17 @@ export interface Outfit {
   glasses: boolean;
   backpack: boolean;
   cape: boolean;
+  jacket: boolean;
+  shorts: boolean;
+  skirt: boolean;
+  shoes: boolean;
+  boots: boolean;
+  gloves: boolean;
+  scarf: boolean;
+  tie: boolean;
+  belt: boolean;
+  cap: boolean;
+  helmet: boolean;
 }
 
 export interface RigState {
@@ -45,6 +57,8 @@ export interface RigState {
   pose: Record<string, Vec3Deg>;
   /** Finger curl per finger [thumb, index, middle, ring, pinky], 0 open .. 1 fully curled. */
   hands: { L: number[]; R: number[] };
+  /** Toe curl per toe [big toe … little toe]: 0 flat, 1 fully curled under, negative lifts the toe up. */
+  feet: { L: number[]; R: number[] };
   expression: Expression;
   /** Anatomy study view: skin opacity and whether the muscle / skeleton layers are shown (human only). */
   anatomy: AnatomyView;
@@ -123,7 +137,8 @@ function humanJoints(): JointInfo[] {
       { name: `wrist${s}`, label: `Muñeca ${sideLabel(s)}`, limits: m ? mirrorLimits(wrist) : wrist },
       { name: `hip${s}`, label: `Cadera ${sideLabel(s)}`, limits: m ? mirrorLimits(hip) : hip },
       { name: `knee${s}`, label: `Rodilla ${sideLabel(s)}`, limits: [[0, 140], [0, 0], [0, 0]] },
-      { name: `ankle${s}`, label: `Tobillo ${sideLabel(s)}`, limits: [[-45, 25], [-20, 20], [-20, 20]] }
+      // +X points the toes down (plantar flexion, up to ~50° — puntillas, ballet), -X pulls them up.
+      { name: `ankle${s}`, label: `Tobillo ${sideLabel(s)}`, limits: [[-45, 50], [-20, 20], [-20, 20]] }
     );
   });
   return list;
@@ -262,6 +277,28 @@ export const HAND_PRESETS: HandPresetDef[] = [
 
 export const FINGER_NAMES = ['Pulgar', 'Índice', 'Corazón', 'Anular', 'Meñique'];
 
+export const TOE_NAMES = ['Dedo gordo', '2.º dedo', '3.º dedo', '4.º dedo', 'Meñique'];
+
+export interface FootPresetDef {
+  id: string;
+  label: string;
+  /** Toe curls [big toe … little toe], negative = lifted. */
+  curls: number[];
+  /** Ankle rotation (degrees, X only) applied together with the toes, when the position needs it. */
+  ankleX?: number;
+}
+
+export const FOOT_PRESETS: FootPresetDef[] = [
+  { id: 'relaxed', label: 'Relajado', curls: [0.05, 0.05, 0.08, 0.1, 0.12], ankleX: 0 },
+  { id: 'flat', label: 'Plano (apoyado)', curls: [0, 0, 0, 0, 0], ankleX: 0 },
+  { id: 'tiptoe', label: 'Puntillas', curls: [-0.5, -0.5, -0.45, -0.4, -0.35], ankleX: 45 },
+  { id: 'pointed', label: 'Punta estirada (ballet)', curls: [0.1, 0.12, 0.15, 0.18, 0.2], ankleX: 50 },
+  { id: 'flexed', label: 'Flexionado (talón adelante)', curls: [-0.3, -0.3, -0.3, -0.3, -0.3], ankleX: -30 },
+  { id: 'lifted', label: 'Dedos levantados', curls: [-0.8, -0.7, -0.6, -0.5, -0.4] },
+  { id: 'grip', label: 'Dedos agarrando', curls: [0.9, 0.95, 1, 1, 1] },
+  { id: 'push', label: 'Impulso (apoyo de dedos)', curls: [-0.35, -0.35, -0.3, -0.25, -0.2], ankleX: 30 },
+];
+
 export interface ExpressionPreset {
   id: string;
   label: string;
@@ -279,18 +316,65 @@ export const EXPRESSION_PRESETS: ExpressionPreset[] = [
   { id: 'smirk', label: 'Sonrisa ladeada', expr: { browRaise: 0.15, browTilt: 0.25, eyeOpen: 0.7, mouthCurve: 0.45, mouthOpen: 0 } },
 ];
 
-export const DEFAULT_OUTFIT: Outfit = { shirt: false, pants: false, hat: false, glasses: false, backpack: false, cape: false };
+export const DEFAULT_OUTFIT: Outfit = {
+  shirt: false, pants: false, hat: false, glasses: false, backpack: false, cape: false,
+  jacket: false, shorts: false, skirt: false, shoes: false, boots: false, gloves: false,
+  scarf: false, tie: false, belt: false, cap: false, helmet: false,
+};
+
+/** Default coat colour per species (humans keep a neutral skin tone). */
+export const SUBJECT_COLORS: Record<SubjectKind, string> = {
+  human: '#d9b99b',
+  dog: '#b08a5a',
+  cat: '#8a8a90',
+  horse: '#7a5230',
+  wolf: '#8b8e93',
+  lion: '#c9a05a',
+  bear: '#5b4030',
+  deer: '#a0703c',
+  cow: '#e8e4dc',
+  pig: '#e7a9a0',
+  rabbit: '#d9d2c6',
+  elephant: '#8e8a86',
+  giraffe: '#d8a848',
+};
+
+export const SUBJECT_LABELS: Record<SubjectKind, string> = {
+  human: 'Figura humana',
+  dog: 'Perro',
+  cat: 'Gato',
+  horse: 'Caballo',
+  wolf: 'Lobo',
+  lion: 'León',
+  bear: 'Oso',
+  deer: 'Ciervo',
+  cow: 'Vaca',
+  pig: 'Cerdo',
+  rabbit: 'Conejo',
+  elephant: 'Elefante',
+  giraffe: 'Jirafa',
+};
 
 export function defaultRigState(kind: SubjectKind = 'human'): RigState {
   return {
     kind,
     bodyType: 'male',
     outfit: { ...DEFAULT_OUTFIT },
-    skin: '#d9b99b',
+    skin: SUBJECT_COLORS[kind],
     pose: { ...getPoses(kind)[0].pose },
     hands: { L: [...HAND_PRESETS[0].curls], R: [...HAND_PRESETS[0].curls] },
+    feet: { L: [...FOOT_PRESETS[0].curls], R: [...FOOT_PRESETS[0].curls] },
     expression: { ...EXPRESSION_PRESETS[0].expr },
     anatomy: { ...DEFAULT_ANATOMY },
+  };
+}
+
+/** Fills in anything a state saved before a feature existed doesn't have (toes, newer clothes). */
+export function normalizeRigState(state: RigState): RigState {
+  return {
+    ...state,
+    outfit: { ...DEFAULT_OUTFIT, ...(state.outfit ?? {}) },
+    feet: state.feet ?? { L: [...FOOT_PRESETS[0].curls], R: [...FOOT_PRESETS[0].curls] },
   };
 }
 
@@ -351,6 +435,7 @@ export class MannequinRig {
   /** Geometries created per rig (glasses lenses) that need disposing, unlike the shared unit primitives. */
   private tubeGeoms: THREE.BufferGeometry[] = [];
   private fingers = new Map<string, THREE.Bone[]>();
+  private toes = new Map<string, THREE.Bone[]>();
   private markers = new Map<string, THREE.Mesh>();
   private tube: THREE.Mesh | null = null;
   private mouthOpenMesh: THREE.Mesh | null = null;
@@ -362,14 +447,14 @@ export class MannequinRig {
   private headBone: THREE.Bone | null = null;
 
   constructor(state: RigState) {
-    this.state = state;
+    this.state = normalizeRigState(state);
     this.root.name = 'mannequin';
     this.build();
   }
 
   /** Replaces the whole state and rebuilds (needed for body type / outfit / species changes). */
   rebuild(state: RigState) {
-    this.state = state;
+    this.state = normalizeRigState(state);
     this.clear();
     this.build();
   }
@@ -388,6 +473,7 @@ export class MannequinRig {
     this.skinMats = [];
     this.bones.clear();
     this.fingers.clear();
+    this.toes.clear();
     this.markers.clear();
     this.brows = [];
     this.eyes = [];
@@ -418,6 +504,8 @@ export class MannequinRig {
     if (this.state.kind === 'human') {
       this.applyFingers('L');
       this.applyFingers('R');
+      this.applyToes('L');
+      this.applyToes('R');
       this.applyExpression();
       this.applyAnatomy();
     }
@@ -441,6 +529,12 @@ export class MannequinRig {
   setHand(side: 'L' | 'R', curls: number[]) {
     this.state.hands[side] = [...curls];
     this.applyFingers(side);
+  }
+
+  setFoot(side: 'L' | 'R', curls: number[]) {
+    this.state.feet[side] = [...curls];
+    this.applyToes(side);
+    this.ground();
   }
 
   setAnatomy(view: AnatomyView) {
@@ -516,6 +610,19 @@ export class MannequinRig {
     }
   }
 
+  private applyToes(side: 'L' | 'R') {
+    const curls = this.state.feet[side];
+    for (let f = 0; f < 5; f++) {
+      const phalanges = this.toes.get(`${side}${f}`);
+      if (!phalanges) continue;
+      const c = Math.max(-1, Math.min(1, curls[f] ?? 0));
+      // Positive curls the toe down under the foot, negative lifts it (extension) — rotation X
+      // > 0 swings the tip toward -Y for a toe pointing along +Z.
+      phalanges[0].rotation.x = rad(c * (c >= 0 ? 50 : 65));
+      phalanges[1].rotation.x = rad(c * (c >= 0 ? 70 : 25));
+    }
+  }
+
   private applyExpression() {
     if (!this.headBone) return;
     const e = this.state.expression;
@@ -564,6 +671,14 @@ export class MannequinRig {
     const pantsMat = this.mat('#4a4a55');
     const darkMat = this.mat('#222226', 0.5);
     this.mat('#a33a3a', 0.6).name = 'mouth';
+    const o = s.outfit;
+    const jacketMat = o.jacket ? this.mat('#5a4330', 0.8) : null;
+    const shortsMat = o.shorts ? this.mat('#7a6a4a') : null;
+    const skirtMat = o.skirt ? this.mat('#8a3b5a', 0.85) : null;
+    if (skirtMat) skirtMat.side = THREE.DoubleSide;
+    const shoeMat = o.shoes || o.boots ? this.mat(o.boots ? '#4a3323' : '#2d2a2a', 0.55) : null;
+    const soleMat = shoeMat ? this.mat('#151515', 0.9) : null;
+    const gloveMat = o.gloves ? this.mat('#26262b', 0.5) : null;
 
     const legs = bt.legFrac * H;
     const headH = bt.headFrac * H;
@@ -590,6 +705,18 @@ export class MannequinRig {
     const hips = this.bone('hips', 0, legs, 0, this.root);
     hips.add(mesh(UNIT_SPHERE, skin, hpX * 1.5, 0.06 * H, chestD * 1.05, 0, 0.005 * H, 0));
     if (s.outfit.pants) hips.add(mesh(UNIT_SPHERE, pantsMat, hpX * 1.62, 0.066 * H, chestD * 1.15, 0, 0.005 * H, 0));
+    if (shortsMat) hips.add(mesh(UNIT_SPHERE, shortsMat, hpX * 1.62, 0.066 * H, chestD * 1.15, 0, 0.005 * H, 0));
+    if (jacketMat) hips.add(mesh(UNIT_SPHERE, jacketMat, hpX * 1.75, 0.07 * H, chestD * 1.3, 0, -0.006 * H, 0)); // jacket hem
+    if (skirtMat) {
+      const skirtGeo = new THREE.CylinderGeometry(1, 1.9, 1, 28, 1, true);
+      this.tubeGeoms.push(skirtGeo);
+      hips.add(mesh(skirtGeo, skirtMat, hpX * 1.7, legs * 0.34, chestD * 1.7, 0, -legs * 0.15, 0));
+    }
+    if (o.belt) {
+      const beltMat = this.mat('#1c1c1f', 0.6);
+      hips.add(mesh(UNIT_CYL, beltMat, hpX * 1.7, 0.014 * H, chestD * 1.2, 0, 0.032 * H, 0));
+      hips.add(mesh(UNIT_BOX, this.mat('#c9a227', 0.3), 0.02 * H, 0.016 * H, 0.008 * H, 0, 0.032 * H, chestD * 1.24)); // buckle
+    }
 
     const spine = this.bone('spine', 0, spineOff, 0, hips);
     spine.add(mesh(UNIT_SPHERE, skin, waistW, spineLen * 0.75, chestD * 0.95, 0, spineLen * 0.5, 0));
@@ -598,9 +725,27 @@ export class MannequinRig {
     const chest = this.bone('chest', 0, spineLen, 0, spine);
     chest.add(mesh(UNIT_SPHERE, skin, chestW, chestLen * 0.62, chestD * 1.1, 0, chestLen * 0.45, 0));
     if (s.outfit.shirt) chest.add(mesh(UNIT_SPHERE, shirtMat, chestW * 1.08, chestLen * 0.66, chestD * 1.22, 0, chestLen * 0.45, 0));
+    if (jacketMat) {
+      spine.add(mesh(UNIT_SPHERE, jacketMat, waistW * 1.16, spineLen * 0.88, chestD * 1.22, 0, spineLen * 0.48, 0));
+      chest.add(mesh(UNIT_SPHERE, jacketMat, chestW * 1.15, chestLen * 0.7, chestD * 1.34, 0, chestLen * 0.45, 0));
+    }
+    if (o.tie) {
+      const tieMat = this.mat('#a02020', 0.6);
+      chest.add(mesh(UNIT_BOX, tieMat, 0.014 * H, chestLen * 0.55, 0.006 * H, 0, chestLen * 0.5, chestD * 1.4));
+      chest.add(mesh(UNIT_BOX, tieMat, 0.02 * H, 0.02 * H, 0.012 * H, 0, chestLen * 0.86, chestD * 1.3));
+    }
 
     const neck = this.bone('neck', 0, chestLen, 0, chest);
     neck.add(mesh(UNIT_CYL, skin, 0.028 * H * t ** 0.5, neckLen * 1.1, 0.03 * H * t ** 0.5, 0, neckLen * 0.5, 0));
+    if (o.scarf) {
+      const scarfMat = this.mat('#c0562a', 0.9);
+      const ring = new THREE.TorusGeometry(1, 0.34, 8, 26);
+      this.tubeGeoms.push(ring);
+      const band = mesh(ring, scarfMat, 0.04 * H * t ** 0.5, 0.04 * H * t ** 0.5, 0.04 * H * t ** 0.5, 0, neckLen * 0.3, 0);
+      band.rotation.x = Math.PI / 2;
+      neck.add(band);
+      chest.add(mesh(UNIT_BOX, scarfMat, 0.03 * H, 0.11 * H, 0.013 * H, 0.014 * H, chestLen * 0.72, chestD * 1.35));
+    }
 
     const head = this.bone('head', 0, neckLen, 0, neck);
     this.headBone = head;
@@ -632,6 +777,18 @@ export class MannequinRig {
       head.add(mesh(UNIT_CYL, hatMat, hRx * 1.75, headH * 0.03, hRx * 1.75, 0, headH * 0.78, 0));
       head.add(mesh(UNIT_CYL, hatMat, hRx * 1.05, headH * 0.32, hRx * 1.05, 0, headH * 0.95, 0));
     }
+    if (o.cap) {
+      const capMat = this.mat('#2f4f7a', 0.8);
+      head.add(mesh(UNIT_SPHERE, capMat, hRx * 1.08, headH * 0.34, hRz * 1.08, 0, headH * 0.74, 0));
+      head.add(mesh(UNIT_BOX, capMat, hRx * 1.3, headH * 0.02, hRz * 0.95, 0, headH * 0.68, hRz * 1.05)); // visor
+    }
+    if (o.helmet) {
+      const helmetMat = this.mat('#d8a81c', 0.45);
+      const dome = new THREE.SphereGeometry(1, 22, 10, 0, Math.PI * 2, 0, Math.PI / 2);
+      this.tubeGeoms.push(dome);
+      head.add(mesh(dome, helmetMat, hRx * 1.14, headH * 0.36, hRz * 1.14, 0, headH * 0.72, 0));
+      head.add(mesh(UNIT_CYL, helmetMat, hRx * 1.4, headH * 0.02, hRz * 1.4, 0, headH * 0.72, hRz * 0.1)); // brim
+    }
     if (s.outfit.glasses) {
       const glassMat = this.mat('#111111', 0.3);
       [-1, 1].forEach((sx) => {
@@ -649,11 +806,13 @@ export class MannequinRig {
       shoulder.add(mesh(UNIT_SPHERE, joint, 0.034 * H * t ** 0.6, 0.034 * H * t ** 0.6, 0.034 * H * t ** 0.6));
       shoulder.add(mesh(UNIT_SPHERE, skin, 0.03 * H * t ** 0.7, upperArm * 0.52, 0.029 * H * t ** 0.7, 0, -upperArm * 0.5, 0));
       if (s.outfit.shirt) shoulder.add(mesh(UNIT_SPHERE, shirtMat, 0.034 * H * t ** 0.7, upperArm * 0.5, 0.033 * H * t ** 0.7, 0, -upperArm * 0.42, 0));
+      if (jacketMat) shoulder.add(mesh(UNIT_SPHERE, jacketMat, 0.039 * H * t ** 0.7, upperArm * 0.53, 0.038 * H * t ** 0.7, 0, -upperArm * 0.44, 0));
       const elbow = this.bone(`elbow${side}`, 0, -upperArm, 0, shoulder);
       elbow.add(mesh(UNIT_SPHERE, joint, 0.024 * H * t ** 0.5, 0.024 * H * t ** 0.5, 0.024 * H * t ** 0.5));
       elbow.add(mesh(UNIT_SPHERE, skin, 0.024 * H * t ** 0.6, foreArm * 0.52, 0.023 * H * t ** 0.6, 0, -foreArm * 0.5, 0));
+      if (jacketMat) elbow.add(mesh(UNIT_SPHERE, jacketMat, 0.029 * H * t ** 0.6, foreArm * 0.5, 0.028 * H * t ** 0.6, 0, -foreArm * 0.46, 0));
       const wrist = this.bone(`wrist${side}`, 0, -foreArm, 0, elbow);
-      this.buildHand(wrist, side, handLen, H, skin, joint, t);
+      this.buildHand(wrist, side, handLen, H, skin, joint, t, gloveMat);
     });
 
     // Legs
@@ -663,14 +822,21 @@ export class MannequinRig {
       hip.add(mesh(UNIT_SPHERE, joint, 0.04 * H * t ** 0.5, 0.04 * H * t ** 0.5, 0.04 * H * t ** 0.5));
       hip.add(mesh(UNIT_SPHERE, skin, 0.044 * H * t ** 0.7, thigh * 0.55, 0.043 * H * t ** 0.7, 0, -thigh * 0.5, 0));
       if (s.outfit.pants) hip.add(mesh(UNIT_SPHERE, pantsMat, 0.049 * H * t ** 0.7, thigh * 0.56, 0.048 * H * t ** 0.7, 0, -thigh * 0.5, 0));
+      if (shortsMat) hip.add(mesh(UNIT_SPHERE, shortsMat, 0.051 * H * t ** 0.7, thigh * 0.3, 0.05 * H * t ** 0.7, 0, -thigh * 0.2, 0));
       const knee = this.bone(`knee${side}`, 0, -thigh, 0, hip);
       knee.add(mesh(UNIT_SPHERE, joint, 0.03 * H * t ** 0.5, 0.03 * H * t ** 0.5, 0.03 * H * t ** 0.5));
       knee.add(mesh(UNIT_SPHERE, skin, 0.032 * H * t ** 0.7, shin * 0.55, 0.031 * H * t ** 0.7, 0, -shin * 0.5, 0));
       if (s.outfit.pants) knee.add(mesh(UNIT_SPHERE, pantsMat, 0.036 * H * t ** 0.7, shin * 0.55, 0.035 * H * t ** 0.7, 0, -shin * 0.5, 0));
+      if (o.boots && shoeMat) knee.add(mesh(UNIT_CYL, shoeMat, 0.036 * H * t ** 0.7, shin * 0.3, 0.035 * H * t ** 0.7, 0, -shin * 0.85, 0)); // boot shaft
       const ankle = this.bone(`ankle${side}`, 0, -shin, 0, knee);
       ankle.add(mesh(UNIT_SPHERE, joint, 0.022 * H, 0.022 * H, 0.022 * H));
-      ankle.add(mesh(UNIT_BOX, skin, 0.034 * H, ankleH * 0.9, 0.12 * H, 0, -ankleH * 0.55, 0.035 * H));
-      ankle.add(mesh(UNIT_SPHERE, skin, 0.034 * H, ankleH * 0.5, 0.03 * H, 0, -ankleH * 0.6, 0.1 * H)); // toe box
+      ankle.add(mesh(UNIT_BOX, skin, 0.034 * H, ankleH * 0.9, 0.11 * H, 0, -ankleH * 0.55, 0.03 * H));
+      this.buildFoot(ankle, side, H, ankleH, skin);
+      if (shoeMat && soleMat) {
+        ankle.add(mesh(UNIT_BOX, shoeMat, 0.041 * H, ankleH * 1.05, 0.13 * H, 0, -ankleH * 0.52, 0.042 * H));
+        ankle.add(mesh(UNIT_SPHERE, shoeMat, 0.021 * H, ankleH * 0.55, 0.05 * H, 0, -ankleH * 0.55, 0.106 * H)); // toe cap
+        ankle.add(mesh(UNIT_BOX, soleMat, 0.043 * H, ankleH * 0.12, 0.155 * H, 0, -ankleH * 1.02, 0.052 * H));
+      }
     });
 
     if (s.outfit.backpack) {
@@ -755,7 +921,37 @@ export class MannequinRig {
     return b;
   }
 
-  private buildHand(wrist: THREE.Bone, side: 'L' | 'R', handLen: number, H: number, skin: THREE.Material, joint: THREE.Material, t: number) {
+  /** Ball of the foot plus five two-segment toes (not registered as pose joints, like the fingers). */
+  private buildFoot(ankle: THREE.Bone, side: 'L' | 'R', H: number, ankleH: number, skin: THREE.Material) {
+    const sx = side === 'L' ? 1 : -1;
+    const halfW = 0.017 * H;
+    const baseZ = 0.083 * H;
+    const baseY = -ankleH * 0.7;
+    const toeLen = [0.03, 0.024, 0.021, 0.018, 0.015].map((v) => v * H);
+    for (let f = 0; f < 5; f++) {
+      // The big toe sits on the inner (medial) side: -X for the left foot, +X for the right one.
+      const x = sx * (-1 + f * 0.5) * halfW * 0.9;
+      const r = (f === 0 ? 0.0085 : 0.0064 - f * 0.0003) * H;
+      const phalanges: THREE.Bone[] = [];
+      let parent: THREE.Object3D = ankle;
+      let px = x;
+      let py = baseY;
+      let pz = baseZ;
+      [0.55, 0.45].forEach((frac, i) => {
+        const len = toeLen[f] * frac * 1.15;
+        const b = bone(`${side}toe${f}_${i}`, px, py, pz, parent);
+        b.add(mesh(UNIT_SPHERE, skin, r * (1 - i * 0.1), r * 0.85 * (1 - i * 0.1), len * 0.62, 0, 0, len / 2));
+        phalanges.push(b);
+        parent = b;
+        px = 0;
+        py = 0;
+        pz = len;
+      });
+      this.toes.set(`${side}${f}`, phalanges);
+    }
+  }
+
+  private buildHand(wrist: THREE.Bone, side: 'L' | 'R', handLen: number, H: number, skin: THREE.Material, joint: THREE.Material, t: number, glove: THREE.Material | null = null) {
     // The hand root turns so the palm faces the thigh in the neutral pose (see conventions).
     const handRoot = new THREE.Group();
     handRoot.rotation.y = side === 'L' ? Math.PI / 2 : -Math.PI / 2;
@@ -764,6 +960,7 @@ export class MannequinRig {
     const palmW = 0.045 * H * (0.85 + 0.15 * t);
     handRoot.add(mesh(UNIT_SPHERE, joint, 0.016 * H, 0.016 * H, 0.016 * H));
     handRoot.add(mesh(UNIT_BOX, skin, palmW / 2, palmLen / 2, 0.012 * H, 0, -palmLen / 2, 0));
+    if (glove) handRoot.add(mesh(UNIT_BOX, glove, (palmW / 2) * 1.14, (palmLen / 2) * 1.05, 0.017 * H, 0, -palmLen / 2, 0));
 
     const thumbSide = side === 'L' ? -1 : 1;
     const fingerLens: number[][] = [
@@ -786,6 +983,7 @@ export class MannequinRig {
         const b = bone(`${side}${f}_${i}`, px, py, 0, parent);
         const r = (isThumb ? 0.0085 : 0.0075) * H * (1 - i * 0.12);
         b.add(mesh(UNIT_SPHERE, skin, r, len * 0.56, r, 0, -len / 2, 0));
+        if (glove) b.add(mesh(UNIT_SPHERE, glove, r * 1.32, len * 0.6, r * 1.32, 0, -len / 2, 0));
         phalanges.push(b);
         parent = b;
         px = 0;
@@ -801,6 +999,7 @@ export class MannequinRig {
   private buildAnimal() {
     const s = this.state;
     const spec = ANIMAL_SPECS[s.kind === 'human' ? 'dog' : s.kind];
+    const hr = spec.headR;
     const H = spec.shoulderHeight;
     this.height = H * spec.heightFactor;
     const body = this.mat(s.skin);
@@ -830,6 +1029,49 @@ export class MannequinRig {
       ear.rotation.z = -sx * 0.25;
       head.add(ear);
     });
+
+    if (spec.mane) {
+      const maneMat = this.mat(new THREE.Color(s.skin).multiplyScalar(0.55).getHex());
+      head.add(mesh(UNIT_SPHERE, maneMat, hr * 1.75, hr * 1.7, hr * 1.3, 0, hr * 0.02, -hr * 0.45));
+      neck.add(mesh(UNIT_SPHERE, maneMat, r * 0.78, r * 0.85, spec.neckLen * 0.45, 0, spec.neckLen * 0.2, spec.neckLen * 0.35));
+    }
+    if (spec.antlers) {
+      const antlerMat = this.mat('#d9c8a3', 0.7);
+      [-1, 1].forEach((sx) => {
+        const beam = mesh(UNIT_CYL, antlerMat, hr * 0.09, hr * 1.9, hr * 0.09, sx * hr * 0.87, hr * 1.68, -hr * 0.1);
+        beam.rotation.z = -sx * 0.4;
+        head.add(beam);
+        ([[1.16, 1.86, 0.7], [1.38, 2.45, 0.6]] as [number, number, number][]).forEach(([tx, ty, tl]) => {
+          const tine = mesh(UNIT_CYL, antlerMat, hr * 0.06, hr * tl, hr * 0.06, sx * hr * tx, hr * ty, -hr * 0.1);
+          tine.rotation.z = -sx * 1.0;
+          head.add(tine);
+        });
+      });
+    }
+    if (spec.horns) {
+      const hornMat = this.mat(spec.hornColor ?? '#efe6d0', 0.5);
+      [-1, 1].forEach((sx) => {
+        const horn = mesh(UNIT_CONE, hornMat, hr * 0.14, hr * 0.7 * spec.horns!, hr * 0.14, sx * hr * 0.62, hr * (0.95 + 0.15 * spec.horns!), -hr * 0.05);
+        horn.rotation.z = -sx * (spec.hornTilt ?? 1.15);
+        head.add(horn);
+      });
+    }
+    if (spec.trunk) {
+      // A rigid, hanging trunk of tapering segments (posed with the head, not articulated) plus tusks.
+      const ivory = this.mat('#efe6d0', 0.4);
+      let ty = -hr * 0.05;
+      for (let i = 0; i < 4; i++) {
+        const segLen = hr * 0.85 * (1 - i * 0.08);
+        const radius = hr * 0.34 * (1 - i * 0.16);
+        head.add(mesh(UNIT_CYL, body, radius, segLen, radius, 0, ty - segLen / 2, hr * (1.7 + i * 0.12)));
+        ty -= segLen * 0.92;
+      }
+      [-1, 1].forEach((sx) => {
+        const tusk = mesh(UNIT_CONE, ivory, hr * 0.1, hr * 1.1, hr * 0.1, sx * hr * 0.55, -hr * 0.35, hr * 1.75);
+        tusk.rotation.x = 1.25;
+        head.add(tusk);
+      });
+    }
 
     const tail1 = this.bone('tail1', 0, r * 0.4, -r * 0.9, pelvis);
     tail1.rotation.x = 0;
@@ -868,6 +1110,16 @@ export class MannequinRig {
 }
 
 interface AnimalSpec {
+  /** Lion-style mane around the head and neck. */
+  mane?: boolean;
+  /** Deer-style branching antlers. */
+  antlers?: boolean;
+  /** Horn length factor (1 = cow horns); giraffes use short upright ossicones. */
+  horns?: number;
+  hornTilt?: number;
+  hornColor?: string;
+  /** Elephant trunk and tusks. */
+  trunk?: boolean;
   shoulderHeight: number;
   heightFactor: number;
   bodyLen: number;
@@ -884,20 +1136,32 @@ interface AnimalSpec {
   headLen: number;
 }
 
-const ANIMAL_SPECS: Record<'dog' | 'cat' | 'horse', AnimalSpec> = {
+const ANIMAL_SPECS: Record<AnimalKind, AnimalSpec> = {
   dog: { shoulderHeight: 0.55, heightFactor: 1.5, bodyLen: 0.38, bodyR: 0.12, neckLen: 0.16, neckUp: 0.6, headR: 0.08, snout: 0.55, ear: 1.1, tail: 0.28, legR: 1, headLen: 1 },
   cat: { shoulderHeight: 0.25, heightFactor: 1.7, bodyLen: 0.24, bodyR: 0.06, neckLen: 0.07, neckUp: 0.5, headR: 0.048, snout: 0.5, ear: 1.3, tail: 0.24, legR: 1, headLen: 1 },
   horse: { shoulderHeight: 1.5, heightFactor: 1.4, bodyLen: 1.05, bodyR: 0.27, neckLen: 0.85, neckUp: 1, headR: 0.13, snout: 0.75, ear: 0.7, tail: 0.6, legR: 0.55, headLen: 1.7 },
+  wolf: { shoulderHeight: 0.8, heightFactor: 1.4, bodyLen: 0.55, bodyR: 0.13, neckLen: 0.22, neckUp: 0.55, headR: 0.09, snout: 0.6, ear: 1.2, tail: 0.5, legR: 0.9, headLen: 1.1 },
+  lion: { shoulderHeight: 1.05, heightFactor: 1.45, bodyLen: 0.85, bodyR: 0.21, neckLen: 0.28, neckUp: 0.5, headR: 0.13, snout: 0.6, ear: 0.5, tail: 0.8, legR: 1.2, headLen: 0.95, mane: true },
+  bear: { shoulderHeight: 1.0, heightFactor: 1.4, bodyLen: 0.7, bodyR: 0.28, neckLen: 0.18, neckUp: 0.35, headR: 0.13, snout: 0.6, ear: 0.35, tail: 0.1, legR: 1.6, headLen: 1 },
+  deer: { shoulderHeight: 1.05, heightFactor: 1.7, bodyLen: 0.75, bodyR: 0.17, neckLen: 0.5, neckUp: 0.8, headR: 0.085, snout: 0.55, ear: 1.0, tail: 0.12, legR: 0.5, headLen: 1.35, antlers: true },
+  cow: { shoulderHeight: 1.35, heightFactor: 1.4, bodyLen: 1.0, bodyR: 0.3, neckLen: 0.35, neckUp: 0.35, headR: 0.15, snout: 0.8, ear: 0.6, tail: 0.7, legR: 0.8, headLen: 1.25, horns: 1 },
+  pig: { shoulderHeight: 0.5, heightFactor: 2.3, bodyLen: 0.65, bodyR: 0.23, neckLen: 0.1, neckUp: 0.2, headR: 0.13, snout: 0.85, ear: 0.7, tail: 0.12, legR: 0.8, headLen: 0.85 },
+  rabbit: { shoulderHeight: 0.22, heightFactor: 1.6, bodyLen: 0.18, bodyR: 0.085, neckLen: 0.05, neckUp: 0.5, headR: 0.05, snout: 0.5, ear: 3.2, tail: 0.05, legR: 1, headLen: 1 },
+  elephant: { shoulderHeight: 2.4, heightFactor: 1.25, bodyLen: 1.9, bodyR: 0.6, neckLen: 0.35, neckUp: 0.15, headR: 0.38, snout: 0.6, ear: 1.3, tail: 0.7, legR: 1.45, headLen: 1.1, trunk: true },
+  giraffe: { shoulderHeight: 2.0, heightFactor: 1.8, bodyLen: 1.1, bodyR: 0.42, neckLen: 1.55, neckUp: 1.5, headR: 0.11, snout: 0.6, ear: 0.8, tail: 0.8, legR: 0.5, headLen: 1.5, horns: 0.55, hornTilt: 0.25, hornColor: '#7a5a34' },
 };
 
 // ---------------------------------------------------------------- props
 
 export type PropKind =
   | 'cube' | 'sphere' | 'cylinder' | 'cone'
-  | 'stairs' | 'chair' | 'table' | 'sofa' | 'bed'
-  | 'car' | 'house' | 'tower' | 'tree'
-  | 'sword' | 'shield' | 'bow'
-  | 'guitar' | 'piano' | 'drum';
+  | 'stairs' | 'house' | 'tower' | 'tree' | 'skyscraper' | 'castle' | 'church' | 'bridge' | 'column' | 'door' | 'lamppost'
+  | 'chair' | 'table' | 'sofa' | 'bed' | 'bookshelf' | 'wardrobe' | 'desk' | 'lamp' | 'bench'
+  | 'car' | 'bus' | 'truck' | 'motorcycle' | 'bicycle' | 'sailboat' | 'airplane'
+  | 'sword' | 'shield' | 'bow' | 'axe' | 'spear' | 'hammer' | 'pistol'
+  | 'guitar' | 'piano' | 'drum' | 'violin' | 'cello' | 'trumpet' | 'flute'
+  | 'cup' | 'bottle' | 'vase' | 'apple' | 'book'
+  | 'rock' | 'bush';
 
 export const PROP_CATALOG: { id: PropKind; label: string; group: string }[] = [
   { id: 'cube', label: 'Cubo', group: 'Formas básicas' },
@@ -907,18 +1171,51 @@ export const PROP_CATALOG: { id: PropKind; label: string; group: string }[] = [
   { id: 'stairs', label: 'Escalera', group: 'Arquitectura' },
   { id: 'house', label: 'Casa', group: 'Arquitectura' },
   { id: 'tower', label: 'Torre', group: 'Arquitectura' },
-  { id: 'tree', label: 'Árbol', group: 'Arquitectura' },
+  { id: 'skyscraper', label: 'Rascacielos', group: 'Arquitectura' },
+  { id: 'castle', label: 'Castillo', group: 'Arquitectura' },
+  { id: 'church', label: 'Iglesia', group: 'Arquitectura' },
+  { id: 'bridge', label: 'Puente de arco', group: 'Arquitectura' },
+  { id: 'column', label: 'Columna', group: 'Arquitectura' },
+  { id: 'door', label: 'Puerta', group: 'Arquitectura' },
+  { id: 'lamppost', label: 'Farola', group: 'Arquitectura' },
+  { id: 'tree', label: 'Árbol', group: 'Naturaleza' },
+  { id: 'rock', label: 'Roca', group: 'Naturaleza' },
+  { id: 'bush', label: 'Arbusto', group: 'Naturaleza' },
   { id: 'chair', label: 'Silla', group: 'Muebles' },
   { id: 'table', label: 'Mesa', group: 'Muebles' },
   { id: 'sofa', label: 'Sofá', group: 'Muebles' },
   { id: 'bed', label: 'Cama', group: 'Muebles' },
+  { id: 'bookshelf', label: 'Estantería', group: 'Muebles' },
+  { id: 'wardrobe', label: 'Armario', group: 'Muebles' },
+  { id: 'desk', label: 'Escritorio', group: 'Muebles' },
+  { id: 'lamp', label: 'Lámpara de mesa', group: 'Muebles' },
+  { id: 'bench', label: 'Banco', group: 'Muebles' },
   { id: 'car', label: 'Coche', group: 'Vehículos' },
+  { id: 'bus', label: 'Autobús', group: 'Vehículos' },
+  { id: 'truck', label: 'Camión', group: 'Vehículos' },
+  { id: 'motorcycle', label: 'Moto', group: 'Vehículos' },
+  { id: 'bicycle', label: 'Bicicleta', group: 'Vehículos' },
+  { id: 'sailboat', label: 'Velero', group: 'Vehículos' },
+  { id: 'airplane', label: 'Avión', group: 'Vehículos' },
   { id: 'sword', label: 'Espada', group: 'Armas' },
   { id: 'shield', label: 'Escudo', group: 'Armas' },
   { id: 'bow', label: 'Arco', group: 'Armas' },
+  { id: 'axe', label: 'Hacha', group: 'Armas' },
+  { id: 'spear', label: 'Lanza', group: 'Armas' },
+  { id: 'hammer', label: 'Martillo de guerra', group: 'Armas' },
+  { id: 'pistol', label: 'Pistola', group: 'Armas' },
   { id: 'guitar', label: 'Guitarra', group: 'Instrumentos' },
   { id: 'piano', label: 'Piano', group: 'Instrumentos' },
   { id: 'drum', label: 'Tambor', group: 'Instrumentos' },
+  { id: 'violin', label: 'Violín', group: 'Instrumentos' },
+  { id: 'cello', label: 'Violonchelo', group: 'Instrumentos' },
+  { id: 'trumpet', label: 'Trompeta', group: 'Instrumentos' },
+  { id: 'flute', label: 'Flauta', group: 'Instrumentos' },
+  { id: 'cup', label: 'Taza', group: 'Bodegón' },
+  { id: 'bottle', label: 'Botella', group: 'Bodegón' },
+  { id: 'vase', label: 'Jarrón', group: 'Bodegón' },
+  { id: 'apple', label: 'Manzana', group: 'Bodegón' },
+  { id: 'book', label: 'Libro', group: 'Bodegón' },
 ];
 
 /** Blocked-out prop in metres, sitting on y = 0. Returns the group plus its disposable resources. */
@@ -937,6 +1234,36 @@ export function buildProp(kind: PropKind): { group: THREE.Group; dispose: () => 
   const wood = m('#9a6b3f');
   const gray = m('#aaaaaa');
   const dark = m('#2b2b30', 0.5);
+  /** Wheel with its axis along Z (vehicles are built with their length along X). */
+  const wheel = (x: number, z: number, r = 0.36, w = 0.25) => {
+    const wh = mesh(UNIT_CYL, dark, r, w, r, x, r, z);
+    wh.rotation.x = Math.PI / 2;
+    group.add(wh);
+  };
+  /** A thin cylinder between two points in the XY plane (bicycle frame tubes). */
+  const bar = (mat: THREE.Material, x1: number, y1: number, x2: number, y2: number, r = 0.015, z = 0) => {
+    const len = Math.hypot(x2 - x1, y2 - y1);
+    const t = mesh(UNIT_CYL, mat, r, len, r, (x1 + x2) / 2, (y1 + y2) / 2, z);
+    t.rotation.z = Math.atan2(-(x2 - x1), y2 - y1);
+    group.add(t);
+  };
+  const ring = (mat: THREE.Material, radius: number, tube: number, x: number, y: number, z: number, arc = Math.PI * 2) => {
+    const g = new THREE.TorusGeometry(radius, tube, 8, 28, arc);
+    geos.push(g);
+    const tor = new THREE.Mesh(g, mat);
+    tor.position.set(x, y, z);
+    tor.castShadow = true;
+    group.add(tor);
+    return tor;
+  };
+  const stringed = (k: number, wood: THREE.Material) => {
+    group.add(mesh(UNIT_SPHERE, wood, 0.085 * k, 0.11 * k, 0.035 * k, 0, 0.55 * k, 0));
+    group.add(mesh(UNIT_SPHERE, wood, 0.105 * k, 0.13 * k, 0.035 * k, 0, 0.36 * k, 0));
+    box(dark, 0.035 * k, 0.4 * k, 0.02 * k, 0, 0.82 * k, 0.03 * k);
+    group.add(mesh(UNIT_SPHERE, wood, 0.028 * k, 0.03 * k, 0.03 * k, 0, 1.05 * k, 0.02 * k));
+    box(gray, 0.004 * k, 0.75 * k, 0.004 * k, 0, 0.66 * k, 0.05 * k);
+    box(wood, 0.05 * k, 0.012 * k, 0.03 * k, 0, 0.38 * k, 0.05 * k);
+  };
 
   switch (kind) {
     case 'cube': box(gray, 1, 1, 1, 0, 0.5, 0); break;
@@ -1027,6 +1354,303 @@ export function buildProp(kind: PropKind): { group: THREE.Group; dispose: () => 
       cyl(m('#c0392b'), 0.32, 0.4, 0, 0.55, 0);
       cyl(m('#efe8d8'), 0.33, 0.02, 0, 0.76, 0);
       [-1, 1].forEach((sx) => box(gray, 0.03, 0.4, 0.03, sx * 0.25, 0.2, 0));
+      break;
+    }
+
+    // ---- architecture
+    case 'skyscraper': {
+      const glass = m('#8fa8c2', 0.25);
+      box(glass, 2, 9, 2, 0, 4.5, 0);
+      box(glass, 1.3, 1.2, 1.3, 0, 9.6, 0);
+      cyl(gray, 0.03, 1.4, 0, 10.9, 0);
+      const band = m('#4d647c', 0.4);
+      for (let i = 1; i < 9; i++) box(band, 2.03, 0.07, 2.03, 0, i, 0);
+      break;
+    }
+    case 'castle': {
+      const stone = m('#b3aa98');
+      const roofMat = m('#7a3b3b');
+      box(stone, 2.4, 3.4, 2.4, 0, 1.7, 0);
+      group.add(mesh(UNIT_CONE, roofMat, 1.7, 1.4, 1.7, 0, 4.1, 0).rotateY(Math.PI / 4));
+      [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz]) => {
+        cyl(stone, 0.55, 4.2, sx * 2.6, 2.1, sz * 2.6);
+        group.add(mesh(UNIT_CONE, roofMat, 0.7, 1.1, 0.7, sx * 2.6, 4.75, sz * 2.6));
+      });
+      box(stone, 5.2, 1.7, 0.4, 0, 0.85, -2.6);
+      box(stone, 5.2, 1.7, 0.4, 0, 0.85, 2.6);
+      box(stone, 0.4, 1.7, 5.2, -2.6, 0.85, 0);
+      box(stone, 0.4, 1.7, 5.2, 2.6, 0.85, 0);
+      box(dark, 0.9, 1.2, 0.05, 0, 0.6, 2.82);
+      break;
+    }
+    case 'church': {
+      const wall = m('#d9d0bd');
+      const roofMat = m('#6d3a3a');
+      box(wall, 2.4, 2.2, 4.4, 0, 1.1, 0);
+      [-1, 1].forEach((sx) => {
+        const slope = mesh(UNIT_BOX, roofMat, 1.75, 0.1, 4.6, sx * 0.62, 2.6, 0);
+        slope.rotation.z = -sx * 0.7;
+        group.add(slope);
+      });
+      box(wall, 1.2, 4.6, 1.2, 0, 2.3, -2.7);
+      group.add(mesh(UNIT_CONE, roofMat, 0.95, 2.0, 0.95, 0, 5.6, -2.7).rotateY(Math.PI / 4));
+      box(dark, 0.7, 1.3, 0.05, 0, 0.65, 2.22);
+      [-1, 1].forEach((sx) => box(m('#8fb4d9', 0.3), 0.06, 0.9, 0.4, sx * 1.22, 1.3, 0.6));
+      break;
+    }
+    case 'bridge': {
+      const stone = m('#b9b2a5');
+      box(stone, 6.4, 0.3, 1.8, 0, 1.55, 0);
+      [-1, 1].forEach((sz) => {
+        ring(stone, 1.2, 0.3, 0, 0, sz * 0.7, Math.PI);
+        box(stone, 6.4, 0.35, 0.12, 0, 1.85, sz * 0.86);
+      });
+      [-1, 1].forEach((sx) => box(stone, 0.7, 1.55, 1.8, sx * 2.9, 0.78, 0));
+      break;
+    }
+    case 'column': {
+      const marble = m('#e2ded5', 0.5);
+      cyl(marble, 0.32, 3.4, 0, 1.9, 0);
+      box(marble, 0.9, 0.2, 0.9, 0, 0.1, 0);
+      box(marble, 0.9, 0.2, 0.9, 0, 3.7, 0);
+      box(marble, 0.7, 0.14, 0.7, 0, 3.55, 0);
+      break;
+    }
+    case 'door': {
+      const frame = m('#5c3d24');
+      box(frame, 1.15, 2.25, 0.14, 0, 1.125, 0);
+      box(wood, 0.92, 2.05, 0.06, 0, 1.03, 0.06);
+      group.add(mesh(UNIT_SPHERE, m('#c9a227', 0.3), 0.035, 0.035, 0.035, 0.33, 1.0, 0.11));
+      break;
+    }
+    case 'lamppost': {
+      const iron = m('#2c3036', 0.5);
+      cyl(iron, 0.09, 0.3, 0, 0.15, 0);
+      cyl(iron, 0.05, 3.6, 0, 1.9, 0);
+      box(iron, 0.5, 0.05, 0.05, 0.22, 3.7, 0);
+      box(m('#f3e6a3', 0.2), 0.16, 0.24, 0.16, 0.44, 3.55, 0);
+      group.add(mesh(UNIT_CONE, iron, 0.14, 0.14, 0.14, 0.44, 3.75, 0));
+      break;
+    }
+
+    // ---- furniture
+    case 'bookshelf': {
+      box(wood, 1.2, 2, 0.03, 0, 1, -0.17);
+      [-1, 1].forEach((sx) => box(wood, 0.04, 2, 0.36, sx * 0.58, 1, 0));
+      [0.02, 0.5, 1.0, 1.5, 1.98].forEach((y) => box(wood, 1.2, 0.04, 0.36, 0, y, 0));
+      const spines = ['#a33a3a', '#3f6fb5', '#3f7a3a', '#c9a227', '#7a5c8a'];
+      [0.04, 0.52, 1.02, 1.52].forEach((y, row) => {
+        for (let i = 0; i < 6; i++) box(m(spines[(i + row) % spines.length]), 0.06 + (i % 3) * 0.02, 0.32 + (i % 2) * 0.05, 0.24, -0.45 + i * 0.16, y + 0.2, 0);
+      });
+      break;
+    }
+    case 'wardrobe': {
+      box(wood, 1.2, 2, 0.6, 0, 1, 0);
+      box(m('#7c5530'), 0.02, 1.9, 0.02, 0, 1.0, 0.31);
+      [-1, 1].forEach((sx) => group.add(mesh(UNIT_SPHERE, m('#c9a227', 0.3), 0.025, 0.025, 0.025, sx * 0.08, 1.0, 0.32)));
+      break;
+    }
+    case 'desk': {
+      box(wood, 1.4, 0.05, 0.7, 0, 0.75, 0);
+      box(m('#8a5c34'), 0.4, 0.66, 0.62, -0.48, 0.4, 0);
+      box(wood, 0.05, 0.72, 0.62, 0.65, 0.36, 0);
+      [0.2, 0.42, 0.62].forEach((y) => box(m('#7c5530'), 0.36, 0.005, 0.02, -0.48, y, 0.32));
+      break;
+    }
+    case 'lamp': {
+      cyl(dark, 0.12, 0.04, 0, 0.02, 0);
+      cyl(dark, 0.02, 0.5, 0, 0.29, 0);
+      const shadeGeo = new THREE.CylinderGeometry(0.12, 0.2, 0.3, 24, 1, true);
+      geos.push(shadeGeo);
+      const shadeMat = m('#f1e3b0', 0.9);
+      shadeMat.side = THREE.DoubleSide;
+      const shade = new THREE.Mesh(shadeGeo, shadeMat);
+      shade.position.y = 0.65;
+      shade.castShadow = true;
+      group.add(shade);
+      break;
+    }
+    case 'bench': {
+      box(wood, 1.6, 0.06, 0.4, 0, 0.45, 0);
+      box(wood, 1.6, 0.4, 0.04, 0, 0.75, -0.18);
+      [-1, 1].forEach((sx) => box(wood, 0.06, 0.45, 0.4, sx * 0.7, 0.225, 0));
+      break;
+    }
+
+    // ---- vehicles (length along X, front toward +X)
+    case 'bus': {
+      box(m('#e0b020', 0.4), 7.6, 2.3, 2.4, 0, 1.55, 0);
+      box(m('#9ab7c9', 0.2), 7.3, 0.75, 2.44, 0, 2.0, 0);
+      box(m('#e0b020', 0.4), 0.05, 0.9, 2.3, 3.82, 1.25, 0);
+      [-2.5, 2.4].forEach((x) => [-1.15, 1.15].forEach((z) => wheel(x, z, 0.5, 0.3)));
+      box(dark, 0.6, 1.5, 0.05, 1.6, 1.1, 1.22);
+      break;
+    }
+    case 'truck': {
+      const paint = m('#2e5d9e', 0.4);
+      box(paint, 1.8, 1.7, 2.2, 3.0, 1.55, 0);
+      box(m('#9ab7c9', 0.2), 0.06, 0.8, 2.0, 3.92, 1.85, 0);
+      box(m('#c8c8c8', 0.5), 4.6, 2.3, 2.3, -0.9, 1.75, 0);
+      box(dark, 8, 0.3, 1.8, 0.2, 0.55, 0);
+      [-2.6, -1.4, 3.0].forEach((x) => [-1.05, 1.05].forEach((z) => wheel(x, z, 0.5, 0.3)));
+      break;
+    }
+    case 'motorcycle': {
+      const paint = m('#c23b22', 0.35);
+      wheel(-0.75, 0, 0.34, 0.12);
+      wheel(0.75, 0, 0.34, 0.12);
+      box(paint, 0.55, 0.28, 0.28, 0.1, 0.78, 0);
+      box(dark, 0.5, 0.09, 0.25, -0.35, 0.86, 0);
+      box(dark, 0.75, 0.16, 0.14, -0.02, 0.5, 0);
+      bar(dark, 0.75, 0.35, 0.48, 1.0, 0.03);
+      box(dark, 0.06, 0.06, 0.7, 0.46, 1.05, 0);
+      bar(dark, -0.75, 0.35, -0.2, 0.65, 0.03);
+      break;
+    }
+    case 'bicycle': {
+      const frame = m('#2c6b8f', 0.4);
+      [-0.55, 0.55].forEach((x) => {
+        ring(dark, 0.34, 0.014, x, 0.35, 0);
+        for (let i = 0; i < 4; i++) {
+          const a = (i * Math.PI) / 4;
+          bar(gray, x - Math.cos(a) * 0.33, 0.35 - Math.sin(a) * 0.33, x + Math.cos(a) * 0.33, 0.35 + Math.sin(a) * 0.33, 0.004);
+        }
+      });
+      bar(frame, -0.55, 0.35, 0, 0.3);
+      bar(frame, 0, 0.3, -0.12, 0.72);
+      bar(frame, -0.12, 0.72, 0.42, 0.72);
+      bar(frame, 0, 0.3, 0.42, 0.72);
+      bar(frame, -0.55, 0.35, -0.12, 0.72);
+      bar(frame, 0.42, 0.72, 0.55, 0.35);
+      box(dark, 0.22, 0.05, 0.12, -0.14, 0.78, 0);
+      box(dark, 0.05, 0.05, 0.5, 0.42, 0.84, 0);
+      break;
+    }
+    case 'sailboat': {
+      box(m('#8a5a30'), 3.2, 0.55, 1.15, 0, 0.4, 0);
+      const bow = mesh(UNIT_CONE, m('#8a5a30'), 0.58, 0.9, 0.58, 2.05, 0.4, 0);
+      bow.rotation.z = -Math.PI / 2;
+      group.add(bow);
+      cyl(wood, 0.035, 3.4, 0, 2.3, 0);
+      box(m('#f0ece0', 0.9), 1.6, 2.6, 0.03, -0.6, 2.2, 0);
+      box(m('#f0ece0', 0.9), 1.0, 1.8, 0.03, 1.0, 1.7, 0);
+      break;
+    }
+    case 'airplane': {
+      const white = m('#e6e9ee', 0.4);
+      const fus = mesh(UNIT_CYL, white, 0.55, 6, 0.55, 0, 1.3, 0);
+      fus.rotation.z = Math.PI / 2;
+      group.add(fus);
+      const nose = mesh(UNIT_CONE, white, 0.55, 1.3, 0.55, 3.6, 1.3, 0);
+      nose.rotation.z = -Math.PI / 2;
+      group.add(nose);
+      box(white, 1.3, 0.07, 7.6, 0.3, 1.1, 0);
+      box(white, 0.9, 1.4, 0.06, -2.9, 2.0, 0);
+      box(white, 0.7, 0.06, 2.6, -2.9, 1.35, 0);
+      box(m('#3f6fb5', 0.3), 0.5, 0.3, 0.6, 0.6, 0.8, 1.7);
+      box(m('#3f6fb5', 0.3), 0.5, 0.3, 0.6, 0.6, 0.8, -1.7);
+      break;
+    }
+
+    // ---- weapons
+    case 'axe': {
+      cyl(wood, 0.03, 1.1, 0, 0.55, 0);
+      box(m('#8d949c', 0.3), 0.3, 0.24, 0.035, 0.16, 1.0, 0);
+      box(m('#8d949c', 0.3), 0.06, 0.1, 0.05, -0.05, 1.0, 0);
+      break;
+    }
+    case 'spear': {
+      cyl(wood, 0.02, 2.0, 0, 1.0, 0);
+      group.add(mesh(UNIT_CONE, m('#c8ccd2', 0.25), 0.05, 0.28, 0.02, 0, 2.14, 0));
+      break;
+    }
+    case 'hammer': {
+      cyl(wood, 0.03, 1.15, 0, 0.58, 0);
+      box(m('#7f858c', 0.35), 0.42, 0.17, 0.17, 0, 1.18, 0);
+      box(m('#7f858c', 0.35), 0.05, 0.1, 0.05, 0.24, 1.18, 0);
+      break;
+    }
+    case 'pistol': {
+      const metal = m('#3a3d42', 0.35);
+      box(metal, 0.2, 0.038, 0.028, 0.03, 0.15, 0);
+      box(m('#5a3a22', 0.6), 0.038, 0.12, 0.028, -0.04, 0.085, 0);
+      box(metal, 0.09, 0.02, 0.02, 0.145, 0.15, 0);
+      break;
+    }
+
+    // ---- instruments
+    case 'violin': stringed(1, m('#a5541f', 0.35)); break;
+    case 'cello': stringed(2.6, m('#8c4318', 0.35)); break;
+    case 'trumpet': {
+      const brass = m('#d0a532', 0.25);
+      const tube = mesh(UNIT_CYL, brass, 0.012, 0.62, 0.012, -0.05, 0.95, 0);
+      tube.rotation.z = Math.PI / 2;
+      group.add(tube);
+      const tube2 = mesh(UNIT_CYL, brass, 0.012, 0.5, 0.012, -0.08, 0.99, 0.045);
+      tube2.rotation.z = Math.PI / 2;
+      group.add(tube2);
+      const bell = mesh(UNIT_CONE, brass, 0.085, 0.24, 0.085, 0.36, 0.97, 0);
+      bell.rotation.z = Math.PI / 2;
+      group.add(bell);
+      ring(brass, 0.045, 0.01, -0.36, 0.97, 0.02);
+      [-0.05, 0, 0.05].forEach((x) => cyl(brass, 0.012, 0.06, x, 0.9, 0));
+      break;
+    }
+    case 'flute': {
+      const silver = m('#c9ced6', 0.2);
+      const body = mesh(UNIT_CYL, silver, 0.013, 0.68, 0.013, 0, 1.0, 0);
+      body.rotation.z = Math.PI / 2;
+      group.add(body);
+      for (let i = 0; i < 6; i++) group.add(mesh(UNIT_SPHERE, dark, 0.009, 0.009, 0.009, -0.22 + i * 0.09, 1.015, 0.012));
+      break;
+    }
+
+    // ---- still life
+    case 'cup': {
+      const china = m('#f2efe6', 0.4);
+      cyl(china, 0.045, 0.09, 0, 0.045, 0);
+      ring(china, 0.03, 0.009, 0.06, 0.05, 0);
+      break;
+    }
+    case 'bottle': {
+      const glass = m('#3d7a4a', 0.15);
+      cyl(glass, 0.04, 0.22, 0, 0.11, 0);
+      group.add(mesh(UNIT_SPHERE, glass, 0.04, 0.05, 0.04, 0, 0.235, 0));
+      cyl(glass, 0.014, 0.1, 0, 0.32, 0);
+      cyl(m('#c9a227', 0.3), 0.017, 0.02, 0, 0.375, 0);
+      break;
+    }
+    case 'vase': {
+      const glaze = m('#3f6fb5', 0.25);
+      group.add(mesh(UNIT_SPHERE, glaze, 0.1, 0.14, 0.1, 0, 0.14, 0));
+      cyl(glaze, 0.045, 0.12, 0, 0.32, 0);
+      cyl(glaze, 0.06, 0.02, 0, 0.39, 0);
+      break;
+    }
+    case 'apple': {
+      group.add(mesh(UNIT_SPHERE, m('#c0392b', 0.4), 0.045, 0.04, 0.045, 0, 0.04, 0));
+      cyl(m('#5a3a22'), 0.004, 0.025, 0, 0.09, 0);
+      break;
+    }
+    case 'book': {
+      box(m('#7a3b3b'), 0.16, 0.035, 0.23, 0, 0.0175, 0);
+      box(m('#efe8d6', 0.9), 0.14, 0.028, 0.21, 0.005, 0.0175, 0.003);
+      break;
+    }
+
+    // ---- nature
+    case 'rock': {
+      const stone = m('#8d8a84', 0.95);
+      group.add(mesh(UNIT_SPHERE, stone, 0.6, 0.42, 0.5, 0, 0.32, 0));
+      group.add(mesh(UNIT_SPHERE, stone, 0.38, 0.3, 0.34, 0.45, 0.2, 0.15));
+      group.add(mesh(UNIT_SPHERE, stone, 0.3, 0.24, 0.3, -0.42, 0.16, -0.2));
+      break;
+    }
+    case 'bush': {
+      const leaf = m('#3f7a3a', 0.95);
+      group.add(mesh(UNIT_SPHERE, leaf, 0.55, 0.45, 0.5, 0, 0.42, 0));
+      group.add(mesh(UNIT_SPHERE, leaf, 0.4, 0.36, 0.4, 0.4, 0.3, 0.1));
+      group.add(mesh(UNIT_SPHERE, leaf, 0.38, 0.34, 0.38, -0.38, 0.28, -0.1));
       break;
     }
   }

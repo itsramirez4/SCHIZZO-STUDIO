@@ -17,10 +17,22 @@ export interface VanishingPoint {
   color: string;
 }
 
+/** The horizon / eye-level line. Vanishing points of 1- and 2-point perspective live on it. */
+export interface HorizonSettings {
+  /** Height of the line in canvas pixels (may lie outside the canvas for very high or low views). */
+  y: number;
+  visible: boolean;
+  /** When true the left / right / center vanishing points always stay on the line. */
+  linked: boolean;
+  color: string;
+}
+
 export interface PerspectiveGridSettings {
   type: PerspectiveGridType;
   enabled: boolean;
   points: Partial<Record<VanishingPoint['id'], VanishingPoint>>;
+  /** Optional so projects saved before the horizon existed keep loading unchanged. */
+  horizon?: HorizonSettings;
   color: string;
   opacity: number;
   divisions: number;
