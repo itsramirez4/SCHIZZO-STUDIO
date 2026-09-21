@@ -46,6 +46,8 @@ import { findSnapPoint } from '@/services/snapEngine.service';
 import { warpImagePerspective } from '@/services/perspectiveTransform.service';
 import PerspectiveGridOverlay from '../PerspectiveTools/PerspectiveGridOverlay';
 import HorizonOverlay from '../PerspectiveTools/HorizonOverlay';
+import RulerOverlay from '../PerspectiveTools/RulerOverlay';
+import { RulerConstraint, beginRulerStroke } from '@/services/rulerAssist.service';
 import SymmetryOverlay from '../PerspectiveTools/SymmetryOverlay';
 import StudyGuidesOverlay from './StudyGuidesOverlay';
 import FigureOverlay from './FigureOverlay';
@@ -1044,6 +1046,25 @@ export default function Canvas2D() {
    * closer to 1 pulls the trail only a small fraction of the way each move event, so the
    * line lags further behind and comes out visibly smoother (at the cost of responsiveness).
    */
+  /** Drawing ruler: the constraint that pulls the current freehand stroke onto the ruler (null = free stroke). */
+  const rulerConstraintRef = useRef<RulerConstraint | null>(null);
+  const rulerSettings = usePerspectiveStore((s) => s.ruler);
+  const perspectiveGridForRuler = usePerspectiveStore((s) => s.grid);
+  const isRulerTool = (tool: string) => tool === 'brush' || tool === 'eraser' || tool === 'smudge';
+  /** Starts a stroke on the ruler: decides whether the stroke follows it and returns its first point. */
+  function rulerBegin(pos: Point): Point {
+    const vps =
+      rulerSettings.kind === 'perspective' && perspectiveGridForRuler.enabled
+        ? Object.values(perspectiveGridForRuler.points).filter((p): p is NonNullable<typeof p> => !!p && p.visible).map((p) => ({ x: p.x, y: p.y }))
+        : [];
+    rulerConstraintRef.current = rulerSettings.kind === 'off' ? null : beginRulerStroke(rulerSettings, pos, vps, zoom);
+    return rulerConstraintRef.current ? { ...pos, ...rulerConstraintRef.current.apply(pos) } : pos;
+  }
+  function rulerApply(pos: Point): Point {
+    const c = rulerConstraintRef.current;
+    return c ? { ...pos, ...c.apply(pos) } : pos;
+  }
+
   function applySmoothing(prev: Point, raw: Point, smoothing: number): Point {
     if (smoothing <= 0) return raw;
     const lagFactor = 1 - Math.min(0.95, smoothing) * 0.9;
@@ -1087,7 +1108,7 @@ export default function Canvas2D() {
       return;
     }
 
-    const pos = getPos(e);
+    let pos = getPos(e);
     if (!pos) return;
     const canvasEl = getActiveCanvas(currentLayer);
     if (!canvasEl) return;
@@ -1103,6 +1124,9 @@ export default function Canvas2D() {
       addRecentColor(hex);
       return;
     }
+
+    rulerConstraintRef.current = null;
+    if (isRulerTool(currentTool)) pos = rulerBegin(pos);
 
     beginDrawing();
 
@@ -1365,10 +1389,11 @@ export default function Canvas2D() {
     }
 
     if (!currentLayer || currentLayer.locked || currentLayer.type === 'group' || currentLayer.type === 'reference') return;
-    const pos = getPos(e);
+    let pos = getPos(e);
     if (!pos) return;
     const canvasEl = getActiveCanvas(currentLayer);
     if (!canvasEl) return;
+    if (isRulerTool(currentTool)) pos = rulerApply(pos);
 
     if (currentTool === 'vectorSelect' && vectorDragRef.current && currentLayer.type === 'vector') {
       const drag = vectorDragRef.current;
@@ -1602,6 +1627,7 @@ export default function Canvas2D() {
     setGradientPreview(null);
     penDraggingRef.current = false;
     lastPointRef.current = null;
+    rulerConstraintRef.current = null;
     panStartRef.current = null;
     selectionStartRef.current = null;
     endDrawing();
@@ -1904,6 +1930,7 @@ export default function Canvas2D() {
         <GridOverlay canvasWidth={project.width} canvasHeight={project.height} zoom={zoom} />
         <PerspectiveGridOverlay canvasWidth={project.width} canvasHeight={project.height} zoom={zoom} getProjectPoint={getProjectPoint} />
         <HorizonOverlay canvasWidth={project.width} canvasHeight={project.height} zoom={zoom} getProjectPoint={getProjectPoint} />
+        <RulerOverlay canvasWidth={project.width} canvasHeight={project.height} zoom={zoom} getProjectPoint={getProjectPoint} />
         <SymmetryOverlay canvasWidth={project.width} canvasHeight={project.height} zoom={zoom} getProjectPoint={getProjectPoint} />
         <StudyGuidesOverlay canvasWidth={project.width} canvasHeight={project.height} zoom={zoom} getProjectPoint={getProjectPoint} />
         <FigureOverlay canvasWidth={project.width} canvasHeight={project.height} zoom={zoom} getProjectPoint={getProjectPoint} />

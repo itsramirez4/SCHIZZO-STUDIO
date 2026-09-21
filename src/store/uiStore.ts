@@ -15,6 +15,7 @@ interface UIState {
   showModel3DViewer: boolean;
   showReference3DPanel: boolean;
   showResizeDialog: boolean;
+  showReplayDialog: boolean;
   showComicPanel: boolean;
   showColorToolsPanel: boolean;
   showAssetLibraryPanel: boolean;
@@ -54,6 +55,8 @@ interface UIState {
   toggleReference3DPanel: () => void;
   openResizeDialog: () => void;
   closeResizeDialog: () => void;
+  openReplayDialog: () => void;
+  closeReplayDialog: () => void;
   toggleComicPanel: () => void;
   toggleColorToolsPanel: () => void;
   toggleAssetLibraryPanel: () => void;
@@ -92,6 +95,7 @@ export const useUIStore = create<UIState>((set) => ({
   showModel3DViewer: false,
   showReference3DPanel: false,
   showResizeDialog: false,
+  showReplayDialog: false,
   showComicPanel: false,
   showColorToolsPanel: false,
   showAssetLibraryPanel: false,
@@ -138,6 +142,8 @@ export const useUIStore = create<UIState>((set) => ({
   toggleReference3DPanel: () => set((s) => ({ showReference3DPanel: !s.showReference3DPanel })),
   openResizeDialog: () => set({ showResizeDialog: true }),
   closeResizeDialog: () => set({ showResizeDialog: false }),
+  openReplayDialog: () => set({ showReplayDialog: true }),
+  closeReplayDialog: () => set({ showReplayDialog: false }),
   toggleComicPanel: () => set((s) => ({ showComicPanel: !s.showComicPanel })),
   toggleColorToolsPanel: () => set((s) => ({ showColorToolsPanel: !s.showColorToolsPanel })),
   toggleAssetLibraryPanel: () => set((s) => ({ showAssetLibraryPanel: !s.showAssetLibraryPanel })),

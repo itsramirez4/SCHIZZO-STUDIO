@@ -6,6 +6,7 @@ import { reencodeRecording } from '@/services/recordingReencode.service';
 import { isElectron, sanitizeFilename } from '@/utils/fileUtils';
 import { uint8ToBase64 } from '@/utils/binaryUtils';
 import { useAppStore } from '@/store/appStore';
+import { useUIStore } from '@/store/uiStore';
 
 const SPEEDS = [1, 2, 4, 8, 16];
 
@@ -78,6 +79,15 @@ export default function RecordingPanel() {
   return (
     <div className="p-3 space-y-3">
       <h3 className="text-xs font-semibold text-textDim uppercase tracking-wide">Grabación de sesión</h3>
+
+      <button
+        onClick={() => useUIStore.getState().openReplayDialog()}
+        className="w-full text-[11px] bg-panelLight hover:bg-border rounded py-1.5"
+        title="Reproduce el proceso a partir de los pasos del historial, sin grabar nada"
+        data-testid="open-replay-from-recording"
+      >
+        Reproducir el proceso paso a paso
+      </button>
 
       {status === 'idle' && !resultBlob && (
         <p className="text-[10px] text-textDim">

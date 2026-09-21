@@ -22,6 +22,7 @@ import {
   resolveHorizon,
 } from '@/services/perspectiveGrid.service';
 import { HorizonSettings } from '@/types/perspective';
+import { RulerSettings, defaultRuler } from '@/services/rulerAssist.service';
 import { useAppStore } from '@/store/appStore';
 import { Project } from '@/types';
 import { isElectron } from '@/utils/fileUtils';
@@ -48,6 +49,7 @@ interface PerspectiveStore {
   symmetry: SymmetrySettings;
   guides: Guide[];
   snap: SnapSettings;
+  ruler: RulerSettings;
 
   hydratedProjectId: string | null;
 
@@ -61,6 +63,9 @@ interface PerspectiveStore {
   updateHorizon: (updates: Partial<HorizonSettings>, canvasHeight: number) => void;
   toggleVanishingPointLocked: (id: VanishingPoint['id']) => void;
   toggleVanishingPointVisible: (id: VanishingPoint['id']) => void;
+
+  setRuler: (patch: Partial<RulerSettings>) => void;
+  resetRuler: (canvasWidth: number, canvasHeight: number) => void;
 
   setSymmetryMode: (mode: SymmetryMode) => void;
   toggleSymmetryEnabled: () => void;
@@ -86,8 +91,8 @@ interface PerspectiveStore {
 }
 
 function persist(get: () => PerspectiveStore) {
-  const { grid, guides, symmetry } = get();
-  useAppStore.getState().updatePerspectiveData({ grid, guides, symmetry });
+  const { grid, guides, symmetry, ruler } = get();
+  useAppStore.getState().updatePerspectiveData({ grid, guides, symmetry, ruler });
 }
 
 let presetsSaveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -104,6 +109,7 @@ export const usePerspectiveStore = create<PerspectiveStore>((set, get) => ({
   symmetry: DEFAULT_SYMMETRY,
   guides: [],
   snap: DEFAULT_SNAP,
+  ruler: defaultRuler(1000, 1000),
   hydratedProjectId: null,
   presets: [],
   presetsLoaded: false,
@@ -118,6 +124,7 @@ export const usePerspectiveStore = create<PerspectiveStore>((set, get) => ({
       grid: saved?.grid ?? createDefaultGrid(project.width, project.height),
       guides: saved?.guides ?? [],
       symmetry: saved?.symmetry ?? { ...DEFAULT_SYMMETRY, centerX: project.width / 2, centerY: project.height / 2 },
+      ruler: saved?.ruler ?? defaultRuler(project.width, project.height),
     });
   },
 
@@ -173,6 +180,15 @@ export const usePerspectiveStore = create<PerspectiveStore>((set, get) => ({
       if (!point) return s;
       return { grid: { ...s.grid, points: { ...s.grid.points, [id]: { ...point, visible: !point.visible } } } };
     });
+    persist(get);
+  },
+
+  setRuler: (patch) => {
+    set((s) => ({ ruler: { ...s.ruler, ...patch } }));
+    persist(get);
+  },
+  resetRuler: (canvasWidth, canvasHeight) => {
+    set((s) => ({ ruler: { ...defaultRuler(canvasWidth, canvasHeight), kind: s.ruler.kind } }));
     persist(get);
   },
 

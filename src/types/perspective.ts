@@ -123,4 +123,6 @@ export interface PerspectiveProjectData {
   grid: PerspectiveGridSettings;
   guides: Guide[];
   symmetry: SymmetrySettings;
+  /** Drawing ruler (optional so projects saved before it existed load unchanged). */
+  ruler?: import('@/services/rulerAssist.service').RulerSettings;
 }

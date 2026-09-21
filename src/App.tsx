@@ -31,6 +31,7 @@ import TourOverlay from '@/components/Learning/TourOverlay';
 const Model3DViewer = lazy(() => import('@/components/Models3D/Model3DViewer'));
 const Reference3DPanel = lazy(() => import('@/components/Models3D/Reference3DPanel'));
 const ResizeDialog = lazy(() => import('@/components/Dialogs/ResizeDialog'));
+const ReplayDialog = lazy(() => import('@/components/Replay/ReplayDialog'));
 // The floating workspace is an opt-in alternate to the classic layout below (most sessions
 // never touch it) — it also drags in its own copies of Filters/Comic/Animation/Histogram/
 // History, so keeping it lazy keeps all of that out of the classic layout's startup cost too.
@@ -76,6 +77,7 @@ export default function App() {
   const showModel3DViewer = useUIStore((s) => s.showModel3DViewer);
   const showReference3DPanel = useUIStore((s) => s.showReference3DPanel);
   const showResizeDialog = useUIStore((s) => s.showResizeDialog);
+  const showReplayDialog = useUIStore((s) => s.showReplayDialog);
   const openResizeDialog = useUIStore((s) => s.openResizeDialog);
   const openBrushEditor = useUIStore((s) => s.openBrushEditor);
   const toggleLayerPanel = useUIStore((s) => s.toggleLayerPanel);
@@ -409,6 +411,11 @@ export default function App() {
       {showReference3DPanel && (
         <Suspense fallback={null}>
           <Reference3DPanel />
+        </Suspense>
+      )}
+      {showReplayDialog && (
+        <Suspense fallback={null}>
+          <ReplayDialog />
         </Suspense>
       )}
       {showResizeDialog && (

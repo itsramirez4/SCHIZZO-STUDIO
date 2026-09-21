@@ -2,13 +2,15 @@ import { useState } from 'react';
 import PerspectiveGridPanel from './PerspectiveGridPanel';
 import SymmetryPanel from './SymmetryPanel';
 import GuidesPanel from './GuidesPanel';
+import RulerPanel from './RulerPanel';
 
-type SubTab = 'grid' | 'symmetry' | 'guides';
+type SubTab = 'grid' | 'symmetry' | 'guides' | 'ruler';
 
 const SUB_TABS: { id: SubTab; label: string }[] = [
   { id: 'grid', label: 'Perspectiva' },
   { id: 'symmetry', label: 'Simetría' },
   { id: 'guides', label: 'Guías' },
+  { id: 'ruler', label: 'Regla' },
 ];
 
 export default function PerspectivePanel() {
@@ -33,6 +35,7 @@ export default function PerspectivePanel() {
       {tab === 'grid' && <PerspectiveGridPanel />}
       {tab === 'symmetry' && <SymmetryPanel />}
       {tab === 'guides' && <GuidesPanel />}
+      {tab === 'ruler' && <RulerPanel />}
     </div>
   );
 }

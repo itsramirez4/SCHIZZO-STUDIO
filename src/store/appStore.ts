@@ -15,6 +15,7 @@ import {
   LayerComp,
   LayerCompState,
 } from '@/types';
+import { captureReplayFrame } from '@/services/replay.service';
 import * as layerService from '@/services/layer.service';
 import { renderVectorLayer } from '@/services/vectorLayer.service';
 import * as filterService from '@/services/filter.service';
@@ -333,6 +334,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       },
     };
     historyManager.pushState('Proyecto creado', project.layers);
+    captureReplayFrame(project, 'Proyecto creado');
     set({
       project,
       currentLayerId: baseLayer.id,
@@ -358,6 +360,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     historyManager.clear();
     preIsolateVisibility = null;
     historyManager.pushState('Proyecto cargado', project.layers);
+    captureReplayFrame(project, 'Proyecto cargado');
     set({
       project,
       currentLayerId: project.layers[0]?.id ?? null,
@@ -1500,6 +1503,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const { project } = get();
     if (!project) return;
     historyManager.pushState(action, project.layers, project.animation);
+    captureReplayFrame(project, action);
     set((s) => ({
       historyVersion: s.historyVersion + 1,
       canUndo: historyManager.canUndo(),
