@@ -1,6 +1,6 @@
 {
   "name": "schizzo-studio",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "SCHIZZO STUDIO — free digital drawing & pixel art app",
   "main": "dist-electron/main.js",
   "author": "SCHIZZO STUDIO",

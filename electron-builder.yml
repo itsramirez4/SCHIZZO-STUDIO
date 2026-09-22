@@ -13,6 +13,12 @@ win:
     - nsis
     - portable
   icon: public/icon.png
+  # Unsigned right now: electron-builder signs automatically, with no other change needed here,
+  # once CSC_LINK (path or base64 of the .pfx) and CSC_KEY_PASSWORD are set in the environment —
+  # see "Firma de código" in README.md for where to get a certificate and how to set them.
+  rfc3161TimeStampServer: http://timestamp.digicert.com
+  signingHashAlgorithms:
+    - sha256
 mac:
   target: dmg
   icon: public/icon.png

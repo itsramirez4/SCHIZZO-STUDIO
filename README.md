@@ -89,6 +89,36 @@ Genera `SCHIZZO-STUDIO-Setup-<versión>.exe` y `SCHIZZO-STUDIO-Portable-<versió
 
 **Estado por plataforma:** Windows está probado de extremo a extremo (`npm run check` y `npm run check:installer`). Para Linux se comprueba que el empaquetado se genera (`npx electron-builder --linux dir`) pero no se ha ejecutado la app allí; macOS solo puede generarse desde un Mac y no se ha probado.
 
+### Firma de código
+
+El instalador y el portable no están firmados: al abrirlos, Windows SmartScreen muestra un aviso
+de "editor no reconocido". No es un fallo, es lo esperado sin certificado — y no hay forma de
+evitarlo sin comprar uno, ni con un certificado autofirmado (Windows solo confía en certificados
+de una autoridad reconocida).
+
+Para firmar:
+1. **Comprar un certificado de firma de código** (OV o EV) a una autoridad como DigiCert, Sectigo o
+   SSL.com. Un EV cuesta más pero genera la reputación de SmartScreen mucho antes; uno OV es más
+   barato pero el aviso puede tardar semanas o meses en desaparecer, según cuántas descargas tenga
+   el instalador.
+2. **No hace falta tocar el código.** `electron-builder.yml` ya está preparado (servidor de sellado
+   de tiempo y algoritmo de firma); electron-builder firma solo al detectar el certificado en el
+   entorno:
+   ```bash
+   export CSC_LINK=/ruta/al/certificado.pfx       # o su contenido en base64
+   export CSC_KEY_PASSWORD=la_contraseña_del_pfx
+   npm run package
+   ```
+3. Comprueba que quedó firmado con `Get-AuthenticodeSignature .\release\SCHIZZO-STUDIO-Setup-<versión>.exe` en PowerShell (`Status` debe decir `Valid`).
+
+## Versionado
+
+[Versionado semántico](https://semver.org/lang/es/). Mientras la versión sea `0.y.z` (como ahora),
+cualquier cosa puede cambiar sin previo aviso: quedan sin resolver el sistema de plugins, la
+colaboración en tiempo real, la firma de código y las pruebas reales en macOS/Linux. `1.0.0` queda
+reservado para cuando eso esté decidido y la app esté lista para un primer público. Los cambios de
+cada versión están en [CHANGELOG.md](CHANGELOG.md).
+
 ## Rendimiento
 
 - La interfaz carga solo lo necesario al arrancar; paneles, diálogos, el visor 3D y la detección de pose se descargan bajo demanda.
