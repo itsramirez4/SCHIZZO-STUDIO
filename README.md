@@ -149,6 +149,8 @@ colaboración en tiempo real, la firma de código y las pruebas reales en macOS/
 reservado para cuando eso esté decidido y la app esté lista para un primer público. Los cambios de
 cada versión están en [CHANGELOG.md](CHANGELOG.md).
 
+Cada versión etiquetada (`git tag`) tiene su [Release en GitHub](https://github.com/itsramirez4/SCHIZZO-STUDIO/releases), con la sección correspondiente del changelog como notas. `node scripts/make-release.cjs v<versión>` crea el Release de un tag ya subido, tomando las notas directamente de su sección en `CHANGELOG.md`.
+
 ## Rendimiento
 
 - La interfaz carga solo lo necesario al arrancar; paneles, diálogos, el visor 3D y la detección de pose se descargan bajo demanda.
