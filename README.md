@@ -79,6 +79,13 @@ node scripts/check-installer.cjs --no-build   # prueba los que ya hay en release
 
 Instala en silencio en una carpeta temporal, abre la app instalada (proyecto, trazo, deshacer, reproducción), la desinstala comprobando que no queda ni carpeta, ni accesos directos, ni registro, y repite el recorrido con la versión portable. Solo Windows.
 
+```bash
+npm run check:linux                   # genera el AppImage y lo prueba
+node scripts/check-linux.cjs --no-build   # prueba el que ya haya en release/
+```
+
+Equivalente en Linux: genera el AppImage, lo arranca, dibuja, deshace, rehace y comprueba la reproducción del proceso. Solo Linux (probado en Ubuntu 24.04).
+
 ## Empaquetado (Windows)
 
 ```bash
@@ -87,7 +94,19 @@ npm run package    # instalador NSIS y versión portable en release/
 
 Genera `SCHIZZO-STUDIO-Setup-<versión>.exe` y `SCHIZZO-STUDIO-Portable-<versión>.exe`. La configuración está en `electron-builder.yml` (también define objetivos para macOS y Linux).
 
-**Estado por plataforma:** Windows está probado de extremo a extremo (`npm run check` y `npm run check:installer`). Para Linux se comprueba que el empaquetado se genera (`npx electron-builder --linux dir`) pero no se ha ejecutado la app allí; macOS solo puede generarse desde un Mac y no se ha probado.
+**Estado por plataforma:**
+- **Windows:** probado de extremo a extremo (`npm run check` y `npm run check:installer`).
+- **Linux:** probado de verdad en Ubuntu 24.04 (kernel real, no emulación) con `npm run check` y el
+  AppImage con `npm run check:linux` (script en `scripts/check-linux.cjs`). 45/46 comprobaciones
+  pasan; solo falla la de rendimiento, y por una razón identificada y ajena a la app: bajo WSLg,
+  Chromium cayó a render por software (WebGL/Vulkan reportan `llvmpipe`) al faltarle el driver
+  Vulkan D3D12 ("dozen") de Mesa en esa instalación mínima — el tiempo por evento del pincel
+  seguía siendo normal (3-4 ms), solo la composición de capas iba lenta. En una máquina Linux
+  normal con un driver de GPU real (Intel/AMD/NVIDIA), que es el caso habitual fuera de WSL, no
+  debería reproducirse; queda sin confirmar en hardware Linux nativo.
+- **macOS:** sin probar. `electron-builder` solo puede generar el `.dmg` desde un Mac, y no hay
+  ninguno disponible; queda documentado aquí en vez de forzarlo con infraestructura de CI, que el
+  proyecto ha decidido no usar.
 
 ### Firma de código
 

@@ -18,7 +18,8 @@
     "publish": "npm run build && electron-builder",
     "lint": "tsc --noEmit",
     "check": "node scripts/check.cjs",
-    "check:installer": "node scripts/check-installer.cjs"
+    "check:installer": "node scripts/check-installer.cjs",
+    "check:linux": "node scripts/check-linux.cjs"
   },
   "dependencies": {
     "@tensorflow-models/pose-detection": "^2.1.3",

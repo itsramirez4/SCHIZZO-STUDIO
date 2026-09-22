@@ -6,7 +6,13 @@ puede cambiar sin previo aviso (ver "Versionado" en [README.md](README.md)).
 
 ## [Sin publicar]
 
-Nada todavía.
+### Comprobado
+- Linux probado de verdad (Ubuntu 24.04 sobre WSL2, kernel real): `npm run check` y el AppImage
+  (nuevo `npm run check:linux`). 45/46 comprobaciones pasan; la de rendimiento falla solo por una
+  limitación identificada de ese entorno concreto (Chromium cae a render por software al faltarle
+  el driver Vulkan D3D12 de Mesa bajo WSLg), no por la app. Sin confirmar en Linux con GPU real.
+- macOS sigue sin probarse: solo puede compilarse desde un Mac, y montar un runner de macOS en la
+  nube habría significado la infraestructura de CI que este proyecto ha decidido no usar.
 
 ## [0.1.0] - 2026-09-22
 
