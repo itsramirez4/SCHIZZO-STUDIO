@@ -353,9 +353,15 @@ export function pencilSketch(canvas: HTMLCanvasElement, blurRadius: number, dark
 
   const strength = Math.max(0.01, darkness / 100);
   for (let p = 0, i = 0; p < gray.length; p++, i += 4) {
-    // Color dodge: base / (1 - blend), scaled so `darkness` controls how strong the shading is.
-    const blend = Math.min(255, blurred[p] * strength);
-    const v = blend >= 255 ? 255 : Math.min(255, (gray[p] * 255) / (255 - blend));
+    // Classic color dodge (base / (1 - blend)) with the UNSCALED blurred-inverted value: this is
+    // what makes any flat region — light or dark — cancel out to paper white, leaving only edges
+    // and gradients as graphite strokes. Scaling `blend` by `darkness` before the divide (as this
+    // used to do) broke that cancellation for dark flat fills, turning them into muddy grey blobs
+    // instead of white with an outline. `darkness` now only deepens the strokes afterwards, so it
+    // can fade them toward white (<100%) or deepen them (>100%) without ever un-cancelling a fill.
+    const blend = blurred[p];
+    const trueV = blend >= 255 ? 255 : Math.min(255, (gray[p] * 255) / (255 - blend));
+    const v = Math.max(0, Math.min(255, 255 - (255 - trueV) * strength));
     data[i] = data[i + 1] = data[i + 2] = v;
   }
   ctx.putImageData(imageData, 0, 0);

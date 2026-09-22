@@ -3,6 +3,43 @@
  * animación, paneles e IA. Usan el gancho `window.__schizzo` (ver src/checkHook.ts) para preparar
  * píxeles exactos y leer el estado real de la app, en vez de fiarse solo de lo que se ve.
  */
+const http = require('http');
+
+/** A 1x1 white PNG, base64 — stands in for a "generated" image without needing a real model. */
+const TINY_PNG_B64 =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+
+/**
+ * A local HTTP server standing in for a Stable Diffusion server or an OpenAI-compatible endpoint —
+ * lets the generative-image/chat plumbing (main process → fetch → parse) be exercised for real
+ * without any paid API key or GPU. Records every request it receives so tests can assert the app
+ * actually reached it (or, with the AI switch off, that it never did).
+ */
+function mockAiServer() {
+  const hits = [];
+  const server = http.createServer((req, res) => {
+    let body = '';
+    req.on('data', (c) => (body += c));
+    req.on('end', () => {
+      hits.push({ method: req.method, url: req.url, body: body ? JSON.parse(body) : null });
+      res.setHeader('Content-Type', 'application/json');
+      if (req.url.endsWith('/images/generations')) res.end(JSON.stringify({ data: [{ b64_json: TINY_PNG_B64 }] }));
+      else if (req.url.endsWith('/sdapi/v1/txt2img')) res.end(JSON.stringify({ images: [TINY_PNG_B64] }));
+      else if (req.url.endsWith('/sdapi/v1/sd-models')) res.end(JSON.stringify([{ title: 'mock-sd-checkpoint' }]));
+      else if (req.url.endsWith('/models')) res.end(JSON.stringify({ data: [{ id: 'mock-gpt' }] }));
+      else if (req.url.endsWith('/chat/completions')) res.end(JSON.stringify({ choices: [{ message: { content: 'de pie, brazos cruzados' } }] }));
+      else {
+        res.statusCode = 404;
+        res.end('{}');
+      }
+    });
+  });
+  return new Promise((resolve) => {
+    server.listen(0, '127.0.0.1', () => resolve({ server, hits, base: `http://127.0.0.1:${server.address().port}` }));
+  });
+}
+const closeServer = (server) => new Promise((r) => server.close(r));
+
 module.exports = function extraGroups({ ok, sleep, fs }) {
   // Se ejecutan dentro de la página: utilidades para pintar y leer píxeles de capas.
   const HELPERS = `
@@ -302,6 +339,7 @@ module.exports = function extraGroups({ ok, sleep, fs }) {
         await fresh(c, { width: 64, height: 64 });
         const r = await ev(c, () => {
           const F = window.__schizzo.filters;
+          const G = window.__schizzo.geometry;
           const mk = () => {
             const cv = document.createElement('canvas');
             cv.width = 64;
@@ -325,10 +363,21 @@ module.exports = function extraGroups({ ok, sleep, fs }) {
             levels: (v) => F.levels(v, { inBlack: 10, inWhite: 240, gamma: 1, outBlack: 0, outWhite: 255 }),
             applyCurve: (v) => F.applyCurve(v, [{ x: 0, y: 0 }, { x: 128, y: 100 }, { x: 255, y: 255 }]),
             sepia: (v) => F.sepia(v, 0.8), charcoal: (v) => F.charcoal(v, 50), edgeDetection: (v) => F.edgeDetection(v, 30), bloom: (v) => F.bloom(v, 4, 0.5),
-            oilPaint: (v) => F.oilPaint(v, 2), applyFog: (v) => F.applyFog(v, 0.3, '#ffffff'), applyDust: (v) => F.applyDust(v, 0.3, '#ffffff'),
-            applySmoke: (v) => F.applySmoke(v, 0.3, '#888888'), applyRain: (v) => F.applyRain(v, 0.3, 20, '#aaccff'),
+            oilPaint: (v) => F.oilPaint(v, 2),
+            // Fog's `density` is a 0-1 fraction (the panel divides its 0-100 slider by 100 before
+            // calling it); dust/smoke/rain take the slider's raw 0-100 value directly — passing
+            // fractions there (as this used to) under-drove them enough that "unchanged" almost
+            // hid it (dust drew a single dot, not none), which is what let the real scale mismatch
+            // in scripts/check/filter-preview.cjs go unnoticed until a visual review caught it.
+            applyFog: (v) => F.applyFog(v, 0.3, '#ffffff'), applyDust: (v) => F.applyDust(v, 30, '#ffffff'),
+            applySmoke: (v) => F.applySmoke(v, 30, '#888888'), applyRain: (v) => F.applyRain(v, 30, 20, '#aaccff'),
             quantize: (v) => F.quantizeToPalette(v, [[0, 0, 0], [255, 255, 255], [255, 0, 0]]),
             dither: (v) => F.ditherToPalette(v, [[0, 0, 0], [255, 255, 255]], 0.8),
+            // The other geometry-based "artistic effects" panel entries (pencil sketch, comic/cel
+            // shading, mosaic, crystallize) live in geometryFilters.service and weren't exercised
+            // by any check at all until now.
+            pencilSketch: (v) => G.pencilSketch(v, 8, 90), toonShading: (v) => G.toonShading(v, 5, 80),
+            mosaic: (v) => G.mosaic(v, 16, 2, '#101010'), crystallize: (v) => G.crystallize(v, 20),
           };
           for (const t of Object.keys(F.ADJUSTMENT_DEFAULTS)) cases['ajuste:' + t] = (v) => F.applyAdjustment(v, t, F.ADJUSTMENT_DEFAULTS[t]);
           const failed = [];
@@ -814,6 +863,290 @@ module.exports = function extraGroups({ ok, sleep, fs }) {
         }
         await sleep(1000);
         ok(requests.length === 0, `la app hizo peticiones de red con la IA apagada: ${requests.slice(0, 3).join(', ')}`);
+      },
+    },
+
+    // -----------------------------------------------------------------------------------------
+    // The 8 "AI-assisted" services that are actually local, deterministic image/text processing —
+    // no model, no network — so they can be checked exactly like the plain filters.
+    asistente: {
+      'buildReferencePrompt traduce la petición y arma un prompt para el objetivo elegido': async (c) => {
+        await fresh(c, { width: 100, height: 100 });
+        const r = await ev(c, () => {
+          const A = window.__schizzo.aiReferencePrompt;
+          const pose = A.buildReferencePrompt('mujer corriendo bajo la lluvia', 'pose');
+          const light = A.buildReferencePrompt('esfera con luz dura', 'light');
+          return { pose, light, goals: A.REFERENCE_GOALS.map((g) => g.id) };
+        });
+        ok(['woman', 'running', 'rain'].every((w) => r.pose.translated.includes(w)), `no tradujo bien "mujer corriendo bajo la lluvia": ${JSON.stringify(r.pose.translated)}`);
+        ok(/figure reference/.test(r.pose.prompt), 'el prompt de pose no lleva el estilo de referencia de pose');
+        ok(/light and shadow/.test(r.light.prompt), 'el prompt de iluminación no lleva el estilo de referencia de luz');
+        ok(r.goals.includes('pose') && r.goals.includes('scene'), 'faltan objetivos de referencia');
+      },
+      'paletteFromText y paletteFromImage sugieren colores': async (c) => {
+        await fresh(c, { width: 120, height: 90 });
+        const r = await ev(c, () => {
+          const A = window.__schizzo.aiPalette;
+          const fromText = A.paletteFromText('atardecer cálido en el bosque', 5);
+          const cv = document.createElement('canvas');
+          cv.width = 120;
+          cv.height = 90;
+          const g = cv.getContext('2d');
+          g.fillStyle = '#274b8f';
+          g.fillRect(0, 0, 120, 45);
+          g.fillStyle = '#e08a3c';
+          g.fillRect(0, 45, 120, 45);
+          const fromImage = A.paletteFromImage(cv);
+          return { fromText, fromImage };
+        });
+        ok(r.fromText.ideas.length > 0, 'paletteFromText no propuso ninguna paleta');
+        ok(r.fromImage.ideas.length > 0, 'paletteFromImage no propuso ninguna paleta');
+        ok(r.fromImage.current.length >= 2, `paletteFromImage debería leer al menos los 2 colores de la imagen, leyó ${r.fromImage.current.length}`);
+      },
+      'cleanDrawing quita motas sueltas y conserva el trazo': async (c) => {
+        await fresh(c, { width: 200, height: 150 });
+        const r = await ev(c, () => {
+          const A = window.__schizzo.aiCleanup;
+          const cv = document.createElement('canvas');
+          cv.width = 200;
+          cv.height = 150;
+          const g = cv.getContext('2d');
+          g.fillStyle = '#ffffff';
+          g.fillRect(0, 0, 200, 150);
+          g.strokeStyle = '#000000';
+          g.lineWidth = 4;
+          g.beginPath();
+          g.moveTo(20, 75);
+          g.lineTo(180, 75);
+          g.stroke();
+          // A few isolated 1-2px specks of dust, far from the line.
+          g.fillStyle = '#000000';
+          for (const [x, y] of [[30, 20], [90, 15], [160, 25], [40, 130], [150, 120]]) g.fillRect(x, y, 2, 2);
+          // cleanDrawing doesn't touch `cv` — it returns a cleaned COPY as `.canvas`.
+          const result = A.cleanDrawing(cv, { minSpeckArea: 8, closeGapRadius: 0, isolatedOnly: true });
+          const og = result.canvas.getContext('2d');
+          const px = (x, y) => Array.from(og.getImageData(x, y, 1, 1).data);
+          return { specksRemoved: result.specksRemoved, specA: px(31, 21), specB: px(161, 26), lineMid: px(100, 75), lineEnd: px(21, 75) };
+        });
+        ok(r.specksRemoved === 5, `deberían haberse quitado las 5 motas sueltas, se quitaron ${r.specksRemoved}`);
+        ok(r.specA[0] > 200 && r.specB[0] > 200, 'quedó una mota suelta sin limpiar');
+        ok(r.lineMid[0] < 60, 'la limpieza borró el trazo principal');
+        ok(r.lineEnd[0] < 60, 'la limpieza borró el extremo del trazo');
+      },
+      'analyzeComposition da una lectura de la composición del dibujo': async (c) => {
+        await fresh(c, { width: 100, height: 100 });
+        const r = await ev(c, () => {
+          const A = window.__schizzo.aiComposition;
+          const cv = document.createElement('canvas');
+          cv.width = 240;
+          cv.height = 160;
+          const g = cv.getContext('2d');
+          g.fillStyle = '#f4f4f4';
+          g.fillRect(0, 0, 240, 160);
+          g.fillStyle = '#101010';
+          g.beginPath();
+          g.arc(200, 40, 22, 0, Math.PI * 2); // an off-center subject, top-right
+          g.fill();
+          return A.analyzeComposition(cv);
+        });
+        ok(r.focus && r.focus.x > 0.6 && r.focus.y < 0.5, `el foco debería caer arriba a la derecha, dio ${JSON.stringify(r.focus)}`);
+        ok(Array.isArray(r.notes ?? r.tips ?? r.observations ?? []) || typeof r === 'object', 'analyzeComposition no devolvió una lectura utilizable');
+      },
+      'separateLineArt, separateBackground y separateByColors dividen el dibujo en capas': async (c) => {
+        await fresh(c, { width: 100, height: 100 });
+        const r = await ev(c, () => {
+          const A = window.__schizzo.aiLayerSeparation;
+          const cv = document.createElement('canvas');
+          cv.width = 150;
+          cv.height = 100;
+          const g = cv.getContext('2d');
+          g.fillStyle = '#ffffff';
+          g.fillRect(0, 0, 150, 100);
+          g.fillStyle = '#d94f4f';
+          g.fillRect(10, 10, 50, 50);
+          g.fillStyle = '#4f7fd9';
+          g.fillRect(80, 40, 50, 50);
+          g.strokeStyle = '#000000';
+          g.lineWidth = 3;
+          g.strokeRect(20, 20, 30, 30);
+          return {
+            line: A.separateLineArt(cv).length,
+            bg: A.separateBackground(cv, 40).length,
+            colors: A.separateByColors(cv, 4).length,
+          };
+        });
+        ok(r.line >= 1, 'separateLineArt no devolvió ninguna capa');
+        ok(r.bg >= 1, 'separateBackground no devolvió ninguna capa');
+        ok(r.colors >= 2, `separateByColors debería separar al menos 2 colores, separó ${r.colors}`);
+      },
+      'poseFromText, expressionFromText y correctTypos entienden descripciones en español': async (c) => {
+        await fresh(c, { width: 100, height: 100 });
+        const r = await ev(c, () => {
+          const A = window.__schizzo.aiTextToPose;
+          return {
+            pose: A.poseFromText('de pie con los brazos cruzados'),
+            expr: A.expressionFromText('muy alegre'),
+            typo: A.correctTypos('sentaddo en el sueloo'),
+          };
+        });
+        ok(r.pose && (r.pose.pose || r.pose.base || Object.keys(r.pose).length > 0), 'poseFromText no entendió una frase sencilla');
+        ok(r.expr && Object.keys(r.expr).length > 0, 'expressionFromText no entendió una frase sencilla');
+        ok(typeof r.typo.text === 'string' && r.typo.text.length > 0, 'correctTypos no devolvió texto');
+      },
+      'fitMannequinPose ajusta el maniquí 3D a una postura de pie simple': async (c) => {
+        await fresh(c, { width: 100, height: 100 });
+        const r = await ev(c, () => {
+          const A = window.__schizzo.aiPoseFit;
+          // A simple standing figure, arms at the sides, screen-space coordinates (x right, y down).
+          const lm = {
+            headTop: { x: 400, y: 100 }, chin: { x: 400, y: 150 },
+            shoulderL: { x: 440, y: 190 }, shoulderR: { x: 360, y: 190 },
+            elbowL: { x: 450, y: 280 }, elbowR: { x: 350, y: 280 },
+            wristL: { x: 455, y: 360 }, wristR: { x: 345, y: 360 },
+            hipL: { x: 425, y: 400 }, hipR: { x: 375, y: 400 },
+            kneeL: { x: 425, y: 520 }, kneeR: { x: 375, y: 520 },
+            ankleL: { x: 425, y: 630 }, ankleR: { x: 375, y: 630 },
+          };
+          return A.fitMannequinPose(lm);
+        });
+        ok(Number.isFinite(r.error), 'el ajuste no devolvió un error numérico');
+        ok(r.error < 0.5, `el ajuste debería acercarse bastante a una postura de pie simple, error=${r.error}`);
+        ok(r.pose && Object.keys(r.pose).length > 5, 'el ajuste no devolvió una pose con huesos');
+      },
+      'relightVariants propone varias iluminaciones y relightFull genera una a tamaño completo': async (c) => {
+        await fresh(c, { width: 100, height: 100 });
+        const r = await ev(c, () => {
+          const A = window.__schizzo.aiRelight;
+          // A genuinely shaded sphere (smooth radial gradient) — real relief to read, unlike flat
+          // fills or line art, which isLineArt's own contract treats the same ("nothing to light").
+          const shaded = document.createElement('canvas');
+          shaded.width = 200;
+          shaded.height = 150;
+          const sg = shaded.getContext('2d');
+          sg.fillStyle = '#303030';
+          sg.fillRect(0, 0, 200, 150);
+          const grad = sg.createRadialGradient(80, 60, 5, 100, 75, 55);
+          grad.addColorStop(0, '#f4f0e0');
+          grad.addColorStop(1, '#202020');
+          sg.fillStyle = grad;
+          sg.beginPath();
+          sg.arc(100, 75, 50, 0, Math.PI * 2);
+          sg.fill();
+          // Flat line art: a sparse pencil-sketch-like face (a couple of thin strokes on white
+          // paper, no shading at all) — a single thick outline covering a lot of the canvas
+          // pushes global luminance variance right up to reliefAmount's threshold, so this needs
+          // to be a properly sparse sketch to land unambiguously on the "line art" side.
+          const flat = document.createElement('canvas');
+          flat.width = 200;
+          flat.height = 150;
+          const fg = flat.getContext('2d');
+          fg.fillStyle = '#ffffff';
+          fg.fillRect(0, 0, 200, 150);
+          fg.strokeStyle = '#000000';
+          fg.lineWidth = 2;
+          fg.beginPath();
+          fg.arc(70, 60, 4, 0, Math.PI * 2);
+          fg.stroke();
+          fg.beginPath();
+          fg.arc(130, 60, 4, 0, Math.PI * 2);
+          fg.stroke();
+          fg.beginPath();
+          fg.moveTo(70, 100);
+          fg.quadraticCurveTo(100, 115, 130, 100);
+          fg.stroke();
+
+          const variants = A.relightVariants(shaded);
+          const full = variants[0] ? A.relightFull(shaded, variants[0].id) : null;
+          return { n: variants.length, ids: variants.map((v) => v.id), fullSize: full ? [full.width, full.height] : null, shadedIsLineArt: A.isLineArt(shaded), flatIsLineArt: A.isLineArt(flat) };
+        });
+        ok(r.n >= 2, `relightVariants debería proponer varias opciones, propuso ${r.n}`);
+        ok(new Set(r.ids).size === r.ids.length, 'relightVariants repitió el mismo id de variante');
+        ok(r.fullSize && r.fullSize[0] === 200 && r.fullSize[1] === 150, `relightFull debería devolver el tamaño original (200x150), devolvió ${r.fullSize}`);
+        ok(r.shadedIsLineArt === false, 'una esfera con degradado real se leyó como line art');
+        ok(r.flatIsLineArt === true, 'un boceto de solo contorno no se leyó como line art');
+      },
+    },
+
+    // -----------------------------------------------------------------------------------------
+    // Generative image/chat plumbing (main process -> fetch -> the configured provider), exercised
+    // against a local mock server instead of a real paid API — no key or GPU needed, but it is the
+    // real IPC path an actual OpenAI-compatible or Stable Diffusion server would go through.
+    'ia-generativa': {
+      'generar imagen con un proveedor compatible con OpenAI llega al servicio y trae el resultado': async (c) => {
+        await fresh(c, { width: 100, height: 100 });
+        const { server, hits, base } = await mockAiServer();
+        try {
+          await c.page.evaluate(() => window.__schizzo.ai.getState().setEnabled(true));
+          const r = await c.page.evaluate(
+            ({ base }) => window.electronAPI.aiGenerateImage({ kind: 'openai-compatible', endpoint: base + '/v1', model: 'mock-model', prompt: 'un gato leyendo', width: 512, height: 512 }),
+            { base }
+          );
+          ok(r.ok, `generar imagen falló: ${r.error}`);
+          ok(typeof r.dataUrl === 'string' && r.dataUrl.startsWith('data:image/png;base64,'), 'no devolvió una imagen PNG');
+          ok(hits.some((h) => h.url.endsWith('/images/generations') && h.body?.prompt === 'un gato leyendo'), 'el servicio mock no recibió el prompt esperado');
+        } finally {
+          await closeServer(server);
+        }
+      },
+      'generar imagen con un servidor local Stable Diffusion llega al servicio y trae el resultado': async (c) => {
+        await fresh(c, { width: 100, height: 100 });
+        const { server, hits, base } = await mockAiServer();
+        try {
+          await c.page.evaluate(() => window.__schizzo.ai.getState().setEnabled(true));
+          const r = await c.page.evaluate(
+            ({ base }) => window.electronAPI.aiGenerateImage({ kind: 'local-sd', endpoint: base, model: '', prompt: 'un bosque de noche', width: 512, height: 512 }),
+            { base }
+          );
+          ok(r.ok, `generar imagen (local-sd) falló: ${r.error}`);
+          ok(typeof r.dataUrl === 'string' && r.dataUrl.startsWith('data:image/png;base64,'), 'no devolvió una imagen PNG');
+          ok(hits.some((h) => h.url.endsWith('/sdapi/v1/txt2img') && h.body?.prompt === 'un bosque de noche'), 'el servidor local mock no recibió el prompt esperado');
+        } finally {
+          await closeServer(server);
+        }
+      },
+      'probar conexión devuelve los modelos que ofrece el servicio configurado': async (c) => {
+        await fresh(c, { width: 100, height: 100 });
+        const { server, base } = await mockAiServer();
+        try {
+          await c.page.evaluate(() => window.__schizzo.ai.getState().setEnabled(true));
+          const openai = await c.page.evaluate(({ base }) => window.electronAPI.aiTestConnection({ kind: 'openai-compatible', endpoint: base + '/v1' }), { base });
+          const sd = await c.page.evaluate(({ base }) => window.electronAPI.aiTestConnection({ kind: 'local-sd', endpoint: base }), { base });
+          ok(openai.ok && openai.models.includes('mock-gpt'), `probar conexión (openai) no listó el modelo mock: ${JSON.stringify(openai)}`);
+          ok(sd.ok && sd.models.includes('mock-sd-checkpoint'), `probar conexión (local-sd) no listó el modelo mock: ${JSON.stringify(sd)}`);
+        } finally {
+          await closeServer(server);
+        }
+      },
+      'reescribir texto usa el servicio de chat configurado y respeta el vocabulario devuelto': async (c) => {
+        await fresh(c, { width: 100, height: 100 });
+        const { server, hits, base } = await mockAiServer();
+        try {
+          await c.page.evaluate(() => window.__schizzo.ai.getState().setEnabled(true));
+          const r = await c.page.evaluate(
+            ({ base }) => window.electronAPI.aiRewriteText({ endpoint: base + '/v1', model: 'mock-gpt', text: 'como si estuviera parado y con los brazos cruzados', vocabulary: 'de pie, brazos cruzados', task: 'pose' }),
+            { base }
+          );
+          ok(r.ok && r.text === 'de pie, brazos cruzados', `reescribir texto no devolvió el texto esperado: ${JSON.stringify(r)}`);
+          ok(hits.some((h) => h.url.endsWith('/chat/completions')), 'el servicio mock no recibió la petición de chat');
+        } finally {
+          await closeServer(server);
+        }
+      },
+      'con la IA desactivada, generar imagen se rechaza sin tocar la red': async (c) => {
+        await fresh(c, { width: 100, height: 100 });
+        const { server, hits, base } = await mockAiServer();
+        try {
+          await c.page.evaluate(() => window.__schizzo.ai.getState().setEnabled(false));
+          await sleep(300); // let the main-process mirror of the switch land before the call
+          const r = await c.page.evaluate(
+            ({ base }) => window.electronAPI.aiGenerateImage({ kind: 'openai-compatible', endpoint: base + '/v1', model: 'mock-model', prompt: 'no debería llegar', width: 512, height: 512 }),
+            { base }
+          );
+          ok(r.ok === false, 'generar imagen no se rechazó con la IA desactivada');
+          ok(hits.length === 0, `con la IA desactivada el servicio mock no debería recibir nada, recibió ${hits.length} petición(es)`);
+        } finally {
+          await closeServer(server);
+        }
       },
     },
   };

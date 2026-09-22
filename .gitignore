@@ -6,3 +6,5 @@ release/
 .DS_Store
 .claude/
 _abr-test/
+scripts/check/.pose-model-cache/
+filter-previews/

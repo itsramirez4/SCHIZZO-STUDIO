@@ -60,6 +60,8 @@ npm run check      # batería local de comprobaciones (ver abajo)
 | `animacion` | Fotogramas (crear, duplicar, borrar, duración, fps), deshacer/rehacer y exportar GIF y APNG. |
 | `paneles` | Los 19 paneles laterales y los diálogos se abren sin errores; los atajos de herramienta. |
 | `ia` | Desactivar la IA quita el asistente, se guarda la preferencia y no hay peticiones de red. |
+| `asistente` | Las 8 funciones de IA que son en realidad proceso local (sin modelo ni red): limpieza de trazos, composición, separar capas, sugerir paletas, ajustar el maniquí a una pose, prompts de referencia, reiluminar e interpretar texto. |
+| `ia-generativa` | Generar imagen y reescribir texto llegan de verdad al proveedor configurado (contra un servidor mock local, sin API de pago) y no se hace ninguna petición con la IA desactivada. |
 
 ```bash
 npm run check -- historial archivo   # solo algunos grupos
@@ -67,6 +69,15 @@ node scripts/check.cjs --no-build    # reutiliza el build existente
 ```
 
 Sale con código distinto de 0 si algo falla. Los diálogos de abrir/guardar se responden solos (`scripts/check/electron-entry.cjs`).
+
+### Detección de pose (aparte, necesita red)
+
+```bash
+npm run check:pose                 # descarga (o reutiliza) el modelo real y detecta sobre una figura de prueba
+node scripts/check-pose.cjs --no-build   # reutiliza el build existente
+```
+
+Fuera de la batería principal porque, a diferencia de todo lo demás, la primera vez descarga el modelo MoveNet real (~12 MB) de tfhub.dev — después queda en caché en `scripts/check/.pose-model-cache` (fuera del repo) y las siguientes ejecuciones lo reutilizan. Comprueba que con la IA desactivada no se toca la red, y que con la IA activada la detección completa sin errores sobre una silueta de prueba: no exige que la reconozca con seguridad (una silueta sintética no es una foto), solo que el resultado tenga la forma esperada, con motivo explicado si no reconoce nada.
 
 Los grupos "a fondo" usan un gancho de pruebas (`src/checkHook.ts`) que solo existe si la página tiene `localStorage['schizzo:check'] = '1'`; la app normal no lo activa. No se prueban la generación de imágenes con IA ni la detección de pose, porque descargan modelos pesados.
 

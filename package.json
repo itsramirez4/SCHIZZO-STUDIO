@@ -19,7 +19,8 @@
     "lint": "tsc --noEmit",
     "check": "node scripts/check.cjs",
     "check:installer": "node scripts/check-installer.cjs",
-    "check:linux": "node scripts/check-linux.cjs"
+    "check:linux": "node scripts/check-linux.cjs",
+    "check:pose": "node scripts/check-pose.cjs"
   },
   "dependencies": {
     "@tensorflow-models/pose-detection": "^2.1.3",

@@ -6,7 +6,26 @@ puede cambiar sin previo aviso (ver "Versionado" en [README.md](README.md)).
 
 ## [Sin publicar]
 
+### Arreglado
+- Boceto a lápiz: el control "Oscuridad" rompía la cancelación que hace que las zonas planas salgan
+  en blanco (papel), así que un relleno plano oscuro salía como una mancha gris sólida en vez de
+  blanco con el contorno en grafito. Encontrado revisando visualmente cada filtro artístico con
+  sus valores por defecto reales, no solo comprobando que no fallaran.
+
 ### Comprobado
+- Revisión visual de los 15 filtros artísticos y atmosféricos (óleo, carboncillo, posterizar,
+  sepia, bordes, resplandor, boceto a lápiz, cómic/cel-shading, mosaico, cristalizar, niebla,
+  polvo, humo, lluvia) con los valores por defecto reales de cada panel, no solo con "no falla".
+  De paso se encontró que la propia comprobación automática de niebla/polvo/humo/lluvia llevaba la
+  escala de "densidad" equivocada (una fracción 0–1 en vez del valor bruto 0–100 que usa el panel),
+  corregido.
+- Dos grupos nuevos en `npm run check`: `asistente` (las 8 funciones de IA que en realidad son
+  proceso local, sin modelo ni red — limpieza, composición, separar capas, paletas, ajuste del
+  maniquí, prompts de referencia, reiluminado, interpretación de texto) e `ia-generativa` (generar
+  imagen, probar conexión y reescribir texto contra un servidor mock local, sin API de pago,
+  incluyendo que nada se llama con la IA desactivada).
+- Nuevo `npm run check:pose`, aparte de la batería principal porque necesita red la primera vez:
+  descarga el modelo MoveNet real, lo deja en caché en disco y detecta sobre una figura de prueba.
 - Linux probado de verdad (Ubuntu 24.04 sobre WSL2, kernel real): `npm run check` y el AppImage
   (nuevo `npm run check:linux`). 45/46 comprobaciones pasan; la de rendimiento falla solo por una
   limitación identificada de ese entorno concreto (Chromium cae a render por software al faltarle
