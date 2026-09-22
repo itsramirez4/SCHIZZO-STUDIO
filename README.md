@@ -144,10 +144,12 @@ Para firmar:
 ## Versionado
 
 [Versionado semántico](https://semver.org/lang/es/). Mientras la versión sea `0.y.z` (como ahora),
-cualquier cosa puede cambiar sin previo aviso: quedan sin resolver el sistema de plugins, la
-colaboración en tiempo real, la firma de código y las pruebas reales en macOS/Linux. `1.0.0` queda
-reservado para cuando eso esté decidido y la app esté lista para un primer público. Los cambios de
-cada versión están en [CHANGELOG.md](CHANGELOG.md).
+cualquier cosa puede cambiar sin previo aviso: queda sin resolver la colaboración en tiempo real, la
+firma de código y las pruebas reales en macOS/Linux con GPU. `1.0.0` queda reservado para cuando eso
+esté decidido y la app esté lista para un primer público. Un sistema de plugins se descartó por
+ahora (no hay demanda real y el riesgo de ejecutar código de terceros no compensa con el grupo de
+pruebas actual); se reconsiderará si aparece una comunidad real pidiendo algo concreto. Los cambios
+de cada versión están en [CHANGELOG.md](CHANGELOG.md).
 
 Cada versión etiquetada (`git tag`) tiene su [Release en GitHub](https://github.com/itsramirez4/SCHIZZO-STUDIO/releases), con la sección correspondiente del changelog como notas. `node scripts/make-release.cjs v<versión>` crea el Release de un tag ya subido, tomando las notas directamente de su sección en `CHANGELOG.md`.
 
