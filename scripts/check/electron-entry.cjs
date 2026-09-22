@@ -9,6 +9,14 @@ if (!dir) throw new Error('SCHIZZO_CHECK_DIR no está definido');
 const outDir = path.join(dir, 'out');
 fs.mkdirSync(outDir, { recursive: true });
 
+// The check runs headless-ish (no one brings the window to the foreground), so Chromium's
+// occlusion tracking treats it as backgrounded and throttles requestAnimationFrame to ~1 Hz —
+// that made the `rendimiento` group measure the test environment instead of the app (a stroke
+// "stalling" for ~1000 ms was really just one rAF callback per second). These switches disable
+// that throttling for this process only; the shipped app keeps normal background throttling.
+app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
+app.commandLine.appendSwitch('disable-renderer-backgrounding');
+
 Object.defineProperty(app, 'isPackaged', { value: true }); // load dist/index.html, like the real build
 
 const pick = (a, b) => (b === undefined ? a : b) || {};

@@ -42,7 +42,7 @@ npm run check      # batería local de comprobaciones (ver abajo)
 
 ## Comprobaciones locales
 
-`npm run check` compila la app y la abre de verdad en Electron (perfil temporal, sin tocar tus proyectos) para hacer las operaciones críticas y comprobar el resultado. Tarda unos 3 minutos y no necesita servicios externos.
+`npm run check` compila la app y la abre de verdad en Electron (perfil temporal, sin tocar tus proyectos) para hacer las operaciones y comprobar el resultado con píxeles reales. Tarda unos 8 minutos y no necesita servicios externos.
 
 | Grupo | Qué comprueba |
 | --- | --- |
@@ -52,6 +52,14 @@ npm run check      # batería local de comprobaciones (ver abajo)
 | `reproduccion` | Cada paso queda registrado, en orden, y el último fotograma contiene el dibujo. |
 | `tipos` | Los cuatro tipos de proyecto abren sin errores; el pincel dibuja en dibujo y pixel art. |
 | `rendimiento` | Lienzo de 12 MP con 5 capas: trazos fluidos y sin bloqueo al soltar. |
+| `capas` | Fusionar, modos de mezcla y opacidad, máscaras, grupos, duplicar/reordenar/borrar, aplanar, recorte (clipping), capas de ajuste y relleno, bloquear y aislar. |
+| `filtros` | Resultado exacto de los filtros básicos, desenfoques, que cada filtro y ajuste se ejecute sin errores y que se pueda deshacer. |
+| `seleccion` | Rellenar/borrar/copiar/cortar/pegar con selección, invertir, expandir, contraer, rango de color, voltear y recortar al contenido. |
+| `pixelart` | El pincel no deja semitransparencias, cuantizar y tramar solo usan la paleta, pixelar. |
+| `comic` | Plantillas de viñetas, tramas, globos de texto, líneas de velocidad y el panel de cómic. |
+| `animacion` | Fotogramas (crear, duplicar, borrar, duración, fps), deshacer/rehacer y exportar GIF y APNG. |
+| `paneles` | Los 19 paneles laterales y los diálogos se abren sin errores; los atajos de herramienta. |
+| `ia` | Desactivar la IA quita el asistente, se guarda la preferencia y no hay peticiones de red. |
 
 ```bash
 npm run check -- historial archivo   # solo algunos grupos
@@ -60,6 +68,17 @@ node scripts/check.cjs --no-build    # reutiliza el build existente
 
 Sale con código distinto de 0 si algo falla. Los diálogos de abrir/guardar se responden solos (`scripts/check/electron-entry.cjs`).
 
+Los grupos "a fondo" usan un gancho de pruebas (`src/checkHook.ts`) que solo existe si la página tiene `localStorage['schizzo:check'] = '1'`; la app normal no lo activa. No se prueban la generación de imágenes con IA ni la detección de pose, porque descargan modelos pesados.
+
+### Instaladores
+
+```bash
+npm run check:installer                   # genera los instaladores y los prueba (unos 2 min)
+node scripts/check-installer.cjs --no-build   # prueba los que ya hay en release/
+```
+
+Instala en silencio en una carpeta temporal, abre la app instalada (proyecto, trazo, deshacer, reproducción), la desinstala comprobando que no queda ni carpeta, ni accesos directos, ni registro, y repite el recorrido con la versión portable. Solo Windows.
+
 ## Empaquetado (Windows)
 
 ```bash
@@ -67,6 +86,8 @@ npm run package    # instalador NSIS y versión portable en release/
 ```
 
 Genera `SCHIZZO-STUDIO-Setup-<versión>.exe` y `SCHIZZO-STUDIO-Portable-<versión>.exe`. La configuración está en `electron-builder.yml` (también define objetivos para macOS y Linux).
+
+**Estado por plataforma:** Windows está probado de extremo a extremo (`npm run check` y `npm run check:installer`). Para Linux se comprueba que el empaquetado se genera (`npx electron-builder --linux dir`) pero no se ha ejecutado la app allí; macOS solo puede generarse desde un Mac y no se ha probado.
 
 ## Rendimiento
 

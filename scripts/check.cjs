@@ -4,7 +4,7 @@
  * temporal, hace las operaciones críticas como lo haría una persona y comprueba el resultado.
  *
  *   npm run check                 -> compila y ejecuta todos los grupos
- *   npm run check -- historial    -> solo un grupo (historial, archivo, exportar, reproduccion, tipos, rendimiento)
+ *   npm run check -- historial    -> solo un grupo (historial, archivo, exportar, reproduccion, tipos, rendimiento, capas, filtros, seleccion, pixelart, comic, animacion, paneles, ia)
  *   node scripts/check.cjs --no-build   -> usa el dist/ que ya exista
  *
  * No toca tus proyectos ni tu configuración: usa una carpeta temporal y responde por su cuenta a los
@@ -444,6 +444,8 @@ const groups = {
     },
   },
 };
+
+Object.assign(groups, require('./check/extra-groups.cjs')({ ok, sleep, fs }));
 
 // ---------------------------------------------------------------------------------------------
 // Ejecución

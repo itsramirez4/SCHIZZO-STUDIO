@@ -3,6 +3,9 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import ReferenceWindowView from './components/References/ReferenceWindowView';
 import './styles/globals.css';
+import { installCheckHook } from './checkHook';
+
+installCheckHook();
 
 // A floating reference window loads this same bundle with a `?refWindow=<id>` query param (see
 // electron/handlers/referenceWindowHandler.ts) — render its minimal viewer instead of the full
