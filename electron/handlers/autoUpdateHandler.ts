@@ -19,6 +19,10 @@ export function registerAutoUpdateHandlers(getWindow: () => BrowserWindow | null
 
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
+  // Every release this project publishes is marked prerelease (0.y.z = dev snapshot, see
+  // CHANGELOG.md's versioning note) — without this, electron-updater ignores them all and never
+  // finds an "update".
+  autoUpdater.allowPrerelease = true;
 
   const send = (channel: string, ...args: unknown[]) => getWindow()?.webContents.send(channel, ...args);
 
