@@ -8,6 +8,13 @@ puede cambiar sin previo aviso (ver "Versionado" en [README.md](README.md)).
 
 Nada todavía.
 
+## [0.1.2] - 2026-09-23
+
+### Arreglado
+- Las actualizaciones automáticas nunca habrían encontrado nada: todas las versiones que publica
+  este proyecto se marcan como `prerelease` en GitHub (ver "Versionado" arriba), y por defecto
+  electron-updater las ignora. Añadido `autoUpdater.allowPrerelease = true`.
+
 ## [0.1.1] - 2026-09-23
 
 ### Añadido
