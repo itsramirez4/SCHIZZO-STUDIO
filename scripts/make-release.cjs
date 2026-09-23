@@ -53,16 +53,20 @@ function api(method, apiPath, payload) {
 }
 
 (async () => {
-  const existing = await api('GET', `/repos/${REPO}/releases/tags/${TAG}`);
+  // /releases/tags/<tag> doesn't return draft releases (confirmed empirically), and
+  // electron-builder --publish always creates its release as a draft — so this has to list
+  // releases and match the tag by hand, or it'll never find the one electron-builder just made
+  // and will POST a second, asset-less, duplicate release instead.
+  const list = await api('GET', `/repos/${REPO}/releases?per_page=100`);
+  const existing = Array.isArray(list.json) ? list.json.find((r) => r.tag_name === TAG) : null;
   const payload = { tag_name: TAG, name: TAG, body, draft: false, prerelease: true };
 
-  const r =
-    existing.status === 200
-      ? await api('PATCH', `/repos/${REPO}/releases/${existing.json.id}`, payload)
-      : await api('POST', `/repos/${REPO}/releases`, payload);
+  const r = existing
+    ? await api('PATCH', `/repos/${REPO}/releases/${existing.id}`, payload)
+    : await api('POST', `/repos/${REPO}/releases`, payload);
 
   if (r.status >= 200 && r.status < 300) {
-    console.log(existing.status === 200 ? 'Notas actualizadas:' : 'Creado:', r.json.html_url);
+    console.log(existing ? 'Notas actualizadas:' : 'Creado:', r.json.html_url);
   } else {
     console.error('FAIL', r.status, r.json?.message, r.json?.errors ?? '');
     process.exit(1);
