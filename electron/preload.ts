@@ -85,6 +85,9 @@ const electronAPI = {
   autosaveRead: (id: string) => ipcRenderer.invoke('autosave:read', id),
   autosaveDelete: (id: string) => ipcRenderer.invoke('autosave:delete', id),
 
+  // Feedback
+  feedbackSave: (content: string, defaultName: string) => ipcRenderer.invoke('feedback:save', content, defaultName),
+
   // Menu events
   onMenuEvent: (channel: string, callback: () => void) => {
     const listener = () => callback();

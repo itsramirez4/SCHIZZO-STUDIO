@@ -1149,5 +1149,52 @@ module.exports = function extraGroups({ ok, sleep, fs }) {
         }
       },
     },
+
+    // -----------------------------------------------------------------------------------------
+    feedback: {
+      'copiar y guardar el comentario funcionan de verdad, con el diagnóstico incluido': async (c) => {
+        await fresh(c, { width: 900, height: 600 });
+        await c.page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+        // A real captured error, so the diagnostic block isn't empty.
+        await c.page.evaluate(() => window.dispatchEvent(new ErrorEvent('error', { message: 'fallo de prueba', error: new Error('fallo de prueba') })));
+        await sleep(200);
+
+        await c.page.locator('button[title^="Enviar comentario"]').click();
+        await sleep(400);
+        await c.page.fill('textarea', 'Mensaje de prueba funcional');
+
+        await c.page.locator('button:has-text("Copiar")').click();
+        await sleep(300);
+        const clip = await c.page.evaluate(() => navigator.clipboard.readText());
+        ok(clip.includes('Mensaje de prueba funcional'), 'el portapapeles no tiene el mensaje escrito');
+        ok(clip.includes('SCHIZZO STUDIO'), 'el portapapeles no tiene la versión de la app');
+        ok(clip.includes('fallo de prueba'), 'el portapapeles no tiene el error capturado');
+
+        await c.page.locator('button:has-text("Guardar")').click();
+        await sleep(800);
+        const txt = fs.readdirSync(c.out).find((f) => f.endsWith('.txt'));
+        ok(txt, `no se generó ningún .txt en ${c.out}`);
+        const content = fs.readFileSync(c.outFile(txt), 'utf-8');
+        ok(content.includes('Mensaje de prueba funcional'), 'el archivo guardado no tiene el mensaje escrito');
+      },
+      'incluir la miniatura del lienzo genera una vista previa real y no rompe nada': async (c) => {
+        await fresh(c, { width: 900, height: 600 });
+        await c.pickBrush();
+        await c.stroke(0.5);
+        await sleep(700);
+        await c.page.locator('button[title^="Enviar comentario"]').click();
+        await sleep(400);
+        await c.page.locator('label:has-text("miniatura")').click();
+        await sleep(600);
+        const src = await c.page.locator('img[alt="Miniatura del lienzo"]').getAttribute('src');
+        ok(src && src.startsWith('data:image/jpeg'), 'la miniatura no se generó');
+      },
+      'se puede abrir sin ningún proyecto abierto, desde la pantalla de inicio': async (c) => {
+        await c.page.locator('button:has-text("Enviar comentario")').first().click();
+        await sleep(400);
+        ok(await c.page.locator('textarea').isVisible(), 'el diálogo no se abrió desde la pantalla de inicio');
+        ok(!(await c.page.locator('label:has-text("miniatura")').isVisible()), 'no debería ofrecer miniatura sin ningún proyecto abierto');
+      },
+    },
   };
 };

@@ -6,11 +6,29 @@ puede cambiar sin previo aviso (ver "Versionado" en [README.md](README.md)).
 
 ## [Sin publicar]
 
+### Añadido
+- Identidad visual "tinta y papel": paleta cálida casi monocroma con un único acento vermellón, en
+  vez del azul genérico de antes, en modo oscuro y claro (`src/styles/variables.css`).
+- Navegación reorganizada por categorías: los 19 paneles laterales se agrupan en 6 secciones
+  (Pintura, Color y recursos, Aprender, Proyecto, Producción, Sistema) y funcionan como acordeón
+  (uno abierto a la vez) en vez de apilarse sin orden; la cabecera y la caja de herramientas se
+  agruparon en bloques con separadores en vez de una fila plana de iconos.
+- "Enviar comentario": un diálogo (cabecera y pantalla de inicio) para que los testers manden
+  feedback con el diagnóstico incluido (versión, tipo de proyecto, últimos errores de la sesión) y,
+  opcionalmente, una miniatura del lienzo — siempre visible antes de copiar, guardar o enviar por
+  email, nunca automático.
+
 ### Arreglado
 - Boceto a lápiz: el control "Oscuridad" rompía la cancelación que hace que las zonas planas salgan
   en blanco (papel), así que un relleno plano oscuro salía como una mancha gris sólida en vez de
   blanco con el contorno en grafito. Encontrado revisando visualmente cada filtro artístico con
   sus valores por defecto reales, no solo comprobando que no fallaran.
+- Los paneles laterales tenían una altura máxima fija en vez de usar el espacio real de la
+  ventana, así que aparecía scroll interno mucho antes de agotar la pantalla; y la fila de iconos
+  de cada capa (Capas) no envolvía, saliéndose del ancho del panel con una capa con máscara
+  seleccionada. Corregido en ambos sitios, más tres barras de pestañas que ya admitían con
+  `overflow-x-auto` que no cabían, y el panel de Filtros (el único que apilaba sus 16 categorías a
+  la vez) dividido en 10 pestañas.
 
 ### Comprobado
 - Revisión visual de los 15 filtros artísticos y atmosféricos (óleo, carboncillo, posterizar,
@@ -32,6 +50,8 @@ puede cambiar sin previo aviso (ver "Versionado" en [README.md](README.md)).
   el driver Vulkan D3D12 de Mesa bajo WSLg), no por la app. Sin confirmar en Linux con GPU real.
 - macOS sigue sin probarse: solo puede compilarse desde un Mac, y montar un runner de macOS en la
   nube habría significado la infraestructura de CI que este proyecto ha decidido no usar.
+- Nuevo grupo `feedback`: copiar y guardar el diálogo de comentario funcionan de verdad
+  (portapapeles, archivo), la miniatura opcional se genera, y se puede abrir sin ningún proyecto.
 
 ## [0.1.0] - 2026-09-22
 

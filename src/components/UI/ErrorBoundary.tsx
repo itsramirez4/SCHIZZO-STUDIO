@@ -1,4 +1,5 @@
 import { Component, ReactNode } from 'react';
+import { recordError } from '@/services/diagnostics.service';
 
 interface Props {
   /** Shown in the message so the artist knows which part failed. */
@@ -26,6 +27,7 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: { componentStack?: string | null }) {
     console.error(`[${this.props.name}] error de renderizado:`, error, info.componentStack);
+    recordError(this.props.name, error.message);
   }
 
   render() {

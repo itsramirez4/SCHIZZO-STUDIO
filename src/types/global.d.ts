@@ -60,6 +60,7 @@ declare global {
       autosaveList: () => Promise<{ id: string; projectId: string; projectName: string; fileName: string; timestamp: string; size: number }[]>;
       autosaveRead: (id: string) => Promise<{ canceled: boolean; json?: string; projectName?: string }>;
       autosaveDelete: (id: string) => Promise<{ ok: boolean }>;
+      feedbackSave: (content: string, defaultName: string) => Promise<IpcResult>;
       onMenuEvent: (channel: string, callback: () => void) => () => void;
     };
   }

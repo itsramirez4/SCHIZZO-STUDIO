@@ -31,6 +31,9 @@ interface UIState {
   showAssistantPanel: boolean;
   showVersionsPanel: boolean;
   toggleVersionsPanel: () => void;
+  showFeedbackDialog: boolean;
+  openFeedbackDialog: () => void;
+  closeFeedbackDialog: () => void;
   /** Left-handed layout: toolbox on the right, side panels on the left. */
   leftHanded: boolean;
   toggleLeftHanded: () => void;
@@ -141,6 +144,9 @@ export const useUIStore = create<UIState>((set) => ({
   showAssistantPanel: false,
   showVersionsPanel: false,
   toggleVersionsPanel: () => set((s) => ({ ...closeAllSidebarPanels(), showVersionsPanel: !s.showVersionsPanel })),
+  showFeedbackDialog: false,
+  openFeedbackDialog: () => set({ showFeedbackDialog: true }),
+  closeFeedbackDialog: () => set({ showFeedbackDialog: false }),
   leftHanded: readLeftHanded(),
   toggleLeftHanded: () =>
     set((s) => {

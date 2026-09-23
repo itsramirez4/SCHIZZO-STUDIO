@@ -14,6 +14,7 @@ import { registerPerspectivePresetsHandlers } from './handlers/perspectivePreset
 import { registerFilterPresetsHandlers } from './handlers/filterPresetsHandler';
 import { registerAutoSaveHandlers } from './handlers/autoSaveHandler';
 import { registerAiHandlers } from './handlers/aiHandler';
+import { registerFeedbackHandlers } from './handlers/feedbackHandler';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -127,6 +128,7 @@ app.whenReady().then(() => {
   registerFilterPresetsHandlers();
   registerAutoSaveHandlers();
   registerAiHandlers();
+  registerFeedbackHandlers(() => mainWindow);
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

@@ -1,4 +1,4 @@
-import { FilePlus, FolderOpen, Save, Download, Undo2, Redo2, ImagePlus, Boxes, View, Scaling, Crop, PackageOpen, LayoutGrid, Hand, History as HistoryIcon } from 'lucide-react';
+import { FilePlus, FolderOpen, Save, Download, Undo2, Redo2, ImagePlus, Boxes, View, Scaling, Crop, PackageOpen, LayoutGrid, Hand, History as HistoryIcon, MessageCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Logo from '@/components/UI/Logo';
 import { useProject } from '@/hooks/useProject';
@@ -32,6 +32,7 @@ export default function Header() {
   const addLayer = useAppStore((s) => s.addLayer);
   const setWorkspaceMode = useWorkspaceStore((s) => s.setMode);
   const openAutoSaveDialog = useAutoSaveStore((s) => s.openDialog);
+  const openFeedbackDialog = useUIStore((s) => s.openFeedbackDialog);
   const aiEnabled = useAiStore((s) => s.enabled);
   const setAiEnabled = useAiStore((s) => s.setEnabled);
   const leftHanded = useUIStore((s) => s.leftHanded);
@@ -160,6 +161,10 @@ export default function Header() {
             <Redo2 size={16} />
           </button>
         </Group>
+        <div className="w-px h-5 bg-border mx-1" />
+        <button onClick={openFeedbackDialog} title="Enviar comentario — ¿algo no va bien, o se te ocurre algo?" className="icon-btn">
+          <MessageCircle size={16} />
+        </button>
         {project && <span className="text-xs text-textDim pr-2 pl-2 border-l border-border ml-1">{project.name}</span>}
       </div>
     </div>

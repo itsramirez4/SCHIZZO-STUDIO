@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { FilePlus, FolderOpen, History, Clock, LucideIcon } from 'lucide-react';
+import { FilePlus, FolderOpen, History, Clock, LucideIcon, MessageCircle } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
 import { useProject } from '@/hooks/useProject';
 import { useProjectStore } from '@/store/projectStore';
@@ -19,6 +19,7 @@ export default function StartScreen() {
   const openNewProjectDialog = useUIStore((s) => s.openNewProjectDialog);
   const { open, recentProjects, refreshRecent } = useProject();
   const openAutoSaveDialog = useAutoSaveStore((s) => s.openDialog);
+  const openFeedbackDialog = useUIStore((s) => s.openFeedbackDialog);
 
   useEffect(() => {
     refreshRecent();
@@ -85,6 +86,10 @@ export default function StartScreen() {
           </div>
         </div>
       )}
+
+      <button onClick={openFeedbackDialog} className="flex items-center gap-1.5 text-[11px] text-textDim hover:text-text">
+        <MessageCircle size={12} /> ¿Algo no va bien? Enviar comentario
+      </button>
     </div>
   );
 }

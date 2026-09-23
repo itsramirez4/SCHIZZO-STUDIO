@@ -6,6 +6,10 @@ export const DEFAULT_CANVAS_WIDTH = 1920;
 export const DEFAULT_CANVAS_HEIGHT = 1080;
 export const DEFAULT_DPI = 72;
 
+/** Where the "Enviar comentario" dialog's email button sends feedback — a placeholder for the
+ * closed testing phase, change freely whenever there's a proper contact address. */
+export const FEEDBACK_EMAIL = 'itsramirez4@gmail.com';
+
 export const BLEND_MODES: { label: string; value: GlobalCompositeOperation }[] = [
   { label: 'Normal', value: 'source-over' },
   { label: 'Multiplicar', value: 'multiply' },
