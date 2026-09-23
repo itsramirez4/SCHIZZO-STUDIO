@@ -29,6 +29,11 @@ puede cambiar sin previo aviso (ver "Versionado" en [README.md](README.md)).
   seleccionada. Corregido en ambos sitios, más tres barras de pestañas que ya admitían con
   `overflow-x-auto` que no cabían, y el panel de Filtros (el único que apilaba sus 16 categorías a
   la vez) dividido en 10 pestañas.
+- El botón "Email" del diálogo de comentario no abría nada: dependía de que Windows tuviera
+  registrado un cliente de correo que funcionara, y en la práctica el registrado (la app "Correo"
+  integrada) no lo hacía — confirmado comprobando que no aparecía ninguna ventana nueva, no
+  suponiéndolo. Añadido un segundo botón, "Gmail", que abre el correo en el navegador en vez de
+  depender de un cliente instalado — mucho más probable que funcione en cualquier equipo.
 
 ### Comprobado
 - Revisión visual de los 15 filtros artísticos y atmosféricos (óleo, carboncillo, posterizar,

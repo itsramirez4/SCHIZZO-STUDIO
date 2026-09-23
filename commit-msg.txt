@@ -1,0 +1,22 @@
+Fix the feedback dialog's email button, which didn't actually open anything
+
+The user reported no email arrived after clicking "Email". Checked instead of assuming: the JS
+was correct (intercepted window.open, the exact mailto: URL was built right), but no new compose
+window ever appeared. Windows had a UserChoice registered for mailto pointing at the built-in
+"Mail" app, which isn't actually functional here -- shell.openExternal silently loses the request
+with no error surfaced anywhere. That's a common failure mode (an unconfigured or broken default
+mail handler), not specific to this machine.
+
+Added a second option, "Gmail", that opens a pre-filled compose window at mail.google.com in the
+system browser instead -- only needs a working browser, not a correctly configured native mail
+client, so it's offered as an equal choice next to "Correo" (renamed from "Email") rather than a
+buried fallback. Also added a one-line note under the buttons pointing back at Copiar/Guardar
+(already proven reliable) in case neither opens anything on a given machine.
+
+Verified: rebuilt, the feedback check group still passes (3/3, unaffected -- it only exercises
+Copiar/Guardar, which were never the problem), and manually confirmed new browser processes spawn
+in response to both buttons (a background tab, consistent with the URLs being handed off
+correctly; window-title enumeration can't see an unfocused tab, so that's the practical ceiling
+of what's verifiable without touching the user's live browser session).
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>

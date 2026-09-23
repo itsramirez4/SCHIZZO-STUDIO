@@ -26,7 +26,7 @@ Electron 31 · React 18 · TypeScript · Vite · Tailwind · Zustand.
 - **Historial** de deshacer con salto directo a cualquier estado, versiones del proyecto y copias automáticas.
 - **Animación**, procesamiento por lotes, grabación de sesión y exportación a PNG, JPG, WebP, GIF/APNG, SVG y más.
 - **IA como asistente, nunca obligatoria**: referencias, poses, paletas, limpieza de línea. Se puede desactivar por completo desde el botón de la cabecera y la app queda 100 % manual (sin asistente, sin modelos, sin conexiones).
-- **Enviar comentario**: desde la cabecera o la pantalla de inicio, en cualquier momento (fase de pruebas con usuarios de confianza). Incluye la versión, el tipo de proyecto y los últimos errores de la sesión, y opcionalmente una miniatura de lo que se estaba dibujando — siempre visible antes de copiar, guardar o enviar, nunca automático.
+- **Enviar comentario**: desde la cabecera o la pantalla de inicio, en cualquier momento (fase de pruebas con usuarios de confianza). Incluye la versión, el tipo de proyecto y los últimos errores de la sesión, y opcionalmente una miniatura de lo que se estaba dibujando — siempre visible antes de copiar, guardar o enviar, nunca automático. Copiar y Guardar son las opciones fiables (probadas de verdad); "Correo" y "Gmail" dependen de que el sistema tenga un cliente de correo o navegador que responda a esos enlaces, así que se ofrecen las dos — si ninguna abre nada, el mensaje ya está para copiar o guardar.
 
 ## Desarrollo
 

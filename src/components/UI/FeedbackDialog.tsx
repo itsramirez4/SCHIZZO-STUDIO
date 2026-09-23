@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { X, Copy, Save, Mail, ChevronDown, ChevronRight } from 'lucide-react';
+import { X, Copy, Save, Mail, Globe, ChevronDown, ChevronRight } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
 import { useAppStore } from '@/store/appStore';
 import { getRecentErrors } from '@/services/diagnostics.service';
@@ -91,10 +91,23 @@ export default function FeedbackDialog() {
     }
   }
 
+  // Two ways to reach the same email, not one — a `mailto:` link only works if Windows' registered
+  // handler for it actually points at a working mail app, which in practice often isn't true (an
+  // unconfigured or uninstalled default "Mail" app swallows the request with no visible error, no
+  // matter how correct the link is). Gmail's own compose URL only needs a working browser, which is
+  // far more reliably present, so it's offered as an equal option rather than a buried fallback.
+  function emailBody() {
+    return fullText() + (includeThumb ? '\n\n(Adjunta también la miniatura que acabas de guardar/copiar, esto no la incluye sola.)' : '');
+  }
+
   function sendByEmail() {
     const subject = encodeURIComponent('Comentario sobre SCHIZZO STUDIO');
-    const body = encodeURIComponent(fullText() + (includeThumb ? '\n\n(Adjunta también la miniatura que acabas de guardar/copiar, el email no la incluye sola.)' : ''));
-    window.open(`mailto:${FEEDBACK_EMAIL}?subject=${subject}&body=${body}`);
+    window.open(`mailto:${FEEDBACK_EMAIL}?subject=${subject}&body=${encodeURIComponent(emailBody())}`);
+  }
+
+  function sendByGmailWeb() {
+    const params = new URLSearchParams({ view: 'cm', fs: '1', to: FEEDBACK_EMAIL, su: 'Comentario sobre SCHIZZO STUDIO', body: emailBody() });
+    window.open(`https://mail.google.com/mail/?${params.toString()}`);
   }
 
   return (
@@ -141,15 +154,27 @@ export default function FeedbackDialog() {
             )}
           </div>
         </div>
-        <div className="flex items-center gap-1.5 p-4 pt-3">
-          <button onClick={copyAll} className="flex-1 flex items-center justify-center gap-1.5 text-xs bg-panelLight hover:bg-border rounded py-1.5">
+        <p className="px-4 pt-1 text-[9px] text-textDim">Si "Correo" o "Gmail" no abren nada, copia o guarda y mándamelo por donde prefieras.</p>
+        <div className="flex flex-wrap items-center gap-1.5 p-4 pt-2">
+          <button onClick={copyAll} className="flex-1 min-w-[90px] flex items-center justify-center gap-1.5 text-xs bg-panelLight hover:bg-border rounded py-1.5">
             <Copy size={13} /> Copiar
           </button>
-          <button onClick={saveFile} className="flex-1 flex items-center justify-center gap-1.5 text-xs bg-panelLight hover:bg-border rounded py-1.5">
+          <button onClick={saveFile} className="flex-1 min-w-[90px] flex items-center justify-center gap-1.5 text-xs bg-panelLight hover:bg-border rounded py-1.5">
             <Save size={13} /> Guardar
           </button>
-          <button onClick={sendByEmail} className="flex-1 flex items-center justify-center gap-1.5 text-xs bg-accentSoft text-accent hover:bg-accent hover:text-white rounded py-1.5 transition-colors">
-            <Mail size={13} /> Email
+          <button
+            onClick={sendByEmail}
+            title="Abre tu cliente de correo — si no pasa nada al pulsar, probablemente no tienes uno configurado; prueba con Gmail al lado"
+            className="flex-1 min-w-[90px] flex items-center justify-center gap-1.5 text-xs bg-accentSoft text-accent hover:bg-accent hover:text-white rounded py-1.5 transition-colors"
+          >
+            <Mail size={13} /> Correo
+          </button>
+          <button
+            onClick={sendByGmailWeb}
+            title="Abre un correo nuevo en Gmail, en el navegador — funciona aunque no tengas ningún cliente de correo configurado"
+            className="flex-1 min-w-[90px] flex items-center justify-center gap-1.5 text-xs bg-accentSoft text-accent hover:bg-accent hover:text-white rounded py-1.5 transition-colors"
+          >
+            <Globe size={13} /> Gmail
           </button>
         </div>
       </div>
