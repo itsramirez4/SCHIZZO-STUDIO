@@ -80,6 +80,36 @@ function readLeftHanded(): boolean {
   }
 }
 
+// The 19 panels that live in the sidebar's icon rail (Sidebar.tsx `tabs`) behave like an
+// accordion, not independent checkboxes: opening one closes whichever other was open, so at
+// most one is ever visible — piling several up at once made "where is X" unanswerable. Every
+// toggle below spreads this first and then overrides its own key, so opening/closing a single
+// panel is still one `toggleXPanel()` call, same as before; nothing outside this file needed to
+// change (`showXPanel`/`toggleXPanel` keep their exact names and one-argument-free signatures).
+function closeAllSidebarPanels() {
+  return {
+    showLayerPanel: false,
+    showFilterPanel: false,
+    showHistoryPanel: false,
+    showHistogramPanel: false,
+    showAnimationPanel: false,
+    showComicPanel: false,
+    showColorToolsPanel: false,
+    showAssetLibraryPanel: false,
+    showBatchPanel: false,
+    showLearningPanel: false,
+    showRecordingPanel: false,
+    showReferencesPanel: false,
+    showCloudSyncPanel: false,
+    showCustomizationPanel: false,
+    showPerspectivePanel: false,
+    showStatsPanel: false,
+    showStudyPanel: false,
+    showAssistantPanel: false,
+    showVersionsPanel: false,
+  };
+}
+
 export const useUIStore = create<UIState>((set) => ({
   showLayerPanel: true,
   showBrushPanel: false,
@@ -110,7 +140,7 @@ export const useUIStore = create<UIState>((set) => ({
   showStudyPanel: false,
   showAssistantPanel: false,
   showVersionsPanel: false,
-  toggleVersionsPanel: () => set((s) => ({ showVersionsPanel: !s.showVersionsPanel })),
+  toggleVersionsPanel: () => set((s) => ({ ...closeAllSidebarPanels(), showVersionsPanel: !s.showVersionsPanel })),
   leftHanded: readLeftHanded(),
   toggleLeftHanded: () =>
     set((s) => {
@@ -122,12 +152,12 @@ export const useUIStore = create<UIState>((set) => ({
       return { leftHanded: !s.leftHanded };
     }),
 
-  toggleLayerPanel: () => set((s) => ({ showLayerPanel: !s.showLayerPanel })),
+  toggleLayerPanel: () => set((s) => ({ ...closeAllSidebarPanels(), showLayerPanel: !s.showLayerPanel })),
   toggleBrushPanel: () => set((s) => ({ showBrushPanel: !s.showBrushPanel })),
-  toggleFilterPanel: () => set((s) => ({ showFilterPanel: !s.showFilterPanel })),
-  toggleHistoryPanel: () => set((s) => ({ showHistoryPanel: !s.showHistoryPanel })),
-  toggleHistogramPanel: () => set((s) => ({ showHistogramPanel: !s.showHistogramPanel })),
-  toggleAnimationPanel: () => set((s) => ({ showAnimationPanel: !s.showAnimationPanel })),
+  toggleFilterPanel: () => set((s) => ({ ...closeAllSidebarPanels(), showFilterPanel: !s.showFilterPanel })),
+  toggleHistoryPanel: () => set((s) => ({ ...closeAllSidebarPanels(), showHistoryPanel: !s.showHistoryPanel })),
+  toggleHistogramPanel: () => set((s) => ({ ...closeAllSidebarPanels(), showHistogramPanel: !s.showHistogramPanel })),
+  toggleAnimationPanel: () => set((s) => ({ ...closeAllSidebarPanels(), showAnimationPanel: !s.showAnimationPanel })),
 
   openNewProjectDialog: () => set({ showNewProjectDialog: true }),
   closeNewProjectDialog: () => set({ showNewProjectDialog: false }),
@@ -144,17 +174,17 @@ export const useUIStore = create<UIState>((set) => ({
   closeResizeDialog: () => set({ showResizeDialog: false }),
   openReplayDialog: () => set({ showReplayDialog: true }),
   closeReplayDialog: () => set({ showReplayDialog: false }),
-  toggleComicPanel: () => set((s) => ({ showComicPanel: !s.showComicPanel })),
-  toggleColorToolsPanel: () => set((s) => ({ showColorToolsPanel: !s.showColorToolsPanel })),
-  toggleAssetLibraryPanel: () => set((s) => ({ showAssetLibraryPanel: !s.showAssetLibraryPanel })),
-  toggleBatchPanel: () => set((s) => ({ showBatchPanel: !s.showBatchPanel })),
-  toggleLearningPanel: () => set((s) => ({ showLearningPanel: !s.showLearningPanel })),
-  toggleRecordingPanel: () => set((s) => ({ showRecordingPanel: !s.showRecordingPanel })),
-  toggleReferencesPanel: () => set((s) => ({ showReferencesPanel: !s.showReferencesPanel })),
-  toggleCloudSyncPanel: () => set((s) => ({ showCloudSyncPanel: !s.showCloudSyncPanel })),
-  toggleCustomizationPanel: () => set((s) => ({ showCustomizationPanel: !s.showCustomizationPanel })),
-  togglePerspectivePanel: () => set((s) => ({ showPerspectivePanel: !s.showPerspectivePanel })),
-  toggleStatsPanel: () => set((s) => ({ showStatsPanel: !s.showStatsPanel })),
-  toggleStudyPanel: () => set((s) => ({ showStudyPanel: !s.showStudyPanel })),
-  toggleAssistantPanel: () => set((s) => ({ showAssistantPanel: !s.showAssistantPanel })),
+  toggleComicPanel: () => set((s) => ({ ...closeAllSidebarPanels(), showComicPanel: !s.showComicPanel })),
+  toggleColorToolsPanel: () => set((s) => ({ ...closeAllSidebarPanels(), showColorToolsPanel: !s.showColorToolsPanel })),
+  toggleAssetLibraryPanel: () => set((s) => ({ ...closeAllSidebarPanels(), showAssetLibraryPanel: !s.showAssetLibraryPanel })),
+  toggleBatchPanel: () => set((s) => ({ ...closeAllSidebarPanels(), showBatchPanel: !s.showBatchPanel })),
+  toggleLearningPanel: () => set((s) => ({ ...closeAllSidebarPanels(), showLearningPanel: !s.showLearningPanel })),
+  toggleRecordingPanel: () => set((s) => ({ ...closeAllSidebarPanels(), showRecordingPanel: !s.showRecordingPanel })),
+  toggleReferencesPanel: () => set((s) => ({ ...closeAllSidebarPanels(), showReferencesPanel: !s.showReferencesPanel })),
+  toggleCloudSyncPanel: () => set((s) => ({ ...closeAllSidebarPanels(), showCloudSyncPanel: !s.showCloudSyncPanel })),
+  toggleCustomizationPanel: () => set((s) => ({ ...closeAllSidebarPanels(), showCustomizationPanel: !s.showCustomizationPanel })),
+  togglePerspectivePanel: () => set((s) => ({ ...closeAllSidebarPanels(), showPerspectivePanel: !s.showPerspectivePanel })),
+  toggleStatsPanel: () => set((s) => ({ ...closeAllSidebarPanels(), showStatsPanel: !s.showStatsPanel })),
+  toggleStudyPanel: () => set((s) => ({ ...closeAllSidebarPanels(), showStudyPanel: !s.showStudyPanel })),
+  toggleAssistantPanel: () => set((s) => ({ ...closeAllSidebarPanels(), showAssistantPanel: !s.showAssistantPanel })),
 }));

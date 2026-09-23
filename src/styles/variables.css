@@ -1,34 +1,42 @@
+/* "Tinta y papel": near-monochrome warm neutrals (ink, paper, graphite) with one confident accent
+   — a vermillion echoing sanguine chalk / red ink, in place of the old generic office-app blue.
+   --color-accent-soft is the accent at low opacity, for "active" backgrounds on the many things
+   that can be active at once (sidebar tabs, tool buttons) — filling every one of those solid
+   would be loud; solid accent is reserved for the few genuinely primary actions (Exportar, Crear...). */
 :root {
-  --color-bg: #181818;
-  --color-panel: #1e1e1e;
-  --color-panel-light: #2a2a2a;
-  --color-border: #3a3a3a;
-  --color-text: #e5e5e5;
-  --color-text-dim: #9a9a9a;
-  --color-accent: #5b8cff;
+  --color-bg: #16140f;
+  --color-panel: #1c1a15;
+  --color-panel-light: #29261f;
+  --color-border: #3d382c;
+  --color-text: #f2ede1;
+  --color-text-dim: #a49a84;
+  --color-accent: #ff5a36;
+  --color-accent-soft: rgba(255, 90, 54, 0.16);
 }
 
 /* Follows the system preference when the user hasn't explicitly picked a theme (no
    data-theme attribute set), and only when they haven't forced dark explicitly either. */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme='dark']) {
-    --color-bg: #f0f0f0;
-    --color-panel: #ffffff;
-    --color-panel-light: #e8e8e8;
-    --color-border: #d0d0d0;
-    --color-text: #1a1a1a;
-    --color-text-dim: #6a6a6a;
-    --color-accent: #3b6fe0;
+    --color-bg: #f7f2e7;
+    --color-panel: #fffdf8;
+    --color-panel-light: #ece4d1;
+    --color-border: #ddd0b2;
+    --color-text: #211c12;
+    --color-text-dim: #6f6650;
+    --color-accent: #e0451f;
+    --color-accent-soft: rgba(224, 69, 31, 0.12);
   }
 }
 
 /* Explicit choice always wins over the system preference, in both directions. */
 :root[data-theme='light'] {
-  --color-bg: #f0f0f0;
-  --color-panel: #ffffff;
-  --color-panel-light: #e8e8e8;
-  --color-border: #d0d0d0;
-  --color-text: #1a1a1a;
-  --color-text-dim: #6a6a6a;
-  --color-accent: #3b6fe0;
+  --color-bg: #f7f2e7;
+  --color-panel: #fffdf8;
+  --color-panel-light: #ece4d1;
+  --color-border: #ddd0b2;
+  --color-text: #211c12;
+  --color-text-dim: #6f6650;
+  --color-accent: #e0451f;
+  --color-accent-soft: rgba(224, 69, 31, 0.12);
 }

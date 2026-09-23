@@ -19,6 +19,10 @@ body {
   font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
   overflow: hidden;
   user-select: none;
+  /* Native range/checkbox/radio controls default to the browser's own blue, independent of our
+     CSS custom properties — without this every slider (brush size, opacity, filter amounts…)
+     kept the old accent even after the "tinta y papel" repaint. */
+  accent-color: var(--color-accent);
 }
 
 .checkerboard {
@@ -43,7 +47,7 @@ body {
 
 @layer components {
   .icon-btn {
-    @apply w-8 h-8 flex items-center justify-center rounded text-textDim hover:bg-panelLight hover:text-white transition-colors;
+    @apply w-8 h-8 flex items-center justify-center rounded text-textDim hover:bg-panelLight hover:text-text transition-colors;
   }
 }
 

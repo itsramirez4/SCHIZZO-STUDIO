@@ -31,7 +31,7 @@ export default function StatusBar() {
       <button
         onClick={toggleGrid}
         title={`Mostrar cuadrícula (Ctrl+') — ${project.settings.gridVisible ? 'activada' : 'desactivada'}`}
-        className={`flex items-center gap-1 px-1.5 py-0.5 rounded ${project.settings.gridVisible ? 'text-accent' : 'hover:text-text'}`}
+        className={`flex items-center gap-1 px-1.5 py-0.5 rounded ${project.settings.gridVisible ? 'bg-accentSoft text-accent' : 'hover:text-text'}`}
       >
         <Grid3x3 size={12} /> Grid
       </button>
@@ -63,7 +63,7 @@ export default function StatusBar() {
         <button
           onClick={toggleViewFlip}
           title="Espejo de vista (horizontal) — no altera los píxeles, solo cómo lo ves"
-          className={`px-1 ${viewFlippedH ? 'text-accent' : 'hover:text-text'}`}
+          className={`px-1 rounded ${viewFlippedH ? 'bg-accentSoft text-accent' : 'hover:text-text'}`}
         >
           <FlipHorizontal size={12} />
         </button>

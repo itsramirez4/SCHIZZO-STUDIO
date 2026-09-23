@@ -378,7 +378,7 @@ export default function App() {
 
   return (
     <div className="h-screen w-screen flex flex-col">
-      <Toaster position="bottom-center" toastOptions={{ style: { background: '#2a2a2a', color: '#fff' } }} />
+      <Toaster position="bottom-center" toastOptions={{ style: { background: 'var(--color-panel-light)', color: 'var(--color-text)' } }} />
       {project ? (
         workspaceMode === 'floating' ? (
           <ErrorBoundary name="Espacio de trabajo">

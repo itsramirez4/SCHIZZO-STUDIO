@@ -14,31 +14,41 @@ import BrushSelector from './BrushSelector';
 import SelectionModifiers from './SelectionModifiers';
 import ShapeToolOptions from './ShapeToolOptions';
 
-const TOOLS: { id: ToolType; label: string; icon: typeof Paintbrush }[] = [
-  { id: 'brush', label: 'Pincel', icon: Paintbrush },
-  { id: 'eraser', label: 'Borrador', icon: Eraser },
-  { id: 'selection', label: 'Selección', icon: BoxSelect },
-  { id: 'lasso', label: 'Lazo', icon: Lasso },
-  { id: 'magicWand', label: 'Varita mágica', icon: Wand },
-  { id: 'paintbucket', label: 'Bote de pintura', icon: PaintBucket },
-  { id: 'gradient', label: 'Degradado', icon: Blend },
-  { id: 'text', label: 'Texto', icon: Type },
-  { id: 'eyedropper', label: 'Gotero', icon: Pipette },
-  { id: 'line', label: 'Línea recta (Mayús = ángulos de 15°)', icon: Minus },
-  { id: 'curve', label: 'Curva (arrastra, mueve para curvar, clic para fijar)', icon: Spline },
-  { id: 'pen', label: 'Pluma', icon: PenTool },
-  { id: 'shapeRect', label: 'Rectángulo', icon: Square },
-  { id: 'shapeEllipse', label: 'Elipse', icon: Circle },
-  { id: 'shapePolygon', label: 'Polígono', icon: Hexagon },
-  { id: 'shapeStar', label: 'Estrella', icon: Star },
-  { id: 'vectorText', label: 'Texto vectorial', icon: CaseSensitive },
-  { id: 'vectorSelect', label: 'Seleccionar objeto vectorial (capas vectoriales)', icon: MousePointer2 },
-  { id: 'transform', label: 'Transformar', icon: Move3d },
-  { id: 'zoom', label: 'Zoom', icon: ZoomIn },
-  { id: 'pan', label: 'Mano', icon: Hand },
-  { id: 'warp', label: 'Deformar (liquify)', icon: Waves },
-  { id: 'smudge', label: 'Mezclador de color (difuminar)', icon: Droplets },
+// Grouped by what an artist reaches for together, not by when each tool was added — rendered as
+// its own little cluster (own mini-grid, small gap before the next one) instead of one undivided
+// 4-column grid, so the 20+ icons read as sections rather than a wall.
+const TOOLS: { id: ToolType; label: string; icon: typeof Paintbrush; group: string }[] = [
+  { id: 'brush', label: 'Pincel', icon: Paintbrush, group: 'paint' },
+  { id: 'eraser', label: 'Borrador', icon: Eraser, group: 'paint' },
+  { id: 'smudge', label: 'Mezclador de color (difuminar)', icon: Droplets, group: 'paint' },
+
+  { id: 'selection', label: 'Selección', icon: BoxSelect, group: 'select' },
+  { id: 'lasso', label: 'Lazo', icon: Lasso, group: 'select' },
+  { id: 'magicWand', label: 'Varita mágica', icon: Wand, group: 'select' },
+
+  { id: 'paintbucket', label: 'Bote de pintura', icon: PaintBucket, group: 'fill' },
+  { id: 'gradient', label: 'Degradado', icon: Blend, group: 'fill' },
+
+  { id: 'pen', label: 'Pluma', icon: PenTool, group: 'shape' },
+  { id: 'curve', label: 'Curva (arrastra, mueve para curvar, clic para fijar)', icon: Spline, group: 'shape' },
+  { id: 'line', label: 'Línea recta (Mayús = ángulos de 15°)', icon: Minus, group: 'shape' },
+  { id: 'shapeRect', label: 'Rectángulo', icon: Square, group: 'shape' },
+  { id: 'shapeEllipse', label: 'Elipse', icon: Circle, group: 'shape' },
+  { id: 'shapePolygon', label: 'Polígono', icon: Hexagon, group: 'shape' },
+  { id: 'shapeStar', label: 'Estrella', icon: Star, group: 'shape' },
+  { id: 'vectorSelect', label: 'Seleccionar objeto vectorial (capas vectoriales)', icon: MousePointer2, group: 'shape' },
+
+  { id: 'text', label: 'Texto', icon: Type, group: 'text' },
+  { id: 'vectorText', label: 'Texto vectorial', icon: CaseSensitive, group: 'text' },
+
+  { id: 'eyedropper', label: 'Gotero', icon: Pipette, group: 'nav' },
+  { id: 'zoom', label: 'Zoom', icon: ZoomIn, group: 'nav' },
+  { id: 'pan', label: 'Mano', icon: Hand, group: 'nav' },
+
+  { id: 'transform', label: 'Transformar', icon: Move3d, group: 'transform' },
+  { id: 'warp', label: 'Deformar (liquify)', icon: Waves, group: 'transform' },
 ];
+const GROUP_ORDER = ['paint', 'select', 'fill', 'shape', 'text', 'nav', 'transform'];
 
 // Pixel art doesn't use vector-path tools (bezier pen, vector text) or the liquify/warp
 // brush — real pixel-art apps (Aseprite, Piskel) don't offer them either, since they only
@@ -74,20 +84,30 @@ export default function Toolbox() {
 
   return (
     <div className="toolbox-root w-52 bg-panel border-r border-border flex flex-col items-stretch overflow-y-auto shrink-0">
-      <div className="grid grid-cols-4 gap-1 p-2">
-        {visibleTools.map(({ id, label, icon: Icon }) => {
-          const shortcut = shortcutLabel(id);
+      <div className="flex flex-col gap-1.5 p-2">
+        {GROUP_ORDER.map((group) => {
+          const groupTools = visibleTools.filter((t) => t.group === group);
+          if (groupTools.length === 0) return null;
           return (
-            <button
-              key={id}
-              onClick={() => setCurrentTool(id)}
-              title={shortcut ? `${label} (${shortcut})` : label}
-              className={`h-9 flex items-center justify-center rounded ${
-                currentTool === id ? 'bg-accent text-white' : 'text-textDim hover:bg-panelLight hover:text-text'
-              }`}
-            >
-              <Icon size={18} />
-            </button>
+            <div key={group} className="grid grid-cols-4 gap-1">
+              {groupTools.map(({ id, label, icon: Icon }) => {
+                const shortcut = shortcutLabel(id);
+                const active = currentTool === id;
+                return (
+                  <button
+                    key={id}
+                    onClick={() => setCurrentTool(id)}
+                    title={shortcut ? `${label} (${shortcut})` : label}
+                    className={`relative h-9 flex items-center justify-center rounded transition-colors ${
+                      active ? 'bg-accentSoft text-accent' : 'text-textDim hover:bg-panelLight hover:text-text'
+                    }`}
+                  >
+                    {active && <span className="absolute left-0.5 top-1.5 bottom-1.5 w-0.5 rounded-full bg-accent" />}
+                    <Icon size={18} />
+                  </button>
+                );
+              })}
+            </div>
           );
         })}
       </div>

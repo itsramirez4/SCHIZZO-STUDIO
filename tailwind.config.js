@@ -13,6 +13,7 @@ export default {
         panelLight: 'var(--color-panel-light)',
         border: 'var(--color-border)',
         accent: 'var(--color-accent)',
+        accentSoft: 'var(--color-accent-soft)',
         textDim: 'var(--color-text-dim)',
         // Full-contrast readable text — was hardcoded to Tailwind's built-in `white`
         // everywhere (fine when dark is the only theme), but that reads as invisible

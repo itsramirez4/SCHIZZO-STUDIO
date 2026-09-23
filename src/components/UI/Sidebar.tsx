@@ -30,6 +30,21 @@ const AssistantPanel = lazy(() => import('@/components/Assistant/AssistantPanel'
 
 type Tab = 'assistant' | 'layers' | 'filters' | 'history' | 'histogram' | 'animation' | 'comic' | 'colorTools' | 'assetLibrary' | 'batch' | 'learning' | 'recording' | 'references' | 'cloudSync' | 'customization' | 'perspective' | 'stats' | 'study' | 'versions';
 
+// The 19 tabs grouped the way an artist actually goes looking for them, not alphabetically or by
+// when they were added — each group renders as its own little cluster in the rail (a gap plus a
+// divider line), and the open panel shows its group's name above it, so "where is this" has an
+// answer beyond a tooltip. `uiStore`'s toggles already guarantee at most one of these is open at
+// once (see `closeAllSidebarPanels` there), so grouping is purely presentational here.
+const GROUP_LABELS: Record<string, string> = {
+  paint: 'Pintura',
+  color: 'Color y recursos',
+  learn: 'Aprender',
+  project: 'Proyecto',
+  production: 'Producción',
+  system: 'Sistema',
+};
+const GROUP_ORDER = ['paint', 'color', 'learn', 'project', 'production', 'system'];
+
 export default function Sidebar() {
   const showLayerPanel = useUIStore((s) => s.showLayerPanel);
   const showFilterPanel = useUIStore((s) => s.showFilterPanel);
@@ -71,26 +86,26 @@ export default function Sidebar() {
   const showStudyPanel = useUIStore((s) => s.showStudyPanel);
   const toggleStudyPanel = useUIStore((s) => s.toggleStudyPanel);
 
-  const tabs: { id: Tab; icon: typeof Layers; label: string; active: boolean; toggle: () => void }[] = [
-    { id: 'layers', icon: Layers, label: 'Capas', active: showLayerPanel, toggle: toggleLayerPanel },
-    { id: 'filters', icon: SlidersHorizontal, label: 'Filtros', active: showFilterPanel, toggle: toggleFilterPanel },
-    { id: 'colorTools', icon: Palette, label: 'Herramientas de color', active: showColorToolsPanel, toggle: toggleColorToolsPanel },
-    ...(aiEnabled ? [{ id: 'assistant' as Tab, icon: Sparkles, label: 'Asistente de IA (referencias, poses, paletas, limpieza…)', active: showAssistantPanel, toggle: toggleAssistantPanel }] : []),
-    { id: 'study', icon: PencilRuler, label: 'Estudio: guías, tutor y academia', active: showStudyPanel, toggle: toggleStudyPanel },
-    { id: 'perspective', icon: Triangle, label: 'Perspectiva y simetría', active: showPerspectivePanel, toggle: togglePerspectivePanel },
-    { id: 'assetLibrary', icon: LibraryBig, label: 'Biblioteca de assets', active: showAssetLibraryPanel, toggle: toggleAssetLibraryPanel },
-    { id: 'references', icon: Image, label: 'Referencias', active: showReferencesPanel, toggle: toggleReferencesPanel },
-    { id: 'cloudSync', icon: Cloud, label: 'Nube', active: showCloudSyncPanel, toggle: toggleCloudSyncPanel },
-    { id: 'customization', icon: Keyboard, label: 'Atajos y personalización', active: showCustomizationPanel, toggle: toggleCustomizationPanel },
-    { id: 'batch', icon: ListChecks, label: 'Procesamiento por lotes', active: showBatchPanel, toggle: toggleBatchPanel },
-    { id: 'recording', icon: Video, label: 'Grabación de sesión', active: showRecordingPanel, toggle: toggleRecordingPanel },
-    { id: 'learning', icon: GraduationCap, label: 'Aprender', active: showLearningPanel, toggle: toggleLearningPanel },
-    { id: 'comic', icon: MessageSquareText, label: 'Cómic / Manga', active: showComicPanel, toggle: toggleComicPanel },
-    { id: 'animation', icon: Film, label: 'Animación', active: showAnimationPanel, toggle: toggleAnimationPanel },
-    { id: 'histogram', icon: BarChart3, label: 'Histograma', active: showHistogramPanel, toggle: toggleHistogramPanel },
-    { id: 'versions', icon: GitBranch, label: 'Versiones del proyecto y comparación', active: showVersionsPanel, toggle: toggleVersionsPanel },
-    { id: 'history', icon: History, label: 'Historial', active: showHistoryPanel, toggle: toggleHistoryPanel },
-    { id: 'stats', icon: Gauge, label: 'Estadísticas del proyecto', active: showStatsPanel, toggle: toggleStatsPanel },
+  const tabs: { id: Tab; icon: typeof Layers; label: string; active: boolean; toggle: () => void; group: string }[] = [
+    { id: 'layers', icon: Layers, label: 'Capas', active: showLayerPanel, toggle: toggleLayerPanel, group: 'paint' },
+    { id: 'filters', icon: SlidersHorizontal, label: 'Filtros', active: showFilterPanel, toggle: toggleFilterPanel, group: 'paint' },
+    { id: 'perspective', icon: Triangle, label: 'Perspectiva y simetría', active: showPerspectivePanel, toggle: togglePerspectivePanel, group: 'paint' },
+    { id: 'colorTools', icon: Palette, label: 'Herramientas de color', active: showColorToolsPanel, toggle: toggleColorToolsPanel, group: 'color' },
+    { id: 'assetLibrary', icon: LibraryBig, label: 'Biblioteca de assets', active: showAssetLibraryPanel, toggle: toggleAssetLibraryPanel, group: 'color' },
+    { id: 'references', icon: Image, label: 'Referencias', active: showReferencesPanel, toggle: toggleReferencesPanel, group: 'color' },
+    { id: 'study', icon: PencilRuler, label: 'Estudio: guías, tutor y academia', active: showStudyPanel, toggle: toggleStudyPanel, group: 'learn' },
+    { id: 'learning', icon: GraduationCap, label: 'Aprender', active: showLearningPanel, toggle: toggleLearningPanel, group: 'learn' },
+    ...(aiEnabled ? [{ id: 'assistant' as Tab, icon: Sparkles, label: 'Asistente de IA (referencias, poses, paletas, limpieza…)', active: showAssistantPanel, toggle: toggleAssistantPanel, group: 'learn' }] : []),
+    { id: 'history', icon: History, label: 'Historial', active: showHistoryPanel, toggle: toggleHistoryPanel, group: 'project' },
+    { id: 'versions', icon: GitBranch, label: 'Versiones del proyecto y comparación', active: showVersionsPanel, toggle: toggleVersionsPanel, group: 'project' },
+    { id: 'histogram', icon: BarChart3, label: 'Histograma', active: showHistogramPanel, toggle: toggleHistogramPanel, group: 'project' },
+    { id: 'stats', icon: Gauge, label: 'Estadísticas del proyecto', active: showStatsPanel, toggle: toggleStatsPanel, group: 'project' },
+    { id: 'comic', icon: MessageSquareText, label: 'Cómic / Manga', active: showComicPanel, toggle: toggleComicPanel, group: 'production' },
+    { id: 'animation', icon: Film, label: 'Animación', active: showAnimationPanel, toggle: toggleAnimationPanel, group: 'production' },
+    { id: 'batch', icon: ListChecks, label: 'Procesamiento por lotes', active: showBatchPanel, toggle: toggleBatchPanel, group: 'production' },
+    { id: 'recording', icon: Video, label: 'Grabación de sesión', active: showRecordingPanel, toggle: toggleRecordingPanel, group: 'production' },
+    { id: 'cloudSync', icon: Cloud, label: 'Nube', active: showCloudSyncPanel, toggle: toggleCloudSyncPanel, group: 'system' },
+    { id: 'customization', icon: Keyboard, label: 'Atajos y personalización', active: showCustomizationPanel, toggle: toggleCustomizationPanel, group: 'system' },
   ];
 
   const anyOpen =
@@ -114,10 +129,17 @@ export default function Sidebar() {
     showAssistantPanel ||
     showVersionsPanel;
 
+  const activeTab = tabs.find((t) => t.active);
+
   return (
     <div className="sidebar-root flex border-l border-border bg-panel">
       {anyOpen && (
         <div className="sidebar-panel w-64 border-r border-border flex flex-col">
+        {activeTab && (
+          <div className="px-3 pt-2.5 pb-1 text-[9px] font-semibold uppercase tracking-wide text-textDim shrink-0">
+            {GROUP_LABELS[activeTab.group]}
+          </div>
+        )}
         <Suspense fallback={<div className="p-3 text-xs text-textDim">Cargando…</div>}>
           {showLayerPanel && (
             <div className="flex-1 min-h-0 border-b border-border overflow-y-auto">
@@ -217,19 +239,29 @@ export default function Sidebar() {
         </Suspense>
         </div>
       )}
-      <div className="w-10 flex flex-col items-center py-2 gap-2">
-        {tabs.map(({ id, icon: Icon, label, active, toggle }) => (
-          <button
-            key={id}
-            onClick={toggle}
-            title={label}
-            className={`w-7 h-7 flex items-center justify-center rounded ${
-              active ? 'bg-accent text-white' : 'text-textDim hover:bg-panelLight hover:text-text'
-            }`}
-          >
-            <Icon size={15} />
-          </button>
-        ))}
+      <div className="w-11 flex flex-col items-center py-2 gap-2 overflow-y-auto">
+        {GROUP_ORDER.map((group, gi) => {
+          const groupTabs = tabs.filter((t) => t.group === group);
+          if (groupTabs.length === 0) return null;
+          return (
+            <div key={group} className="flex flex-col items-center gap-1">
+              {gi > 0 && <div className="w-5 h-px bg-border my-1" />}
+              {groupTabs.map(({ id, icon: Icon, label, active, toggle }) => (
+                <button
+                  key={id}
+                  onClick={toggle}
+                  title={label}
+                  className={`relative w-8 h-8 flex items-center justify-center rounded transition-colors ${
+                    active ? 'bg-accentSoft text-accent' : 'text-textDim hover:bg-panelLight hover:text-text'
+                  }`}
+                >
+                  {active && <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-accent" />}
+                  <Icon size={16} />
+                </button>
+              ))}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
