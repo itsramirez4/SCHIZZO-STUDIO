@@ -88,6 +88,15 @@ const electronAPI = {
   // Feedback
   feedbackSave: (content: string, defaultName: string) => ipcRenderer.invoke('feedback:save', content, defaultName),
 
+  // Actualizaciones automáticas
+  updateCheck: () => ipcRenderer.invoke('update:check'),
+  updateInstall: () => ipcRenderer.invoke('update:install'),
+  onUpdateEvent: (channel: string, callback: (...args: unknown[]) => void) => {
+    const listener = (_e: unknown, ...args: unknown[]) => callback(...args);
+    ipcRenderer.on(channel, listener);
+    return () => ipcRenderer.removeListener(channel, listener);
+  },
+
   // Menu events
   onMenuEvent: (channel: string, callback: () => void) => {
     const listener = () => callback();

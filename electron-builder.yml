@@ -3,6 +3,15 @@ productName: SCHIZZO STUDIO
 directories:
   output: release
   buildResources: public
+# Where `electron-builder --publish always` (scripts/release.cjs) uploads the installer and the
+# latest.yml/latest-linux.yml/latest-mac.yml files electron-updater reads to check for updates.
+# The repo is public, so downloading them at update-check time needs no token at all; publishing
+# a new one still does (GH_TOKEN, set by scripts/release.cjs from the same credential `git push`
+# already uses).
+publish:
+  provider: github
+  owner: itsramirez4
+  repo: SCHIZZO-STUDIO
 files:
   - dist/**/*
   - dist-electron/**/*

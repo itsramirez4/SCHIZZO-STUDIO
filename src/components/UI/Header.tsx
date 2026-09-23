@@ -1,6 +1,7 @@
-import { FilePlus, FolderOpen, Save, Download, Undo2, Redo2, ImagePlus, Boxes, View, Scaling, Crop, PackageOpen, LayoutGrid, Hand, History as HistoryIcon, MessageCircle } from 'lucide-react';
+import { FilePlus, FolderOpen, Save, Download, Undo2, Redo2, ImagePlus, Boxes, View, Scaling, Crop, PackageOpen, LayoutGrid, Hand, History as HistoryIcon, MessageCircle, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Logo from '@/components/UI/Logo';
+import { checkForUpdatesNow } from '@/components/UI/UpdateNotice';
 import { useProject } from '@/hooks/useProject';
 import { useHistory } from '@/hooks/useHistory';
 import { useUIStore } from '@/store/uiStore';
@@ -162,6 +163,9 @@ export default function Header() {
           </button>
         </Group>
         <div className="w-px h-5 bg-border mx-1" />
+        <button onClick={checkForUpdatesNow} title="Buscar actualizaciones" className="icon-btn">
+          <RefreshCw size={16} />
+        </button>
         <button onClick={openFeedbackDialog} title="Enviar comentario — ¿algo no va bien, o se te ocurre algo?" className="icon-btn">
           <MessageCircle size={16} />
         </button>

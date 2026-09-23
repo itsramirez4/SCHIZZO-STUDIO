@@ -1,6 +1,6 @@
 # SCHIZZO STUDIO
 
-Estudio de dibujo digital, pixel art, cómic/manga y referencias 3D. Gratuito, de código abierto (MIT) y **local primero**: tus proyectos viven en tu equipo, sin cuenta ni suscripción.
+Estudio de dibujo digital, pixel art, cómic/manga y referencias 3D. Gratuito, de código abierto (no comercial) y **local primero**: tus proyectos viven en tu equipo, sin cuenta ni suscripción.
 
 Electron 31 · React 18 · TypeScript · Vite · Tailwind · Zustand.
 
@@ -171,4 +171,7 @@ src/store/       estado global (Zustand)
 
 ## Licencia
 
-MIT
+[PolyForm Noncommercial 1.0.0](LICENSE): puedes usar, copiar, modificar y redistribuir el código
+libremente, incluso para fines personales, educativos o de investigación — pero no para fines
+comerciales (venderlo, cobrar por él o por una versión modificada, etc.). El objetivo es que
+SCHIZZO STUDIO y cualquier derivado se mantengan gratuitos para quien los use.

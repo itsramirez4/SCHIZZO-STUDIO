@@ -24,6 +24,7 @@ import Canvas2D from '@/components/Canvas/Canvas2D';
 import NewProjectDialog from '@/components/Dialogs/NewProjectDialog';
 import AutoSaveDialog from '@/components/Dialogs/AutoSaveDialog';
 import FeedbackDialog from '@/components/UI/FeedbackDialog';
+import UpdateNotice from '@/components/UI/UpdateNotice';
 import TourOverlay from '@/components/Learning/TourOverlay';
 
 // three.js pulls in a large bundle — only load it once the 3D dialog is actually opened.
@@ -413,6 +414,7 @@ export default function App() {
       )}
       <ErrorBoundary name="Diálogo de copias"><AutoSaveDialog /></ErrorBoundary>
       <ErrorBoundary name="Diálogo de comentario"><FeedbackDialog /></ErrorBoundary>
+      <ErrorBoundary name="Aviso de actualización" compact><UpdateNotice /></ErrorBoundary>
       {showBrushEditor && (
         <ErrorBoundary name="Editor de pinceles">
           <Suspense fallback={null}>

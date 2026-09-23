@@ -6,6 +6,10 @@ puede cambiar sin previo aviso (ver "Versionado" en [README.md](README.md)).
 
 ## [Sin publicar]
 
+Nada todavía.
+
+## [0.1.1] - 2026-09-23
+
 ### Añadido
 - Identidad visual "tinta y papel": paleta cálida casi monocroma con un único acento vermellón, en
   vez del azul genérico de antes, en modo oscuro y claro (`src/styles/variables.css`).
@@ -17,6 +21,17 @@ puede cambiar sin previo aviso (ver "Versionado" en [README.md](README.md)).
   feedback con el diagnóstico incluido (versión, tipo de proyecto, últimos errores de la sesión) y,
   opcionalmente, una miniatura del lienzo — siempre visible antes de copiar, guardar o enviar por
   email, nunca automático.
+- Actualizaciones automáticas (Windows, instalador): comprueba en segundo plano al arrancar,
+  descarga si hay una versión nueva, y avisa con un botón "Reiniciar" cuando está lista — nunca
+  reinicia solo. También hay un botón "Buscar actualizaciones" en la cabecera para forzarlo. La
+  versión portable no se actualiza sola, por su propia naturaleza. `npm run release` ahora hace
+  todo el proceso de publicar una versión de una vez: compila, sube el instalador y los metadatos
+  que la actualización automática necesita al release de GitHub, escribe las notas y crea la
+  etiqueta.
+- El repositorio es público y la licencia pasó de MIT a
+  [PolyForm Noncommercial 1.0.0](LICENSE): se puede usar, copiar, modificar y redistribuir
+  libremente, pero no con fines comerciales. Hacerlo público es lo que permite que la
+  actualización automática funcione sin ninguna clave dentro de la app.
 
 ### Arreglado
 - Boceto a lápiz: el control "Oscuridad" rompía la cancelación que hace que las zonas planas salgan

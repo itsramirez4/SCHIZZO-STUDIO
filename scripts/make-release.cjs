@@ -1,10 +1,11 @@
-// One-off: creates the GitHub Release for an already-pushed tag, using the matching CHANGELOG.md
-// section as the release notes. Reads the token from ~/.git-credentials (same one `git push`
-// already uses) instead of asking for a new one. Not part of any npm script — run manually.
+// Sets the GitHub Release notes for a tag, using the matching CHANGELOG.md section — idempotent:
+// creates the release if it doesn't exist yet, or just updates its notes if `electron-builder
+// --publish` (see scripts/release.cjs) already created it while uploading the installers.
+// Reads the token from ~/.git-credentials (same one `git push` already uses).
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const https = require('https');
+const { readGithubToken } = require('./lib/githubToken.cjs');
 
 const TAG = process.argv[2];
 if (!TAG) {
@@ -22,55 +23,48 @@ if (!m) {
   process.exit(2);
 }
 const body = m[1].trim() + `\n\n---\n[Registro de cambios completo](CHANGELOG.md)`;
+const token = readGithubToken();
 
-const credLine = fs
-  .readFileSync(path.join(os.homedir(), '.git-credentials'), 'utf-8')
-  .split('\n')
-  .find((l) => l.includes('github.com'));
-if (!credLine) {
-  console.error('No hay credencial de github.com en ~/.git-credentials');
-  process.exit(2);
-}
-const token = new URL(credLine.trim()).password;
-
-const payload = JSON.stringify({
-  tag_name: TAG,
-  name: TAG,
-  body,
-  draft: false,
-  prerelease: true, // 0.y.z: development snapshot, not a stable public release yet
-});
-
-const req = https.request(
-  {
-    hostname: 'api.github.com',
-    path: `/repos/${REPO}/releases`,
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: 'application/vnd.github+json',
-      'User-Agent': 'schizzo-studio-release-script',
-      'Content-Type': 'application/json',
-      'Content-Length': Buffer.byteLength(payload),
-    },
-  },
-  (res) => {
-    let data = '';
-    res.on('data', (c) => (data += c));
-    res.on('end', () => {
-      const json = JSON.parse(data);
-      if (res.statusCode >= 200 && res.statusCode < 300) {
-        console.log('OK', json.html_url);
-      } else {
-        console.error('FAIL', res.statusCode, json.message, json.errors ?? '');
-        process.exit(1);
+function api(method, apiPath, payload) {
+  return new Promise((resolve, reject) => {
+    const data = payload ? JSON.stringify(payload) : undefined;
+    const req = https.request(
+      {
+        hostname: 'api.github.com',
+        path: apiPath,
+        method,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github+json',
+          'User-Agent': 'schizzo-studio-release-script',
+          ...(data ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } : {}),
+        },
+      },
+      (res) => {
+        let out = '';
+        res.on('data', (c) => (out += c));
+        res.on('end', () => resolve({ status: res.statusCode, json: out ? JSON.parse(out) : null }));
       }
-    });
+    );
+    req.on('error', reject);
+    if (data) req.write(data);
+    req.end();
+  });
+}
+
+(async () => {
+  const existing = await api('GET', `/repos/${REPO}/releases/tags/${TAG}`);
+  const payload = { tag_name: TAG, name: TAG, body, draft: false, prerelease: true };
+
+  const r =
+    existing.status === 200
+      ? await api('PATCH', `/repos/${REPO}/releases/${existing.json.id}`, payload)
+      : await api('POST', `/repos/${REPO}/releases`, payload);
+
+  if (r.status >= 200 && r.status < 300) {
+    console.log(existing.status === 200 ? 'Notas actualizadas:' : 'Creado:', r.json.html_url);
+  } else {
+    console.error('FAIL', r.status, r.json?.message, r.json?.errors ?? '');
+    process.exit(1);
   }
-);
-req.on('error', (e) => {
-  console.error('FAIL', e.message);
-  process.exit(1);
-});
-req.write(payload);
-req.end();
+})();

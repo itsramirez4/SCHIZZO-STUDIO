@@ -61,6 +61,9 @@ declare global {
       autosaveRead: (id: string) => Promise<{ canceled: boolean; json?: string; projectName?: string }>;
       autosaveDelete: (id: string) => Promise<{ ok: boolean }>;
       feedbackSave: (content: string, defaultName: string) => Promise<IpcResult>;
+      updateCheck: () => Promise<unknown>;
+      updateInstall: () => Promise<void>;
+      onUpdateEvent: (channel: string, callback: (...args: unknown[]) => void) => () => void;
       onMenuEvent: (channel: string, callback: () => void) => () => void;
     };
   }

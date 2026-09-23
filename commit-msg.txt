@@ -1,0 +1,36 @@
+Make the repo public under PolyForm Noncommercial, add auto-updates (0.1.1)
+
+License: MIT -> PolyForm Noncommercial 1.0.0 (new LICENSE file, package.json, README) -- use,
+modify and redistribute freely, no commercial use. The repo itself is now public on GitHub (the
+user's explicit call, weighed against the alternative of shipping a read-scoped token inside the
+app). No secrets were ever committed to this repo -- checked before flipping visibility, not
+assumed.
+
+Auto-updates (Windows, the installer build only -- portable doesn't support this by design):
+electron-updater checks the public GitHub release in the background a few seconds after launch,
+downloads silently if there's a newer version, and only ever offers a "Reiniciar" button once it's
+actually ready (electron/handlers/autoUpdateHandler.ts, src/components/UI/UpdateNotice.tsx) --
+never restarts on its own. A "Buscar actualizaciones" button in the header triggers a manual check
+with a toast either way. Explicitly disabled when SCHIZZO_CHECK_DIR is set, alongside the existing
+!app.isPackaged guard -- the check harness forces isPackaged=true to load dist/index.html like a
+real build, which would otherwise have made every check run hit the real GitHub release and, worse,
+risk a real "install" firing when the harness kills the process.
+
+Publishing: electron-builder.yml now has a `publish: github` block so `electron-builder --publish`
+uploads the installer/portable and the latest.yml/latest-linux.yml files electron-updater reads.
+scripts/make-release.cjs (used to only set the release notes) is now idempotent -- PATCHes an
+existing release instead of failing to POST a duplicate, since electron-builder's publish step
+creates the release first. New scripts/release.cjs chains build -> electron-builder --publish
+always (GH_TOKEN from the same ~/.git-credentials token git push already uses) -> release notes
+from CHANGELOG.md -> git tag + push, as one command (npm run release). Shared token-reading logic
+factored into scripts/lib/githubToken.cjs (both make-release.cjs and release.cjs use it).
+
+Version bumped to 0.1.1, rolling up everything since 0.1.0: the "ink and paper" UI redesign,
+categorized navigation, the no-premature-scroll fixes, the feedback dialog (Copiar/Guardar/Correo/
+Gmail), this license/visibility change and auto-updates -- see CHANGELOG.md.
+
+Verified: tsc (both tsconfigs), build, full battery 62/62. The auto-update flow itself is verified
+separately, against the real published v0.1.1 release, right after this commit lands (needs the
+release to exist first).
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
