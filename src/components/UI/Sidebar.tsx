@@ -134,7 +134,7 @@ export default function Sidebar() {
   return (
     <div className="sidebar-root flex border-l border-border bg-panel">
       {anyOpen && (
-        <div className="sidebar-panel w-64 border-r border-border flex flex-col">
+        <div className="sidebar-panel w-72 border-r border-border flex flex-col overflow-x-hidden">
         {activeTab && (
           <div className="px-3 pt-2.5 pb-1 text-[9px] font-semibold uppercase tracking-wide text-textDim shrink-0">
             {GROUP_LABELS[activeTab.group]}
@@ -147,92 +147,92 @@ export default function Sidebar() {
             </div>
           )}
           {showFilterPanel && (
-            <div className="border-b border-border overflow-y-auto max-h-96">
+            <div className="flex-1 min-h-0 border-b border-border overflow-y-auto">
               <ErrorBoundary name="Filtros" compact><FilterPanel /></ErrorBoundary>
             </div>
           )}
           {showAnimationPanel && (
-            <div className="border-b border-border overflow-y-auto max-h-96">
+            <div className="flex-1 min-h-0 border-b border-border overflow-y-auto">
               <ErrorBoundary name="Animación" compact><TimelinePanel /></ErrorBoundary>
             </div>
           )}
           {showComicPanel && (
-            <div className="border-b border-border overflow-y-auto max-h-[32rem]">
+            <div className="flex-1 min-h-0 border-b border-border overflow-y-auto">
               <ErrorBoundary name="Cómic" compact><ComicPanel /></ErrorBoundary>
             </div>
           )}
           {showColorToolsPanel && (
-            <div className="border-b border-border overflow-y-auto max-h-[32rem]">
+            <div className="flex-1 min-h-0 border-b border-border overflow-y-auto">
               <ErrorBoundary name="Herramientas de color" compact><ColorToolsPanel /></ErrorBoundary>
             </div>
           )}
           {showAssetLibraryPanel && (
-            <div className="border-b border-border overflow-y-auto max-h-[32rem]">
+            <div className="flex-1 min-h-0 border-b border-border overflow-y-auto">
               <ErrorBoundary name="Biblioteca" compact><AssetLibraryPanel /></ErrorBoundary>
             </div>
           )}
           {showReferencesPanel && (
-            <div className="border-b border-border overflow-y-auto max-h-[32rem]">
+            <div className="flex-1 min-h-0 border-b border-border overflow-y-auto">
               <ErrorBoundary name="Referencias" compact><ReferencesPanel /></ErrorBoundary>
             </div>
           )}
           {showCloudSyncPanel && (
-            <div className="border-b border-border overflow-y-auto max-h-[32rem] p-3">
+            <div className="flex-1 min-h-0 border-b border-border overflow-y-auto p-3">
               <ErrorBoundary name="Nube" compact><CloudSyncPanel /></ErrorBoundary>
             </div>
           )}
           {showCustomizationPanel && (
-            <div className="border-b border-border overflow-y-auto max-h-[32rem]">
+            <div className="flex-1 min-h-0 border-b border-border overflow-y-auto">
               <ErrorBoundary name="Atajos" compact><CustomizationPanel /></ErrorBoundary>
             </div>
           )}
           {showPerspectivePanel && (
-            <div className="border-b border-border overflow-y-auto max-h-[32rem]">
+            <div className="flex-1 min-h-0 border-b border-border overflow-y-auto">
               <ErrorBoundary name="Perspectiva" compact><PerspectivePanel /></ErrorBoundary>
             </div>
           )}
           {showVersionsPanel && (
-            <div className="border-b border-border overflow-y-auto max-h-[40rem]">
+            <div className="flex-1 min-h-0 border-b border-border overflow-y-auto">
               <ErrorBoundary name="Versiones" compact><VersionsPanel /></ErrorBoundary>
             </div>
           )}
           {showAssistantPanel && (
-            <div className="border-b border-border overflow-y-auto max-h-[44rem]">
+            <div className="flex-1 min-h-0 border-b border-border overflow-y-auto">
               <ErrorBoundary name="Asistente de IA" compact><AssistantPanel /></ErrorBoundary>
             </div>
           )}
           {showStudyPanel && (
-            <div className="border-b border-border overflow-y-auto max-h-[40rem]">
+            <div className="flex-1 min-h-0 border-b border-border overflow-y-auto">
               <ErrorBoundary name="Estudio" compact><StudyPanel /></ErrorBoundary>
             </div>
           )}
           {showBatchPanel && (
-            <div className="border-b border-border overflow-y-auto max-h-[32rem] p-3">
+            <div className="flex-1 min-h-0 border-b border-border overflow-y-auto p-3">
               <ErrorBoundary name="Lotes" compact><BatchPanel /></ErrorBoundary>
             </div>
           )}
           {showLearningPanel && (
-            <div className="border-b border-border overflow-y-auto max-h-[32rem]">
+            <div className="flex-1 min-h-0 border-b border-border overflow-y-auto">
               <ErrorBoundary name="Aprender" compact><LearningPanel /></ErrorBoundary>
             </div>
           )}
           {showRecordingPanel && (
-            <div className="border-b border-border overflow-y-auto max-h-[32rem]">
+            <div className="flex-1 min-h-0 border-b border-border overflow-y-auto">
               <ErrorBoundary name="Grabación" compact><RecordingPanel /></ErrorBoundary>
             </div>
           )}
           {showHistogramPanel && (
-            <div className="border-b border-border overflow-y-auto">
+            <div className="flex-1 min-h-0 border-b border-border overflow-y-auto">
               <ErrorBoundary name="Histograma" compact><Histogram /></ErrorBoundary>
             </div>
           )}
           {showHistoryPanel && (
-            <div className="overflow-y-auto max-h-64">
+            <div className="flex-1 min-h-0 overflow-y-auto">
               <ErrorBoundary name="Historial" compact><HistoryPanel /></ErrorBoundary>
             </div>
           )}
           {showStatsPanel && (
-            <div className="border-t border-border overflow-y-auto max-h-[32rem]">
+            <div className="flex-1 min-h-0 border-t border-border overflow-y-auto">
               <ErrorBoundary name="Estadísticas" compact><ProjectStatsPanel /></ErrorBoundary>
             </div>
           )}

@@ -17,7 +17,7 @@ export default function ReferencesPanel() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex border-b border-border overflow-x-auto shrink-0">
+      <div className="flex flex-wrap border-b border-border shrink-0">
         {TABS.map((t) => (
           <button
             key={t.id}

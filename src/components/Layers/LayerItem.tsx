@@ -140,7 +140,7 @@ export default function LayerItem({
         isMultiSelected ? 'bg-accent/20' : isActive ? 'bg-panelLight' : 'hover:bg-panelLight/50'
       }`}
     >
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 flex-wrap">
         {isGroup ? (
           <button
             onClick={(e) => {
@@ -213,7 +213,7 @@ export default function LayerItem({
               e.stopPropagation();
               setEditingName(true);
             }}
-            className="flex-1 text-xs truncate"
+            className="flex-1 min-w-[60px] text-xs truncate"
           >
             {layer.name}
           </span>
