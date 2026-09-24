@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
 
 export interface CompareSource {
@@ -9,13 +10,7 @@ export interface CompareSource {
 
 type Mode = 'slider' | 'overlay' | 'side' | 'diff' | 'blink';
 
-const MODES: { id: Mode; label: string }[] = [
-  { id: 'slider', label: 'Deslizador' },
-  { id: 'overlay', label: 'Superposición' },
-  { id: 'side', label: 'Lado a lado' },
-  { id: 'diff', label: 'Diferencias' },
-  { id: 'blink', label: 'Parpadeo' },
-];
+const MODE_IDS: Mode[] = ['slider', 'overlay', 'side', 'diff', 'blink'];
 
 function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -40,7 +35,12 @@ interface CompareDialogProps {
 
 /** Side-by-side, slider, semi-transparent overlay, difference and blink comparison of two images
  * (two versions of the artwork, or the drawing against a reference). */
-export default function CompareDialog({ sources, initialA, initialB, onClose, title = 'Comparar versiones', labelA = 'Antes', labelB = 'Después', initialMode = 'slider' }: CompareDialogProps) {
+export default function CompareDialog({ sources, initialA, initialB, onClose, title, labelA, labelB, initialMode = 'slider' }: CompareDialogProps) {
+  const { t } = useTranslation('panelsProject');
+  const resolvedTitle = title ?? t('compare.defaultTitle');
+  const resolvedLabelA = labelA ?? t('compare.defaultLabelA');
+  const resolvedLabelB = labelB ?? t('compare.defaultLabelB');
+  const MODES: { id: Mode; label: string }[] = MODE_IDS.map((id) => ({ id, label: t(`compare.modes.${id}`) }));
   const [aId, setAId] = useState(initialA);
   const [bId, setBId] = useState(initialB);
   const [mode, setMode] = useState<Mode>(initialMode);
@@ -116,10 +116,10 @@ export default function CompareDialog({ sources, initialA, initialB, onClose, ti
     <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-6" onClick={onClose}>
       <div className="bg-panel border border-border rounded-lg w-full max-w-5xl max-h-full flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2 p-3 border-b border-border flex-wrap">
-          <span className="text-sm font-semibold mr-2">{title}</span>
-          <span className="text-[11px] text-textDim">{labelA}</span>
+          <span className="text-sm font-semibold mr-2">{resolvedTitle}</span>
+          <span className="text-[11px] text-textDim">{resolvedLabelA}</span>
           {select(aId, setAId)}
-          <span className="text-[11px] text-textDim">{labelB}</span>
+          <span className="text-[11px] text-textDim">{resolvedLabelB}</span>
           {select(bId, setBId)}
           <div className="flex gap-1 ml-auto">
             {MODES.map((m) => (
@@ -136,22 +136,22 @@ export default function CompareDialog({ sources, initialA, initialB, onClose, ti
         <div className="flex-1 overflow-auto p-3 min-h-0 flex items-center justify-center checkerboard">
           {mode === 'slider' && (
             <div className="relative select-none max-w-full" style={{ lineHeight: 0 }}>
-              <img src={b.url} alt={labelB} className="max-h-[70vh] max-w-full block" draggable={false} />
-              <img src={a.url} alt={labelA} className="absolute inset-0 w-full h-full" style={{ clipPath: `inset(0 ${100 - split}% 0 0)` }} draggable={false} />
+              <img src={b.url} alt={resolvedLabelB} className="max-h-[70vh] max-w-full block" draggable={false} />
+              <img src={a.url} alt={resolvedLabelA} className="absolute inset-0 w-full h-full" style={{ clipPath: `inset(0 ${100 - split}% 0 0)` }} draggable={false} />
               <div className="absolute top-0 bottom-0 w-0.5 bg-accent" style={{ left: `${split}%` }} />
               <input type="range" min={0} max={100} value={split} onChange={(e) => setSplit(Number(e.target.value))} className="absolute left-0 right-0 bottom-2 w-full opacity-70" />
-              <span className="absolute top-2 left-2 text-[10px] bg-black/60 text-white px-1.5 py-0.5 rounded">{labelA}</span>
-              <span className="absolute top-2 right-2 text-[10px] bg-black/60 text-white px-1.5 py-0.5 rounded">{labelB}</span>
+              <span className="absolute top-2 left-2 text-[10px] bg-black/60 text-white px-1.5 py-0.5 rounded">{resolvedLabelA}</span>
+              <span className="absolute top-2 right-2 text-[10px] bg-black/60 text-white px-1.5 py-0.5 rounded">{resolvedLabelB}</span>
             </div>
           )}
           {mode === 'overlay' && (
             <div className="relative select-none max-w-full" style={{ lineHeight: 0 }} data-testid="compare-overlay">
-              <img src={a.url} alt={labelA} className="max-h-[70vh] max-w-full block bg-white" draggable={false} />
-              <img src={b.url} alt={labelB} className="absolute inset-0 w-full h-full pointer-events-none" style={{ opacity: overlayAlpha / 100 }} draggable={false} />
+              <img src={a.url} alt={resolvedLabelA} className="max-h-[70vh] max-w-full block bg-white" draggable={false} />
+              <img src={b.url} alt={resolvedLabelB} className="absolute inset-0 w-full h-full pointer-events-none" style={{ opacity: overlayAlpha / 100 }} draggable={false} />
               <div className="absolute left-0 right-0 bottom-2 flex items-center gap-2 px-2" style={{ lineHeight: 1 }}>
-                <span className="text-[10px] bg-black/60 text-white px-1.5 py-0.5 rounded">{labelA}</span>
-                <input type="range" min={0} max={100} value={overlayAlpha} onChange={(e) => setOverlayAlpha(Number(e.target.value))} className="flex-1 opacity-80" title="Opacidad de la capa superior" />
-                <span className="text-[10px] bg-black/60 text-white px-1.5 py-0.5 rounded">{labelB} {overlayAlpha}%</span>
+                <span className="text-[10px] bg-black/60 text-white px-1.5 py-0.5 rounded">{resolvedLabelA}</span>
+                <input type="range" min={0} max={100} value={overlayAlpha} onChange={(e) => setOverlayAlpha(Number(e.target.value))} className="flex-1 opacity-80" title={t('compare.overlayOpacityTitle')} />
+                <span className="text-[10px] bg-black/60 text-white px-1.5 py-0.5 rounded">{resolvedLabelB} {overlayAlpha}%</span>
               </div>
             </div>
           )}
@@ -160,7 +160,7 @@ export default function CompareDialog({ sources, initialA, initialB, onClose, ti
               {[a, b].map((s, i) => (
                 <div key={s.id + i} className="text-center">
                   <img src={s.url} alt={s.label} className="max-h-[65vh] max-w-full mx-auto" />
-                  <div className="text-[11px] text-text mt-1 bg-panel/80 inline-block px-2 rounded">{i === 0 ? labelA : labelB} · {s.label}</div>
+                  <div className="text-[11px] text-text mt-1 bg-panel/80 inline-block px-2 rounded">{i === 0 ? resolvedLabelA : resolvedLabelB} · {s.label}</div>
                 </div>
               ))}
             </div>
@@ -168,14 +168,14 @@ export default function CompareDialog({ sources, initialA, initialB, onClose, ti
           {mode === 'blink' && (
             <div className="relative">
               <img src={blinkOn ? b.url : a.url} alt="" className="max-h-[70vh] max-w-full" />
-              <span className="absolute top-2 left-2 text-[11px] bg-black/60 text-white px-2 py-0.5 rounded">{blinkOn ? `${labelB} · ${b.label}` : `${labelA} · ${a.label}`}</span>
+              <span className="absolute top-2 left-2 text-[11px] bg-black/60 text-white px-2 py-0.5 rounded">{blinkOn ? `${resolvedLabelB} · ${b.label}` : `${resolvedLabelA} · ${a.label}`}</span>
             </div>
           )}
           {mode === 'diff' && (
             <div className="text-center">
               <canvas ref={diffRef} className="max-h-[65vh] max-w-full mx-auto" />
               <div className="text-[11px] text-text mt-1 bg-panel/80 inline-block px-2 rounded">
-                {changed === null ? 'Calculando…' : `En rojo lo que cambió: ${(changed * 100).toFixed(1)} % de la imagen`}
+                {changed === null ? t('compare.calculating') : t('compare.diffResult', { percent: (changed * 100).toFixed(1) })}
               </div>
             </div>
           )}

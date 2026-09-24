@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Check, ChevronDown, ChevronRight } from 'lucide-react';
 import { useLearningStore } from '@/store/learningStore';
 import { TOURS } from '@/content/tours';
@@ -7,6 +8,7 @@ import { DOC_PAGES } from '@/content/docs';
 type Tab = 'tours' | 'docs';
 
 export default function LearningPanel() {
+  const { t } = useTranslation('panelsProject');
   const [tab, setTab] = useState<Tab>('tours');
   const completedTours = useLearningStore((s) => s.completedTours);
   const startTour = useLearningStore((s) => s.startTour);
@@ -18,15 +20,15 @@ export default function LearningPanel() {
   return (
     <div className="flex flex-col h-full">
       <div className="flex border-b border-border shrink-0">
-        {(['tours', 'docs'] as Tab[]).map((t) => (
+        {(['tours', 'docs'] as Tab[]).map((tb) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
+            key={tb}
+            onClick={() => setTab(tb)}
             className={`px-2.5 py-2 text-[11px] border-b-2 flex-1 ${
-              tab === t ? 'border-accent text-accent' : 'border-transparent text-textDim hover:text-text'
+              tab === tb ? 'border-accent text-accent' : 'border-transparent text-textDim hover:text-text'
             }`}
           >
-            {t === 'tours' ? 'Tours' : 'Documentación'}
+            {tb === 'tours' ? t('learning.tabTours') : t('learning.tabDocs')}
           </button>
         ))}
       </div>
@@ -43,7 +45,7 @@ export default function LearningPanel() {
                 </div>
                 <p className="text-[10px] text-textDim">{tour.description}</p>
                 <button onClick={() => startTour(tour.id)} className="w-full bg-panelLight text-[11px] rounded py-1.5">
-                  {done ? 'Repetir tour' : 'Iniciar tour'}
+                  {done ? t('learning.repeatTour') : t('learning.startTour')}
                 </button>
               </div>
             );
@@ -54,10 +56,10 @@ export default function LearningPanel() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar en la documentación…"
+              placeholder={t('learning.searchPlaceholder')}
               className="w-full bg-panel border border-border rounded px-2 py-1 text-[11px]"
             />
-            {filteredDocs.length === 0 && <p className="text-[10px] text-textDim text-center py-4">Sin resultados</p>}
+            {filteredDocs.length === 0 && <p className="text-[10px] text-textDim text-center py-4">{t('learning.noResults')}</p>}
             {filteredDocs.map((doc) => {
               const expanded = expandedDoc === doc.id;
               return (

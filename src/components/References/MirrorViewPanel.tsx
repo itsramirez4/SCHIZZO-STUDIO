@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLayers } from '@/hooks/useLayers';
 import { useAppStore } from '@/store/appStore';
 import { useHistory } from '@/hooks/useHistory';
@@ -12,6 +13,7 @@ import * as layerService from '@/services/layer.service';
  * drawing is a real, separate piece of work this round doesn't take on.
  */
 export default function MirrorViewPanel() {
+  const { t } = useTranslation('panelsProject');
   const project = useAppStore((s) => s.project);
   const { layers } = useLayers();
   const { historyVersion } = useHistory();
@@ -40,7 +42,7 @@ export default function MirrorViewPanel() {
     ctx.restore();
   }, [project, layers, historyVersion, mode]);
 
-  if (!project) return <p className="text-[10px] text-textDim">Abrí un proyecto para ver la vista espejada.</p>;
+  if (!project) return <p className="text-[10px] text-textDim">{t('mirrorView.openProjectHint')}</p>;
 
   return (
     <div className="space-y-2">
@@ -49,16 +51,16 @@ export default function MirrorViewPanel() {
           onClick={() => setMode('horizontal')}
           className={`flex-1 text-[11px] rounded py-1.5 ${mode === 'horizontal' ? 'bg-accent text-white' : 'bg-panelLight text-textDim'}`}
         >
-          Horizontal
+          {t('mirrorView.horizontal')}
         </button>
         <button
           onClick={() => setMode('vertical')}
           className={`flex-1 text-[11px] rounded py-1.5 ${mode === 'vertical' ? 'bg-accent text-white' : 'bg-panelLight text-textDim'}`}
         >
-          Vertical
+          {t('mirrorView.vertical')}
         </button>
       </div>
-      <p className="text-[9px] text-textDim">Vista previa en vivo, no interactiva — para revisar proporciones sin afectar el dibujo real.</p>
+      <p className="text-[9px] text-textDim">{t('mirrorView.livePreviewHint')}</p>
       <div className="checkerboard border border-border rounded overflow-hidden">
         <canvas ref={canvasRef} style={{ width: '100%', height: 'auto', display: 'block' }} />
       </div>

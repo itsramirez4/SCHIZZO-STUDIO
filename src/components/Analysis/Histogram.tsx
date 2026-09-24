@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLayers } from '@/hooks/useLayers';
 import { useHistory } from '@/hooks/useHistory';
 import * as layerService from '@/services/layer.service';
@@ -19,11 +20,11 @@ const CHANNEL_COLOR: Record<Channel, string> = {
   blue: '#5599ff',
 };
 
-const CHANNEL_LABEL: Record<Channel, string> = {
-  luminosity: 'Luminosidad',
-  red: 'Rojo',
-  green: 'Verde',
-  blue: 'Azul',
+const CHANNEL_LABEL_KEYS: Record<Channel, string> = {
+  luminosity: 'histogram.luminosity',
+  red: 'histogram.red',
+  green: 'histogram.green',
+  blue: 'histogram.blue',
 };
 
 function computeStats(data: Uint32Array) {
@@ -55,6 +56,7 @@ function computeStats(data: Uint32Array) {
 }
 
 export default function Histogram() {
+  const { t } = useTranslation('panelsProject');
   const { currentLayer } = useLayers();
   const { historyVersion } = useHistory();
   const [data, setData] = useState<HistogramData | null>(null);
@@ -105,34 +107,34 @@ export default function Histogram() {
   }, [data, channel]);
 
   if (!currentLayer) {
-    return <div className="p-3 text-xs text-textDim">Selecciona una capa para ver su histograma.</div>;
+    return <div className="p-3 text-xs text-textDim">{t('histogram.selectLayerHint')}</div>;
   }
   if (!data) {
-    return <div className="p-3 text-xs text-textDim">Esta capa no tiene píxeles propios — no hay histograma que mostrar.</div>;
+    return <div className="p-3 text-xs text-textDim">{t('histogram.noPixelsHint')}</div>;
   }
 
   const stats = computeStats(data[channel]);
 
   return (
     <div className="p-3">
-      <h3 className="text-xs font-semibold mb-2 text-textDim uppercase tracking-wide">Histograma</h3>
+      <h3 className="text-xs font-semibold mb-2 text-textDim uppercase tracking-wide">{t('histogram.title')}</h3>
       <canvas ref={canvasRef} width={240} height={100} className="w-full rounded border border-border bg-black/30" style={{ height: 100 }} />
 
       <div className="grid grid-cols-2 gap-1 mt-2 text-[10px] text-textDim">
-        <div className="bg-panelLight rounded px-1.5 py-1">Media: {stats.mean.toFixed(1)}</div>
-        <div className="bg-panelLight rounded px-1.5 py-1">Mediana: {stats.median}</div>
-        <div className="bg-panelLight rounded px-1.5 py-1">Desv. est.: {stats.stdDev.toFixed(1)}</div>
-        <div className="bg-panelLight rounded px-1.5 py-1">Rango: {stats.min}–{stats.max}</div>
+        <div className="bg-panelLight rounded px-1.5 py-1">{t('histogram.mean', { value: stats.mean.toFixed(1) })}</div>
+        <div className="bg-panelLight rounded px-1.5 py-1">{t('histogram.median', { value: stats.median })}</div>
+        <div className="bg-panelLight rounded px-1.5 py-1">{t('histogram.stdDev', { value: stats.stdDev.toFixed(1) })}</div>
+        <div className="bg-panelLight rounded px-1.5 py-1">{t('histogram.range', { min: stats.min, max: stats.max })}</div>
       </div>
 
       <div className="flex gap-1 mt-2">
-        {(Object.keys(CHANNEL_LABEL) as Channel[]).map((c) => (
+        {(Object.keys(CHANNEL_LABEL_KEYS) as Channel[]).map((c) => (
           <button
             key={c}
             onClick={() => setChannel(c)}
             className={`flex-1 text-[10px] rounded py-1 ${channel === c ? 'bg-accent text-white' : 'bg-panelLight text-textDim'}`}
           >
-            {CHANNEL_LABEL[c]}
+            {t(CHANNEL_LABEL_KEYS[c])}
           </button>
         ))}
       </div>
