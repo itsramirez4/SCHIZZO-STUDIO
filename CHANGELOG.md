@@ -17,6 +17,13 @@ puede cambiar sin previo aviso (ver "Versionado" en [README.md](README.md)).
   haciendo falta un clic para copiarlo, guardarlo o enviarlo, nada sale sin que lo veas antes. No
   pisa un mensaje que ya estuvieras escribiendo si otra región falla mientras tanto.
 
+### Rendimiento
+- El bundle de arranque bajó de 1.23 MB a 576 KB (más de la mitad). No era ningún panel — todos
+  ya cargaban bajo demanda — sino que el enganche interno de `npm run check` importaba de forma
+  fija toda la capa de servicios de la IA asistente (y, a través de uno de ellos, `three.js`) sin
+  que ningún usuario real llegara a necesitarlos nunca. Ahora se cargan igual que el resto, bajo
+  demanda; la batería de comprobaciones sigue pasando entera.
+
 ## [0.1.2] - 2026-09-23
 
 ### Arreglado
