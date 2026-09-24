@@ -56,7 +56,9 @@ async function smoke(exe, port) {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'schizzo-inst-profile-'));
   const env = { ...process.env };
   delete env.ELECTRON_RUN_AS_NODE;
-  const child = spawn(exe, [`--remote-debugging-port=${port}`, `--user-data-dir=${profile}`], { env, stdio: 'ignore', detached: false });
+  // --lang=es: the UI language now follows the OS locale by default — pin it so this smoke
+  // test's Spanish-text locators keep working regardless of the machine's real locale.
+  const child = spawn(exe, [`--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, '--lang=es'], { env, stdio: 'ignore', detached: false });
   let browser;
   try {
     for (let i = 0; i < 60 && !browser; i++) {

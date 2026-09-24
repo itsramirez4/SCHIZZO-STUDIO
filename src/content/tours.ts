@@ -2,9 +2,14 @@ import { Tour } from '@/types/learning';
 
 /** Every selector here targets a real button in the app (verified against the actual title
  * attributes in Header.tsx, Toolbox.tsx and Sidebar.tsx) — not a placeholder class name that
- * happens to not exist in the DOM. The 3 tool steps in `getting-started` use `data-tool`
- * instead of `title`, since Toolbox.tsx rebuilds each button's title with the user's *current*
- * shortcut — a remapped key would otherwise silently break the selector. */
+ * happens to not exist in the DOM. Every step in `getting-started` uses a `data-tool`/`data-tour`
+ * attribute instead of `title`, since that text is no longer a language-independent constant
+ * (the UI is translatable now) and, for the 3 tool steps, Toolbox.tsx also rebuilds each button's
+ * title with the user's *current* shortcut — either way, matching by title would silently break.
+ * `getting-started`'s own displayed title/description come from src/locales/{es,en}/tours.json
+ * instead of the fields below (see TourOverlay.tsx) — the strings here are unused for that tour, kept
+ * only because TourStep still requires them. The other 3 tours aren't translated yet, so their
+ * title/description fields below are what's actually shown. */
 export const TOURS: Tour[] = [
   {
     id: 'getting-started',
@@ -12,7 +17,7 @@ export const TOURS: Tour[] = [
     description: 'Un recorrido rápido por lo esencial: crear un proyecto, dibujar, capas y guardar.',
     steps: [
       {
-        selector: 'button[title="Nuevo proyecto (Ctrl+N)"]',
+        selector: '[data-tour="new-project"]',
         title: 'Crear un proyecto',
         description: 'Desde acá creás un lienzo nuevo, eligiendo tamaño o un preset (pixel art, HD, A4).',
       },
@@ -32,22 +37,22 @@ export const TOURS: Tour[] = [
         description: 'Delimita una zona del lienzo para que los demás cambios solo la afecten a ella.',
       },
       {
-        selector: 'button[title="Capas"]',
+        selector: '[data-tour="layers-tab"]',
         title: 'Capas',
         description: 'Organizá tu dibujo en capas independientes — como hojas transparentes apiladas que podés reordenar, ocultar o mezclar.',
       },
       {
-        selector: 'button[title="Deshacer (Ctrl+Z)"]',
+        selector: '[data-tour="undo"]',
         title: 'Deshacer y rehacer',
         description: 'Todo lo que hacés queda en el historial — no dudes en experimentar, siempre podés volver atrás.',
       },
       {
-        selector: 'button[title="Guardar (Ctrl+S)"]',
+        selector: '[data-tour="save"]',
         title: 'Guardar tu proyecto',
         description: 'Guarda el proyecto completo (capas, animación, todo) en un archivo que podés volver a abrir después.',
       },
       {
-        selector: 'button[title="Exportar (Ctrl+E)"]',
+        selector: '[data-tour="export"]',
         title: 'Exportar tu trabajo',
         description: 'Elegí entre PNG, JPG, WebP, AVIF, BMP, TIFF o SVG. El SVG es la imagen aplanada envuelta en un archivo SVG, no es vectorial editable — esta app trabaja en píxeles.',
       },

@@ -16,6 +16,14 @@ puede cambiar sin previo aviso (ver "Versionado" en [README.md](README.md)).
   funcionar, se abre solo el diálogo de "Enviar comentario" con el diagnóstico ya listo — sigue
   haciendo falta un clic para copiarlo, guardarlo o enviarlo, nada sale sin que lo veas antes. No
   pisa un mensaje que ya estuvieras escribiendo si otra región falla mientras tanto.
+- Inglés, como primer idioma añadido a la app (con más por venir): la app detecta el idioma del
+  sistema operativo al arrancar y usa inglés si el tuyo no está soportado todavía; desde
+  Personalización → Idioma se puede fijar uno a mano, que entonces manda por encima del sistema
+  hasta que se vuelva a poner en "Automático". Por ahora la traducción cubre la parte principal
+  de la app: cabecera, caja de herramientas, pestañas de la barra lateral, pantalla de inicio y
+  los diálogos más usados (nuevo proyecto, exportar, redimensionar, copias de seguridad, enviar
+  comentario, aviso de actualización) y el tour de "Primeros pasos" — el contenido interno de los
+  19 paneles y la documentación/academia siguen en español por ahora, hasta una próxima pasada.
 
 ### Rendimiento
 - El bundle de arranque bajó de 1.23 MB a 576 KB (más de la mitad). No era ningún panel — todos

@@ -108,6 +108,9 @@ const electronAPI = {
   // launch — lets renderer-side code opt out of behavior that shouldn't fire during the automated
   // check battery, the same way autoUpdateHandler.ts already opts out on the main-process side.
   isCheckMode: Boolean(process.env.SCHIZZO_CHECK_DIR),
+
+  // Idioma
+  getSystemLocale: () => ipcRenderer.invoke('system:get-locale') as Promise<string>,
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);

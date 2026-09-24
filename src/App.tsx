@@ -1,5 +1,6 @@
 import { useEffect, useRef, lazy, Suspense } from 'react';
 import { Toaster } from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import { useAppStore } from '@/store/appStore';
 import { useUIStore } from '@/store/uiStore';
 import { useProjectStore } from '@/store/projectStore';
@@ -41,6 +42,7 @@ const ReplayDialog = lazy(() => import('@/components/Replay/ReplayDialog'));
 const WorkspaceShell = lazy(() => import('@/components/Workspace/WorkspaceShell'));
 
 export default function App() {
+  const { t } = useTranslation('chrome');
   const project = useAppStore((s) => s.project);
   const currentTool = useAppStore((s) => s.currentTool);
   const undo = useAppStore((s) => s.undo);
@@ -383,40 +385,40 @@ export default function App() {
       <Toaster position="bottom-center" toastOptions={{ style: { background: 'var(--color-panel-light)', color: 'var(--color-text)' } }} />
       {project ? (
         workspaceMode === 'floating' ? (
-          <ErrorBoundary name="Espacio de trabajo">
+          <ErrorBoundary name={t('errorBoundary.workspace')}>
             <Suspense fallback={null}>
               <WorkspaceShell />
             </Suspense>
           </ErrorBoundary>
         ) : (
           <>
-            <ErrorBoundary name="Barra superior"><Header /></ErrorBoundary>
+            <ErrorBoundary name={t('errorBoundary.topBar')}><Header /></ErrorBoundary>
             <div className={`flex-1 flex min-h-0 ${leftHanded ? 'flex-row-reverse' : ''}`} data-lefty={leftHanded}>
-              <ErrorBoundary name="Herramientas"><Toolbox /></ErrorBoundary>
-              <ErrorBoundary name="Lienzo"><Canvas2D /></ErrorBoundary>
-              <ErrorBoundary name="Paneles"><Sidebar /></ErrorBoundary>
+              <ErrorBoundary name={t('errorBoundary.tools')}><Toolbox /></ErrorBoundary>
+              <ErrorBoundary name={t('errorBoundary.canvas')}><Canvas2D /></ErrorBoundary>
+              <ErrorBoundary name={t('errorBoundary.panels')}><Sidebar /></ErrorBoundary>
             </div>
-            <ErrorBoundary name="Barra de estado" compact><StatusBar /></ErrorBoundary>
+            <ErrorBoundary name={t('errorBoundary.statusBar')} compact><StatusBar /></ErrorBoundary>
           </>
         )
       ) : (
         <StartScreen />
       )}
 
-      <ErrorBoundary name="Tour guiado" compact><TourOverlay /></ErrorBoundary>
-      <ErrorBoundary name="Diálogo"><NewProjectDialog /></ErrorBoundary>
+      <ErrorBoundary name={t('errorBoundary.tour')} compact><TourOverlay /></ErrorBoundary>
+      <ErrorBoundary name={t('errorBoundary.dialog')}><NewProjectDialog /></ErrorBoundary>
       {showExportDialog && (
-        <ErrorBoundary name="Diálogo de exportación">
+        <ErrorBoundary name={t('errorBoundary.exportDialog')}>
           <Suspense fallback={null}>
             <ExportDialog />
           </Suspense>
         </ErrorBoundary>
       )}
-      <ErrorBoundary name="Diálogo de copias"><AutoSaveDialog /></ErrorBoundary>
-      <ErrorBoundary name="Diálogo de comentario"><FeedbackDialog /></ErrorBoundary>
-      <ErrorBoundary name="Aviso de actualización" compact><UpdateNotice /></ErrorBoundary>
+      <ErrorBoundary name={t('errorBoundary.backupDialog')}><AutoSaveDialog /></ErrorBoundary>
+      <ErrorBoundary name={t('errorBoundary.feedbackDialog')}><FeedbackDialog /></ErrorBoundary>
+      <ErrorBoundary name={t('errorBoundary.updateNotice')} compact><UpdateNotice /></ErrorBoundary>
       {showBrushEditor && (
-        <ErrorBoundary name="Editor de pinceles">
+        <ErrorBoundary name={t('errorBoundary.brushEditor')}>
           <Suspense fallback={null}>
             <BrushEditor />
           </Suspense>

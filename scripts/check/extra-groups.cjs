@@ -841,6 +841,33 @@ module.exports = function extraGroups({ ok, sleep, fs }) {
         await sleep(500);
         ok(!(await c.page.locator('text=Crear un proyecto').isVisible().catch(() => false)), 'el tour volvió a aparecer en un segundo proyecto');
       },
+      'el idioma sigue al sistema (o cae a inglés si no está soportado), salvo que se fije a mano': async (c) => {
+        // schizzo-test-system-locale es el mismo tipo de escape hatch por localStorage que
+        // schizzo-onboarding-force-real-user arriba — window.electronAPI es de solo lectura desde
+        // el renderer (contextBridge), así que simular "el sistema está en inglés/francés" solo
+        // puede hacerse así, no pisando electronAPI directamente. Se comprueba desde la pantalla
+        // de inicio (sin proyecto abierto) — la cabecera con sus botones no existe todavía ahí.
+        await c.page.evaluate(() => localStorage.setItem('schizzo-test-system-locale', 'en-US'));
+        await c.page.reload();
+        ok(
+          await c.page.getByText('New project', { exact: true }).first().waitFor({ state: 'visible', timeout: 15000 }).then(() => true).catch(() => false),
+          'con el sistema en inglés (auto), la app no arrancó en inglés'
+        );
+
+        await c.page.evaluate(() => localStorage.setItem('schizzo-test-system-locale', 'fr-FR'));
+        await c.page.reload();
+        ok(
+          await c.page.getByText('New project', { exact: true }).first().waitFor({ state: 'visible', timeout: 15000 }).then(() => true).catch(() => false),
+          'con un idioma de sistema no soportado (auto), la app no cayó a inglés'
+        );
+
+        await c.page.evaluate(() => localStorage.setItem('schizzo-language', 'es'));
+        await c.page.reload();
+        ok(
+          await c.page.getByText('Nuevo proyecto', { exact: true }).first().waitFor({ state: 'visible', timeout: 15000 }).then(() => true).catch(() => false),
+          'fijar "es" a mano no ganó al idioma de sistema simulado (inglés)'
+        );
+      },
     },
 
     // -----------------------------------------------------------------------------------------

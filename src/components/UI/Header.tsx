@@ -1,5 +1,6 @@
 import { FilePlus, FolderOpen, Save, Download, Undo2, Redo2, ImagePlus, Boxes, View, Scaling, Crop, PackageOpen, LayoutGrid, Hand, History as HistoryIcon, MessageCircle, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import Logo from '@/components/UI/Logo';
 import { checkForUpdatesNow } from '@/components/UI/UpdateNotice';
 import { useProject } from '@/hooks/useProject';
@@ -20,6 +21,7 @@ function Group({ children }: { children: React.ReactNode }) {
 }
 
 export default function Header() {
+  const { t } = useTranslation('chrome');
   const { project, save, open } = useProject();
   const { canUndo, canRedo, undo, redo } = useHistory();
   const openNewProjectDialog = useUIStore((s) => s.openNewProjectDialog);
@@ -52,13 +54,13 @@ export default function Header() {
       const layerId = await importKraAsLayer(addLayer);
       if (layerId) pushHistory('Importar Krita');
     } catch (err) {
-      toast.error('No se pudo importar el archivo .kra');
+      toast.error(t('header.importKraError'));
       console.error(err);
     }
   }
 
   function handleTrimToContent() {
-    if (!trimToContent()) toast('Nada que recortar — el lienzo ya está ajustado al contenido');
+    if (!trimToContent()) toast(t('header.trimNothingToast'));
   }
 
   return (
@@ -70,43 +72,43 @@ export default function Header() {
       <div className="w-px h-5 bg-border mx-1" />
 
       <Group>
-        <button onClick={openNewProjectDialog} title="Nuevo proyecto (Ctrl+N)" className="icon-btn">
+        <button onClick={openNewProjectDialog} title={t('header.newProject')} data-tour="new-project" className="icon-btn">
           <FilePlus size={16} />
         </button>
-        <button onClick={open} title="Abrir proyecto (Ctrl+O)" className="icon-btn">
+        <button onClick={open} title={t('header.openProject')} className="icon-btn">
           <FolderOpen size={16} />
         </button>
-        <button onClick={save} disabled={!project} title="Guardar (Ctrl+S)" className="icon-btn disabled:opacity-30">
+        <button onClick={save} disabled={!project} title={t('header.save')} data-tour="save" className="icon-btn disabled:opacity-30">
           <Save size={16} />
         </button>
-        <button onClick={openAutoSaveDialog} title="Copias de seguridad automáticas" className="icon-btn">
+        <button onClick={openAutoSaveDialog} title={t('header.autoSaveBackups')} className="icon-btn">
           <HistoryIcon size={16} />
         </button>
-        <button onClick={handleImport} disabled={!project} title="Importar imagen" className="icon-btn disabled:opacity-30">
+        <button onClick={handleImport} disabled={!project} title={t('header.importImage')} className="icon-btn disabled:opacity-30">
           <ImagePlus size={16} />
         </button>
-        <button onClick={handleImportKra} disabled={!project} title="Importar Krita (.kra)" className="icon-btn disabled:opacity-30">
+        <button onClick={handleImportKra} disabled={!project} title={t('header.importKra')} className="icon-btn disabled:opacity-30">
           <PackageOpen size={16} />
         </button>
       </Group>
       <div className="w-px h-5 bg-border mx-1" />
 
       <Group>
-        <button onClick={openModel3DViewer} disabled={!project} title="Insertar modelo 3D" className="icon-btn disabled:opacity-30">
+        <button onClick={openModel3DViewer} disabled={!project} title={t('header.insertModel3d')} className="icon-btn disabled:opacity-30">
           <Boxes size={16} />
         </button>
         <button
           onClick={toggleReference3DPanel}
           disabled={!project}
-          title="Referencia 3D flotante"
+          title={t('header.floatingReference3d')}
           className={`icon-btn disabled:opacity-30 ${showReference3DPanel ? 'text-accent' : ''}`}
         >
           <View size={16} />
         </button>
-        <button onClick={openResizeDialog} disabled={!project} title="Redimensionar (inteligente)" className="icon-btn disabled:opacity-30">
+        <button onClick={openResizeDialog} disabled={!project} title={t('header.resizeSmart')} className="icon-btn disabled:opacity-30">
           <Scaling size={16} />
         </button>
-        <button onClick={handleTrimToContent} disabled={!project} title="Recortar al contenido" className="icon-btn disabled:opacity-30">
+        <button onClick={handleTrimToContent} disabled={!project} title={t('header.trimToContent')} className="icon-btn disabled:opacity-30">
           <Crop size={16} />
         </button>
       </Group>
@@ -115,10 +117,11 @@ export default function Header() {
       <button
         onClick={openExportDialog}
         disabled={!project}
-        title="Exportar (Ctrl+E)"
+        title={t('header.export')}
+        data-tour="export"
         className="flex items-center gap-1.5 px-2.5 h-7 rounded text-xs font-medium bg-accentSoft text-accent hover:bg-accent hover:text-white transition-colors disabled:opacity-30 disabled:hover:bg-accentSoft disabled:hover:text-accent"
       >
-        <Download size={14} /> Exportar
+        <Download size={14} /> {t('header.exportLabel')}
       </button>
       <div className="w-px h-5 bg-border mx-1" />
 
@@ -126,14 +129,14 @@ export default function Header() {
         <button
           onClick={() => setWorkspaceMode('floating')}
           disabled={!project}
-          title="Workspace flotante (paneles acoplables, presets)"
+          title={t('header.floatingWorkspace')}
           className="icon-btn disabled:opacity-30"
         >
           <LayoutGrid size={16} />
         </button>
         <button
           onClick={toggleLeftHanded}
-          title={leftHanded ? 'Modo zurdo activado: volver al diseño normal' : 'Modo zurdo: herramientas a la derecha y paneles a la izquierda'}
+          title={leftHanded ? t('header.leftHandedOn') : t('header.leftHandedOff')}
           className={`icon-btn ${leftHanded ? 'text-accent' : ''}`}
         >
           <Hand size={16} />
@@ -143,9 +146,9 @@ export default function Header() {
       <button
         onClick={() => {
           setAiEnabled(!aiEnabled);
-          toast(aiEnabled ? 'IA desactivada: la app es 100 % manual (sin asistente, sin modelos, sin conexiones).' : 'IA activada: el asistente propone, tú decides.', { icon: aiEnabled ? '✋' : '✨' });
+          toast(aiEnabled ? t('header.aiDisabledToast') : t('header.aiEnabledToast'), { icon: aiEnabled ? '✋' : '✨' });
         }}
-        title={aiEnabled ? 'IA activada — clic para desactivarla por completo (modo 100 % manual)' : 'IA desactivada (100 % manual) — clic para activarla'}
+        title={aiEnabled ? t('header.aiOn') : t('header.aiOff')}
         className={`icon-btn relative ${aiEnabled ? 'text-accent' : 'text-textDim'}`}
         data-ai-toggle={aiEnabled ? 'on' : 'off'}
       >
@@ -155,18 +158,18 @@ export default function Header() {
 
       <div className="ml-auto flex items-center">
         <Group>
-          <button onClick={undo} disabled={!canUndo} title="Deshacer (Ctrl+Z)" className="icon-btn disabled:opacity-30">
+          <button onClick={undo} disabled={!canUndo} title={t('header.undo')} data-tour="undo" className="icon-btn disabled:opacity-30">
             <Undo2 size={16} />
           </button>
-          <button onClick={redo} disabled={!canRedo} title="Rehacer (Ctrl+Shift+Z)" className="icon-btn disabled:opacity-30">
+          <button onClick={redo} disabled={!canRedo} title={t('header.redo')} className="icon-btn disabled:opacity-30">
             <Redo2 size={16} />
           </button>
         </Group>
         <div className="w-px h-5 bg-border mx-1" />
-        <button onClick={checkForUpdatesNow} title="Buscar actualizaciones" className="icon-btn">
+        <button onClick={checkForUpdatesNow} title={t('header.checkForUpdates')} className="icon-btn">
           <RefreshCw size={16} />
         </button>
-        <button onClick={openFeedbackDialog} title="Enviar comentario — ¿algo no va bien, o se te ocurre algo?" className="icon-btn">
+        <button onClick={openFeedbackDialog} title={t('header.sendFeedback')} className="icon-btn">
           <MessageCircle size={16} />
         </button>
         {project && <span className="text-xs text-textDim pr-2 pl-2 border-l border-border ml-1">{project.name}</span>}

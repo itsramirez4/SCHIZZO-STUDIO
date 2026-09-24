@@ -1,0 +1,47 @@
+{
+  "overlay": {
+    "stepCounter": "{{name}} · {{current}}/{{total}}",
+    "skip": "Skip tour",
+    "previous": "Previous",
+    "next": "Next",
+    "finish": "Finish"
+  },
+  "gettingStarted": {
+    "name": "Getting started",
+    "description": "A quick tour of the essentials: creating a project, drawing, layers and saving.",
+    "steps": {
+      "newProject": {
+        "title": "Create a project",
+        "description": "This is where you create a new canvas, picking a size or a preset (pixel art, HD, A4)."
+      },
+      "brush": {
+        "title": "The brush",
+        "description": "Your main tool for drawing. Size, hardness, opacity and spacing are all configurable further down this bar."
+      },
+      "paintbucket": {
+        "title": "Paint bucket",
+        "description": "Fills an area with the active color or pattern — also try patterns and gradients from the Asset Library."
+      },
+      "selection": {
+        "title": "Selection",
+        "description": "Marks off an area of the canvas so other changes only affect that part."
+      },
+      "layers": {
+        "title": "Layers",
+        "description": "Organize your drawing into independent layers — like stacked transparent sheets you can reorder, hide or blend."
+      },
+      "undo": {
+        "title": "Undo and redo",
+        "description": "Everything you do stays in the history — don't hesitate to experiment, you can always go back."
+      },
+      "save": {
+        "title": "Save your project",
+        "description": "Saves the whole project (layers, animation, everything) to a file you can reopen later."
+      },
+      "export": {
+        "title": "Export your work",
+        "description": "Choose between PNG, JPG, WebP, AVIF, BMP, TIFF or SVG. The SVG is the flattened image wrapped in an SVG file, not editable vector art — this app works in pixels."
+      }
+    }
+  }
+}

@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLearningStore } from '@/store/learningStore';
 import { TOURS } from '@/content/tours';
+
+// Only `getting-started` has been translated (see src/locales/*/tours.json) — its own
+// title/description in tours.ts are unused placeholders for this reason (TourStep still
+// requires them). This array maps step index -> the key under `tours:gettingStarted.steps`,
+// since tours.ts stores steps as an array, not a keyed object. The other 3 tours render their
+// tours.ts fields directly, as before.
+const GETTING_STARTED_STEP_KEYS = ['newProject', 'brush', 'paintbucket', 'selection', 'layers', 'undo', 'save', 'export'];
 
 /** Spotlight overlay: a full-screen dark layer with a "hole" punched over the target element
  * via a box-shadow that spreads outward from a transparent rect — the rect itself stays
@@ -8,6 +16,7 @@ import { TOURS } from '@/content/tours';
  * in the app; if one isn't found (panel closed, app state changed), the step is skipped rather
  * than showing a broken highlight over nothing. */
 export default function TourOverlay() {
+  const { t } = useTranslation('tours');
   const activeTourId = useLearningStore((s) => s.activeTourId);
   const activeStepIndex = useLearningStore((s) => s.activeStepIndex);
   const nextStep = useLearningStore((s) => s.nextStep);
@@ -17,6 +26,7 @@ export default function TourOverlay() {
   const [rect, setRect] = useState<DOMRect | null>(null);
   const tour = TOURS.find((t) => t.id === activeTourId);
   const step = tour?.steps[activeStepIndex];
+  const isGettingStarted = tour?.id === 'getting-started';
 
   useEffect(() => {
     if (!step) {
@@ -39,6 +49,11 @@ export default function TourOverlay() {
   }, [step]);
 
   if (!tour || !step) return null;
+
+  const stepKey = isGettingStarted ? GETTING_STARTED_STEP_KEYS[activeStepIndex] : null;
+  const tourName = isGettingStarted ? t('gettingStarted.name') : tour.name;
+  const stepTitle = isGettingStarted && stepKey ? t(`gettingStarted.steps.${stepKey}.title`) : step.title;
+  const stepDescription = isGettingStarted && stepKey ? t(`gettingStarted.steps.${stepKey}.description`) : step.description;
 
   const padding = 6;
   const highlightBox = rect && {
@@ -85,21 +100,21 @@ export default function TourOverlay() {
 
       <div style={{ ...tooltipStyle, pointerEvents: 'auto' }} className="bg-panel border border-border rounded-lg shadow-2xl p-3 space-y-2">
         <div className="text-[10px] text-textDim">
-          {tour.name} · {activeStepIndex + 1}/{tour.steps.length}
+          {t('overlay.stepCounter', { name: tourName, current: activeStepIndex + 1, total: tour.steps.length })}
         </div>
-        <div className="text-sm font-semibold">{step.title}</div>
-        <p className="text-xs text-textDim leading-relaxed">{step.description}</p>
+        <div className="text-sm font-semibold">{stepTitle}</div>
+        <p className="text-xs text-textDim leading-relaxed">{stepDescription}</p>
         <div className="flex items-center gap-1.5 pt-1">
           <button onClick={endTour} className="text-[11px] text-textDim hover:text-text mr-auto">
-            Saltar tour
+            {t('overlay.skip')}
           </button>
           {activeStepIndex > 0 && (
             <button onClick={prevStep} className="text-[11px] bg-panelLight rounded px-2 py-1">
-              Anterior
+              {t('overlay.previous')}
             </button>
           )}
           <button onClick={() => nextStep(tour.steps.length)} className="text-[11px] bg-accent text-white rounded px-2 py-1">
-            {isLast ? 'Finalizar' : 'Siguiente'}
+            {isLast ? t('overlay.finish') : t('overlay.next')}
           </button>
         </div>
       </div>

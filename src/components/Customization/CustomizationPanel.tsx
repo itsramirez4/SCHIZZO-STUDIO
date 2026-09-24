@@ -4,14 +4,16 @@ import ShortcutsTab from './ShortcutsTab';
 import ProfilesTab from './ProfilesTab';
 import MacrosTab from './MacrosTab';
 import GesturesTab from './GesturesTab';
+import LanguageTab from './LanguageTab';
 
-type SubTab = 'shortcuts' | 'profiles' | 'macros' | 'gestures';
+type SubTab = 'shortcuts' | 'profiles' | 'macros' | 'gestures' | 'language';
 
 const SUB_TABS: { id: SubTab; label: string }[] = [
   { id: 'shortcuts', label: 'Atajos' },
   { id: 'profiles', label: 'Perfiles' },
   { id: 'macros', label: 'Macros' },
   { id: 'gestures', label: 'Gestos' },
+  { id: 'language', label: 'Idioma' },
 ];
 
 export default function CustomizationPanel() {
@@ -42,6 +44,7 @@ export default function CustomizationPanel() {
       {tab === 'profiles' && <ProfilesTab />}
       {tab === 'macros' && <MacrosTab />}
       {tab === 'gestures' && <GesturesTab />}
+      {tab === 'language' && <LanguageTab />}
     </div>
   );
 }

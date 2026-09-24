@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { FilePlus, FolderOpen, History, Clock, LucideIcon, MessageCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useUIStore } from '@/store/uiStore';
 import { useProject } from '@/hooks/useProject';
 import { useProjectStore } from '@/store/projectStore';
@@ -16,6 +17,7 @@ interface ActionCard {
 }
 
 export default function StartScreen() {
+  const { t } = useTranslation('chrome');
   const openNewProjectDialog = useUIStore((s) => s.openNewProjectDialog);
   const { open, recentProjects, refreshRecent } = useProject();
   const openAutoSaveDialog = useAutoSaveStore((s) => s.openDialog);
@@ -28,8 +30,8 @@ export default function StartScreen() {
 
   const actions: ActionCard[] = [
     {
-      title: 'Nuevo proyecto',
-      description: 'Elegí un tamaño o plantilla y arrancá desde cero',
+      title: t('startScreen.newProjectTitle'),
+      description: t('startScreen.newProjectDesc'),
       icon: FilePlus,
       accent: 'border-t-pink-400',
       onClick: openNewProjectDialog,
@@ -37,15 +39,15 @@ export default function StartScreen() {
     ...(isElectron()
       ? [
           {
-            title: 'Abrir proyecto',
-            description: 'Continuá desde un archivo .drawing guardado',
+            title: t('startScreen.openProjectTitle'),
+            description: t('startScreen.openProjectDesc'),
             icon: FolderOpen,
             accent: 'border-t-blue-400',
             onClick: open,
           },
           {
-            title: 'Recuperar copia de seguridad',
-            description: 'Restaurá desde una copia automática reciente',
+            title: t('startScreen.recoverBackupTitle'),
+            description: t('startScreen.recoverBackupDesc'),
             icon: History,
             accent: 'border-t-amber-400',
             onClick: openAutoSaveDialog,
@@ -59,7 +61,7 @@ export default function StartScreen() {
       <div className="text-center">
         <Logo size={112} className="mx-auto mb-3" />
         <h1 className="text-4xl font-bold text-accent mb-2">SCHIZZO STUDIO</h1>
-        <p className="text-textDim text-sm">Dibujo digital y pixel art, sin límites.</p>
+        <p className="text-textDim text-sm">{t('startScreen.tagline')}</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-3xl">
@@ -78,7 +80,7 @@ export default function StartScreen() {
 
       {recentProjects.length > 0 && (
         <div className="w-full max-w-3xl">
-          <h2 className="text-xs text-textDim uppercase tracking-wide mb-2">Continuar</h2>
+          <h2 className="text-xs text-textDim uppercase tracking-wide mb-2">{t('startScreen.continueHeading')}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {recentProjects.slice(0, 6).map((path) => (
               <RecentItem key={path} path={path} />
@@ -88,7 +90,7 @@ export default function StartScreen() {
       )}
 
       <button onClick={openFeedbackDialog} className="flex items-center gap-1.5 text-[11px] text-textDim hover:text-text">
-        <MessageCircle size={12} /> ¿Algo no va bien? Enviar comentario
+        <MessageCircle size={12} /> {t('startScreen.feedbackLink')}
       </button>
     </div>
   );

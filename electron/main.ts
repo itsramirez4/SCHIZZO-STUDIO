@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, shell } from 'electron';
+import { app, BrowserWindow, Menu, shell, ipcMain } from 'electron';
 import path from 'path';
 import { registerFileHandlers } from './handlers/fileHandler';
 import { registerBrushHandlers } from './handlers/brushHandler';
@@ -131,6 +131,9 @@ app.whenReady().then(() => {
   registerAiHandlers();
   registerFeedbackHandlers(() => mainWindow);
   registerAutoUpdateHandlers(() => mainWindow);
+  // app.getLocale() is main-process only — the renderer's language store reads it once at
+  // startup, through this, to pick a language when the person hasn't chosen one by hand.
+  ipcMain.handle('system:get-locale', () => app.getLocale());
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

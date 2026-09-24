@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import { X, Copy, Save, Mail, Globe, ChevronDown, ChevronRight } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
 import { useAppStore } from '@/store/appStore';
@@ -7,29 +8,34 @@ import { getRecentErrors } from '@/services/diagnostics.service';
 import { flattenLayers } from '@/services/layer.service';
 import { isElectron, downloadDataUrl, sanitizeFilename } from '@/utils/fileUtils';
 import { FEEDBACK_EMAIL } from '@/utils/constants';
+import i18n from '@/i18n';
 
 const TYPE_LABELS: Record<string, string> = { drawing: 'Dibujo digital', pixelart: 'Pixel Art', comic: 'Cómic / Manga', '3d': '3D', hybrid: 'Híbrido' };
 const THUMB_MAX_SIDE = 480;
 
 /** Builds the plain-text diagnostic block — the same text whether it ends up copied, saved or
- * emailed, so what the person sees before sending is exactly what goes out. */
+ * emailed, so what the person sees before sending is exactly what goes out. Uses `i18n.t`
+ * directly rather than the `useTranslation` hook since it's called from outside render too
+ * (useMemo below); reads the dialogs namespace explicitly since this isn't a component. */
 function buildDiagnosticText(project: ReturnType<typeof useAppStore.getState>['project']) {
+  const t = (key: string, opts?: Record<string, unknown>) => i18n.t(`dialogs:feedback.${key}`, opts);
   const errors = getRecentErrors();
   const lines = [
-    `SCHIZZO STUDIO ${__APP_VERSION__}`,
-    `Plataforma: ${navigator.platform} — ${isElectron() ? 'app de escritorio' : 'navegador'}`,
-    project ? `Proyecto: ${TYPE_LABELS[project.type] ?? project.type}, ${project.width}×${project.height}px, ${project.layers.length} capa(s)` : 'Sin proyecto abierto',
+    t('diagnosticVersion', { version: __APP_VERSION__ }),
+    t('diagnosticPlatform', { platform: navigator.platform, context: isElectron() ? t('diagnosticDesktop') : t('diagnosticBrowser') }),
+    project ? t('diagnosticProject', { type: TYPE_LABELS[project.type] ?? project.type, width: project.width, height: project.height, layers: project.layers.length }) : t('diagnosticNoProject'),
   ];
   if (errors.length === 0) {
-    lines.push('', 'Sin errores registrados en esta sesión.');
+    lines.push('', t('diagnosticNoErrors'));
   } else {
-    lines.push('', `Últimos ${errors.length} error(es) de esta sesión:`);
+    lines.push('', t('diagnosticRecentErrors', { count: errors.length }));
     for (const e of errors) lines.push(`  [${e.source}] ${e.message}`);
   }
   return lines.join('\n');
 }
 
 export default function FeedbackDialog() {
+  const { t } = useTranslation('dialogs');
   const show = useUIStore((s) => s.showFeedbackDialog);
   const close = useUIStore((s) => s.closeFeedbackDialog);
   const feedbackContext = useUIStore((s) => s.feedbackContext);
@@ -66,7 +72,7 @@ export default function FeedbackDialog() {
         setThumb(c.toDataURL('image/jpeg', 0.8));
       } catch (err) {
         console.error(err);
-        toast.error('No se pudo generar la miniatura');
+        toast.error(t('feedback.thumbErrorToast'));
         setIncludeThumb(false);
       }
     }
@@ -77,9 +83,9 @@ export default function FeedbackDialog() {
   async function copyAll() {
     try {
       await navigator.clipboard.writeText(fullText());
-      toast.success('Copiado al portapapeles');
+      toast.success(t('feedback.copiedToast'));
     } catch {
-      toast.error('No se pudo copiar');
+      toast.error(t('feedback.copyErrorToast'));
     }
   }
 
@@ -87,7 +93,7 @@ export default function FeedbackDialog() {
     const name = `schizzo-comentario-${new Date().toISOString().slice(0, 10)}.txt`;
     if (isElectron()) {
       const r = await window.electronAPI.feedbackSave(fullText(), name);
-      if (!r.canceled) toast.success('Guardado');
+      if (!r.canceled) toast.success(t('feedback.savedToast'));
     } else {
       downloadDataUrl(`data:text/plain;charset=utf-8,${encodeURIComponent(fullText())}`, sanitizeFilename(name));
     }
@@ -105,16 +111,16 @@ export default function FeedbackDialog() {
   // matter how correct the link is). Gmail's own compose URL only needs a working browser, which is
   // far more reliably present, so it's offered as an equal option rather than a buried fallback.
   function emailBody() {
-    return fullText() + (includeThumb ? '\n\n(Adjunta también la miniatura que acabas de guardar/copiar, esto no la incluye sola.)' : '');
+    return fullText() + (includeThumb ? `\n\n(${t('feedback.attachThumbNote')})` : '');
   }
 
   function sendByEmail() {
-    const subject = encodeURIComponent('Comentario sobre SCHIZZO STUDIO');
+    const subject = encodeURIComponent(t('feedback.subject'));
     window.open(`mailto:${FEEDBACK_EMAIL}?subject=${subject}&body=${encodeURIComponent(emailBody())}`);
   }
 
   function sendByGmailWeb() {
-    const params = new URLSearchParams({ view: 'cm', fs: '1', to: FEEDBACK_EMAIL, su: 'Comentario sobre SCHIZZO STUDIO', body: emailBody() });
+    const params = new URLSearchParams({ view: 'cm', fs: '1', to: FEEDBACK_EMAIL, su: t('feedback.subject'), body: emailBody() });
     window.open(`https://mail.google.com/mail/?${params.toString()}`);
   }
 
@@ -122,20 +128,18 @@ export default function FeedbackDialog() {
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={close}>
       <div className="bg-panel border border-border rounded-lg w-[420px] max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2 p-4 pb-2">
-          <h2 className="text-sm font-semibold flex-1">Enviar comentario</h2>
+          <h2 className="text-sm font-semibold flex-1">{t('feedback.title')}</h2>
           <button onClick={close} className="text-textDim hover:text-text">
             <X size={16} />
           </button>
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto px-4 space-y-3">
-          <p className="text-[11px] text-textDim leading-relaxed">
-            Cuéntame qué ha pasado o qué se te ocurre. Se envía tal cual lo ves aquí — nada se manda solo.
-          </p>
+          <p className="text-[11px] text-textDim leading-relaxed">{t('feedback.intro')}</p>
           <textarea
             autoFocus
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder="¿Qué ha pasado, o qué quieres contarme?"
+            placeholder={t('feedback.placeholder')}
             rows={5}
             className="w-full bg-panelLight border border-border rounded px-2.5 py-2 text-xs resize-none"
           />
@@ -143,17 +147,17 @@ export default function FeedbackDialog() {
           {project && (
             <label className="flex items-center gap-2 text-[11px] text-textDim">
               <input type="checkbox" checked={includeThumb} onChange={(e) => toggleThumb(e.target.checked)} />
-              Incluir una miniatura de lo que estaba dibujando
+              {t('feedback.includeThumb')}
             </label>
           )}
           {includeThumb && thumb && (
-            <img src={thumb} alt="Miniatura del lienzo" className="w-full rounded border border-border checkerboard" />
+            <img src={thumb} alt={t('feedback.thumbAlt')} className="w-full rounded border border-border checkerboard" />
           )}
 
           <div>
             <button onClick={() => setShowDiagnostic((v) => !v)} className="flex items-center gap-1 text-[10px] text-textDim hover:text-text">
               {showDiagnostic ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-              Diagnóstico incluido (versión, errores recientes...)
+              {t('feedback.diagnosticToggle')}
             </button>
             {showDiagnostic && (
               <pre className="mt-1.5 text-[9px] text-textDim bg-panelLight border border-border rounded p-2 whitespace-pre-wrap break-words max-h-40 overflow-y-auto">
@@ -162,27 +166,27 @@ export default function FeedbackDialog() {
             )}
           </div>
         </div>
-        <p className="px-4 pt-1 text-[9px] text-textDim">Si "Correo" o "Gmail" no abren nada, copia o guarda y mándamelo por donde prefieras.</p>
+        <p className="px-4 pt-1 text-[9px] text-textDim">{t('feedback.sendHint')}</p>
         <div className="flex flex-wrap items-center gap-1.5 p-4 pt-2">
           <button onClick={copyAll} className="flex-1 min-w-[90px] flex items-center justify-center gap-1.5 text-xs bg-panelLight hover:bg-border rounded py-1.5">
-            <Copy size={13} /> Copiar
+            <Copy size={13} /> {t('feedback.copy')}
           </button>
           <button onClick={saveFile} className="flex-1 min-w-[90px] flex items-center justify-center gap-1.5 text-xs bg-panelLight hover:bg-border rounded py-1.5">
-            <Save size={13} /> Guardar
+            <Save size={13} /> {t('feedback.save')}
           </button>
           <button
             onClick={sendByEmail}
-            title="Abre tu cliente de correo — si no pasa nada al pulsar, probablemente no tienes uno configurado; prueba con Gmail al lado"
+            title={t('feedback.emailTitle')}
             className="flex-1 min-w-[90px] flex items-center justify-center gap-1.5 text-xs bg-accentSoft text-accent hover:bg-accent hover:text-white rounded py-1.5 transition-colors"
           >
-            <Mail size={13} /> Correo
+            <Mail size={13} /> {t('feedback.email')}
           </button>
           <button
             onClick={sendByGmailWeb}
-            title="Abre un correo nuevo en Gmail, en el navegador — funciona aunque no tengas ningún cliente de correo configurado"
+            title={t('feedback.gmailTitle')}
             className="flex-1 min-w-[90px] flex items-center justify-center gap-1.5 text-xs bg-accentSoft text-accent hover:bg-accent hover:text-white rounded py-1.5 transition-colors"
           >
-            <Globe size={13} /> Gmail
+            <Globe size={13} /> {t('feedback.gmail')}
           </button>
         </div>
       </div>

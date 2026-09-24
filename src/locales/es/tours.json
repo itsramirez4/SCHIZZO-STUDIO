@@ -1,0 +1,47 @@
+{
+  "overlay": {
+    "stepCounter": "{{name}} · {{current}}/{{total}}",
+    "skip": "Saltar tour",
+    "previous": "Anterior",
+    "next": "Siguiente",
+    "finish": "Finalizar"
+  },
+  "gettingStarted": {
+    "name": "Primeros pasos",
+    "description": "Un recorrido rápido por lo esencial: crear un proyecto, dibujar, capas y guardar.",
+    "steps": {
+      "newProject": {
+        "title": "Crear un proyecto",
+        "description": "Desde acá creás un lienzo nuevo, eligiendo tamaño o un preset (pixel art, HD, A4)."
+      },
+      "brush": {
+        "title": "El pincel",
+        "description": "Tu herramienta principal para dibujar. Tiene tamaño, dureza, opacidad y espaciado configurables más abajo en esta barra."
+      },
+      "paintbucket": {
+        "title": "Bote de pintura",
+        "description": "Rellena una zona con el color o patrón activo — probá también los patrones y degradados desde la Biblioteca de assets."
+      },
+      "selection": {
+        "title": "Selección",
+        "description": "Delimita una zona del lienzo para que los demás cambios solo la afecten a ella."
+      },
+      "layers": {
+        "title": "Capas",
+        "description": "Organizá tu dibujo en capas independientes — como hojas transparentes apiladas que podés reordenar, ocultar o mezclar."
+      },
+      "undo": {
+        "title": "Deshacer y rehacer",
+        "description": "Todo lo que hacés queda en el historial — no dudes en experimentar, siempre podés volver atrás."
+      },
+      "save": {
+        "title": "Guardar tu proyecto",
+        "description": "Guarda el proyecto completo (capas, animación, todo) en un archivo que podés volver a abrir después."
+      },
+      "export": {
+        "title": "Exportar tu trabajo",
+        "description": "Elegí entre PNG, JPG, WebP, AVIF, BMP, TIFF o SVG. El SVG es la imagen aplanada envuelta en un archivo SVG, no es vectorial editable — esta app trabaja en píxeles."
+      }
+    }
+  }
+}

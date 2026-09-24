@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import { useUIStore } from '@/store/uiStore';
 import { useAppStore, getFrameLayers } from '@/store/appStore';
 import * as layerService from '@/services/layer.service';
@@ -8,6 +9,7 @@ import { seamCarveResize, estimateSeamCount } from '@/services/seamCarve.service
 const SLOW_WARNING_THRESHOLD = 150;
 
 export default function ResizeDialog() {
+  const { t } = useTranslation('dialogs');
   const show = useUIStore((s) => s.showResizeDialog);
   const close = useUIStore((s) => s.closeResizeDialog);
   const project = useAppStore((s) => s.project);
@@ -49,7 +51,7 @@ export default function ResizeDialog() {
       });
       if (!result) {
         setRunning(false);
-        toast('Redimensionado cancelado');
+        toast(t('resize.cancelledToast'));
         return;
       }
       resizedFrames.push(result);
@@ -59,22 +61,19 @@ export default function ResizeDialog() {
 
     finishContentAwareResize(width, height, resizedFrames);
     setRunning(false);
-    toast.success('Lienzo redimensionado');
+    toast.success(t('resize.successToast'));
     close();
   }
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
       <div className="bg-panel border border-border rounded-lg w-[380px] p-5">
-        <h2 className="text-lg font-semibold mb-1">Redimensionar (inteligente)</h2>
-        <p className="text-[11px] text-textDim mb-4">
-          Elimina o duplica las franjas de píxeles menos detalladas en vez de escalar todo de forma uniforme
-          (seam carving). Aplana todas las capas en una sola.
-        </p>
+        <h2 className="text-lg font-semibold mb-1">{t('resize.title')}</h2>
+        <p className="text-[11px] text-textDim mb-4">{t('resize.description')}</p>
 
         <div className="flex gap-3 mb-3">
           <div className="flex-1">
-            <label className="block text-xs text-textDim mb-1">Ancho (px)</label>
+            <label className="block text-xs text-textDim mb-1">{t('resize.width')}</label>
             <input
               type="number"
               value={width}
@@ -85,7 +84,7 @@ export default function ResizeDialog() {
             />
           </div>
           <div className="flex-1">
-            <label className="block text-xs text-textDim mb-1">Alto (px)</label>
+            <label className="block text-xs text-textDim mb-1">{t('resize.height')}</label>
             <input
               type="number"
               value={height}
@@ -98,13 +97,14 @@ export default function ResizeDialog() {
         </div>
 
         <p className="text-[11px] text-textDim mb-1">
-          Actual: {project.width}×{project.height}px{frameCount > 1 ? ` · ${frameCount} frames` : ''}
+          {t('resize.current', { width: project.width, height: project.height })}
+          {frameCount > 1 ? t('resize.currentFrames', { count: frameCount }) : ''}
         </p>
 
         {!unchanged && totalSeams >= SLOW_WARNING_THRESHOLD && !running && (
           <p className="text-[11px] text-amber-400 mb-2">
-            {totalSeams} costuras a procesar{frameCount > 1 ? ` (${seamsPerFrame} × ${frameCount} frames)` : ''} — puede tardar varios
-            segundos.
+            {t('resize.seamsWarning', { count: totalSeams })}
+            {frameCount > 1 ? t('resize.seamsWarningFrames', { perFrame: seamsPerFrame, frames: frameCount }) : ''}
           </p>
         )}
 
@@ -116,15 +116,13 @@ export default function ResizeDialog() {
                 style={{ width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%` }}
               />
             </div>
-            <p className="text-[10px] text-textDim mt-1">
-              {progress.done} / {progress.total} costuras
-            </p>
+            <p className="text-[10px] text-textDim mt-1">{t('resize.progress', { done: progress.done, total: progress.total })}</p>
           </div>
         )}
 
         <div className="flex justify-end gap-2 mt-2">
           <button onClick={handleClose} className="px-3 py-1.5 text-sm text-textDim hover:text-text">
-            {running ? 'Cancelar' : 'Cerrar'}
+            {running ? t('resize.cancel') : t('resize.close')}
           </button>
           {!running && (
             <button
@@ -132,7 +130,7 @@ export default function ResizeDialog() {
               disabled={unchanged}
               className="px-3 py-1.5 text-sm bg-accent text-white rounded disabled:opacity-40"
             >
-              Aplicar
+              {t('resize.apply')}
             </button>
           )}
         </div>

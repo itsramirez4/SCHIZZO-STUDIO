@@ -27,6 +27,7 @@ Electron 31 · React 18 · TypeScript · Vite · Tailwind · Zustand.
 - **Animación**, procesamiento por lotes, grabación de sesión y exportación a PNG, JPG, WebP, GIF/APNG, SVG y más.
 - **IA como asistente, nunca obligatoria**: referencias, poses, paletas, limpieza de línea. Se puede desactivar por completo desde el botón de la cabecera y la app queda 100 % manual (sin asistente, sin modelos, sin conexiones).
 - **Enviar comentario**: desde la cabecera o la pantalla de inicio, en cualquier momento (fase de pruebas con usuarios de confianza); también se abre solo si una región entera de la app deja de funcionar. Incluye la versión, el tipo de proyecto y los últimos errores de la sesión, y opcionalmente una miniatura de lo que se estaba dibujando — siempre visible antes de copiar, guardar o enviar; nada se manda sin ese clic, ni siquiera cuando el diálogo se abrió solo. Copiar y Guardar son las opciones fiables (probadas de verdad); "Correo" y "Gmail" dependen de que el sistema tenga un cliente de correo o navegador que responda a esos enlaces, así que se ofrecen las dos — si ninguna abre nada, el mensaje ya está para copiar o guardar.
+- **Idioma**: español e inglés por ahora (más adelante, más). Se detecta el del sistema operativo al arrancar, con inglés como reserva si el tuyo no está soportado; se puede fijar uno a mano desde Personalización → Idioma. La traducción cubre hoy la cabecera, la caja de herramientas, las pestañas de la barra lateral, la pantalla de inicio, los diálogos más usados y el tour de bienvenida — el contenido interno de cada panel y la documentación siguen en español, con una pasada de traducción pendiente.
 
 ## Desarrollo
 
@@ -59,7 +60,7 @@ npm run check      # batería local de comprobaciones (ver abajo)
 | `pixelart` | El pincel no deja semitransparencias, cuantizar y tramar solo usan la paleta, pixelar. |
 | `comic` | Plantillas de viñetas, tramas, globos de texto, líneas de velocidad y el panel de cómic. |
 | `animacion` | Fotogramas (crear, duplicar, borrar, duración, fps), deshacer/rehacer y exportar GIF y APNG. |
-| `paneles` | Los 19 paneles laterales y los diálogos se abren sin errores; los atajos de herramienta; el tour de bienvenida se dispara solo una vez, en el primer proyecto. |
+| `paneles` | Los 19 paneles laterales y los diálogos se abren sin errores; los atajos de herramienta; el tour de bienvenida se dispara solo una vez, en el primer proyecto; el idioma sigue al sistema (o cae a inglés) salvo que se fije a mano. |
 | `ia` | Desactivar la IA quita el asistente, se guarda la preferencia y no hay peticiones de red. |
 | `asistente` | Las 8 funciones de IA que son en realidad proceso local (sin modelo ni red): limpieza de trazos, composición, separar capas, sugerir paletas, ajustar el maniquí a una pose, prompts de referencia, reiluminar e interpretar texto. |
 | `ia-generativa` | Generar imagen y reescribir texto llegan de verdad al proveedor configurado (contra un servidor mock local, sin API de pago) y no se hace ninguna petición con la IA desactivada. |

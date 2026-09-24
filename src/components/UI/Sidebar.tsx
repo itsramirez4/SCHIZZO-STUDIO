@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { Layers, SlidersHorizontal, History, BarChart3, Film, MessageSquareText, Palette, LibraryBig, ListChecks, GraduationCap, Video, Image, Cloud, Keyboard, Triangle, Gauge, PencilRuler, GitBranch, Sparkles } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useAiStore } from '@/store/aiStore';
 import { useUIStore } from '@/store/uiStore';
 import ErrorBoundary from '@/components/UI/ErrorBoundary';
@@ -34,18 +35,12 @@ type Tab = 'assistant' | 'layers' | 'filters' | 'history' | 'histogram' | 'anima
 // when they were added — each group renders as its own little cluster in the rail (a gap plus a
 // divider line), and the open panel shows its group's name above it, so "where is this" has an
 // answer beyond a tooltip. `uiStore`'s toggles already guarantee at most one of these is open at
-// once (see `closeAllSidebarPanels` there), so grouping is purely presentational here.
-const GROUP_LABELS: Record<string, string> = {
-  paint: 'Pintura',
-  color: 'Color y recursos',
-  learn: 'Aprender',
-  project: 'Proyecto',
-  production: 'Producción',
-  system: 'Sistema',
-};
+// once (see `closeAllSidebarPanels` there), so grouping is purely presentational here. Group and
+// tab ids below double as translation keys under chrome.json's `sidebar.groups`/`sidebar.tabs`.
 const GROUP_ORDER = ['paint', 'color', 'learn', 'project', 'production', 'system'];
 
 export default function Sidebar() {
+  const { t } = useTranslation('chrome');
   const showLayerPanel = useUIStore((s) => s.showLayerPanel);
   const showFilterPanel = useUIStore((s) => s.showFilterPanel);
   const showHistoryPanel = useUIStore((s) => s.showHistoryPanel);
@@ -87,25 +82,25 @@ export default function Sidebar() {
   const toggleStudyPanel = useUIStore((s) => s.toggleStudyPanel);
 
   const tabs: { id: Tab; icon: typeof Layers; label: string; active: boolean; toggle: () => void; group: string }[] = [
-    { id: 'layers', icon: Layers, label: 'Capas', active: showLayerPanel, toggle: toggleLayerPanel, group: 'paint' },
-    { id: 'filters', icon: SlidersHorizontal, label: 'Filtros', active: showFilterPanel, toggle: toggleFilterPanel, group: 'paint' },
-    { id: 'perspective', icon: Triangle, label: 'Perspectiva y simetría', active: showPerspectivePanel, toggle: togglePerspectivePanel, group: 'paint' },
-    { id: 'colorTools', icon: Palette, label: 'Herramientas de color', active: showColorToolsPanel, toggle: toggleColorToolsPanel, group: 'color' },
-    { id: 'assetLibrary', icon: LibraryBig, label: 'Biblioteca de assets', active: showAssetLibraryPanel, toggle: toggleAssetLibraryPanel, group: 'color' },
-    { id: 'references', icon: Image, label: 'Referencias', active: showReferencesPanel, toggle: toggleReferencesPanel, group: 'color' },
-    { id: 'study', icon: PencilRuler, label: 'Estudio: guías, tutor y academia', active: showStudyPanel, toggle: toggleStudyPanel, group: 'learn' },
-    { id: 'learning', icon: GraduationCap, label: 'Aprender', active: showLearningPanel, toggle: toggleLearningPanel, group: 'learn' },
-    ...(aiEnabled ? [{ id: 'assistant' as Tab, icon: Sparkles, label: 'Asistente de IA (referencias, poses, paletas, limpieza…)', active: showAssistantPanel, toggle: toggleAssistantPanel, group: 'learn' }] : []),
-    { id: 'history', icon: History, label: 'Historial', active: showHistoryPanel, toggle: toggleHistoryPanel, group: 'project' },
-    { id: 'versions', icon: GitBranch, label: 'Versiones del proyecto y comparación', active: showVersionsPanel, toggle: toggleVersionsPanel, group: 'project' },
-    { id: 'histogram', icon: BarChart3, label: 'Histograma', active: showHistogramPanel, toggle: toggleHistogramPanel, group: 'project' },
-    { id: 'stats', icon: Gauge, label: 'Estadísticas del proyecto', active: showStatsPanel, toggle: toggleStatsPanel, group: 'project' },
-    { id: 'comic', icon: MessageSquareText, label: 'Cómic / Manga', active: showComicPanel, toggle: toggleComicPanel, group: 'production' },
-    { id: 'animation', icon: Film, label: 'Animación', active: showAnimationPanel, toggle: toggleAnimationPanel, group: 'production' },
-    { id: 'batch', icon: ListChecks, label: 'Procesamiento por lotes', active: showBatchPanel, toggle: toggleBatchPanel, group: 'production' },
-    { id: 'recording', icon: Video, label: 'Grabación de sesión', active: showRecordingPanel, toggle: toggleRecordingPanel, group: 'production' },
-    { id: 'cloudSync', icon: Cloud, label: 'Nube', active: showCloudSyncPanel, toggle: toggleCloudSyncPanel, group: 'system' },
-    { id: 'customization', icon: Keyboard, label: 'Atajos y personalización', active: showCustomizationPanel, toggle: toggleCustomizationPanel, group: 'system' },
+    { id: 'layers', icon: Layers, label: t('sidebar.tabs.layers'), active: showLayerPanel, toggle: toggleLayerPanel, group: 'paint' },
+    { id: 'filters', icon: SlidersHorizontal, label: t('sidebar.tabs.filters'), active: showFilterPanel, toggle: toggleFilterPanel, group: 'paint' },
+    { id: 'perspective', icon: Triangle, label: t('sidebar.tabs.perspective'), active: showPerspectivePanel, toggle: togglePerspectivePanel, group: 'paint' },
+    { id: 'colorTools', icon: Palette, label: t('sidebar.tabs.colorTools'), active: showColorToolsPanel, toggle: toggleColorToolsPanel, group: 'color' },
+    { id: 'assetLibrary', icon: LibraryBig, label: t('sidebar.tabs.assetLibrary'), active: showAssetLibraryPanel, toggle: toggleAssetLibraryPanel, group: 'color' },
+    { id: 'references', icon: Image, label: t('sidebar.tabs.references'), active: showReferencesPanel, toggle: toggleReferencesPanel, group: 'color' },
+    { id: 'study', icon: PencilRuler, label: t('sidebar.tabs.study'), active: showStudyPanel, toggle: toggleStudyPanel, group: 'learn' },
+    { id: 'learning', icon: GraduationCap, label: t('sidebar.tabs.learning'), active: showLearningPanel, toggle: toggleLearningPanel, group: 'learn' },
+    ...(aiEnabled ? [{ id: 'assistant' as Tab, icon: Sparkles, label: t('sidebar.tabs.assistant'), active: showAssistantPanel, toggle: toggleAssistantPanel, group: 'learn' }] : []),
+    { id: 'history', icon: History, label: t('sidebar.tabs.history'), active: showHistoryPanel, toggle: toggleHistoryPanel, group: 'project' },
+    { id: 'versions', icon: GitBranch, label: t('sidebar.tabs.versions'), active: showVersionsPanel, toggle: toggleVersionsPanel, group: 'project' },
+    { id: 'histogram', icon: BarChart3, label: t('sidebar.tabs.histogram'), active: showHistogramPanel, toggle: toggleHistogramPanel, group: 'project' },
+    { id: 'stats', icon: Gauge, label: t('sidebar.tabs.stats'), active: showStatsPanel, toggle: toggleStatsPanel, group: 'project' },
+    { id: 'comic', icon: MessageSquareText, label: t('sidebar.tabs.comic'), active: showComicPanel, toggle: toggleComicPanel, group: 'production' },
+    { id: 'animation', icon: Film, label: t('sidebar.tabs.animation'), active: showAnimationPanel, toggle: toggleAnimationPanel, group: 'production' },
+    { id: 'batch', icon: ListChecks, label: t('sidebar.tabs.batch'), active: showBatchPanel, toggle: toggleBatchPanel, group: 'production' },
+    { id: 'recording', icon: Video, label: t('sidebar.tabs.recording'), active: showRecordingPanel, toggle: toggleRecordingPanel, group: 'production' },
+    { id: 'cloudSync', icon: Cloud, label: t('sidebar.tabs.cloudSync'), active: showCloudSyncPanel, toggle: toggleCloudSyncPanel, group: 'system' },
+    { id: 'customization', icon: Keyboard, label: t('sidebar.tabs.customization'), active: showCustomizationPanel, toggle: toggleCustomizationPanel, group: 'system' },
   ];
 
   const anyOpen =
@@ -137,103 +132,103 @@ export default function Sidebar() {
         <div className="sidebar-panel w-72 border-r border-border flex flex-col overflow-x-hidden">
         {activeTab && (
           <div className="px-3 pt-2.5 pb-1 text-[9px] font-semibold uppercase tracking-wide text-textDim shrink-0">
-            {GROUP_LABELS[activeTab.group]}
+            {t(`sidebar.groups.${activeTab.group}`)}
           </div>
         )}
-        <Suspense fallback={<div className="p-3 text-xs text-textDim">Cargando…</div>}>
+        <Suspense fallback={<div className="p-3 text-xs text-textDim">{t('sidebar.loading')}</div>}>
           {showLayerPanel && (
             <div className="flex-1 min-h-0 border-b border-border overflow-y-auto">
-              <ErrorBoundary name="Capas" compact><LayerPanel /></ErrorBoundary>
+              <ErrorBoundary name={t('sidebar.tabs.layers')} compact><LayerPanel /></ErrorBoundary>
             </div>
           )}
           {showFilterPanel && (
             <div className="flex-1 min-h-0 border-b border-border overflow-y-auto">
-              <ErrorBoundary name="Filtros" compact><FilterPanel /></ErrorBoundary>
+              <ErrorBoundary name={t('sidebar.tabs.filters')} compact><FilterPanel /></ErrorBoundary>
             </div>
           )}
           {showAnimationPanel && (
             <div className="flex-1 min-h-0 border-b border-border overflow-y-auto">
-              <ErrorBoundary name="Animación" compact><TimelinePanel /></ErrorBoundary>
+              <ErrorBoundary name={t('sidebar.tabs.animation')} compact><TimelinePanel /></ErrorBoundary>
             </div>
           )}
           {showComicPanel && (
             <div className="flex-1 min-h-0 border-b border-border overflow-y-auto">
-              <ErrorBoundary name="Cómic" compact><ComicPanel /></ErrorBoundary>
+              <ErrorBoundary name={t('sidebar.tabs.comic')} compact><ComicPanel /></ErrorBoundary>
             </div>
           )}
           {showColorToolsPanel && (
             <div className="flex-1 min-h-0 border-b border-border overflow-y-auto">
-              <ErrorBoundary name="Herramientas de color" compact><ColorToolsPanel /></ErrorBoundary>
+              <ErrorBoundary name={t('sidebar.tabs.colorTools')} compact><ColorToolsPanel /></ErrorBoundary>
             </div>
           )}
           {showAssetLibraryPanel && (
             <div className="flex-1 min-h-0 border-b border-border overflow-y-auto">
-              <ErrorBoundary name="Biblioteca" compact><AssetLibraryPanel /></ErrorBoundary>
+              <ErrorBoundary name={t('sidebar.tabs.assetLibrary')} compact><AssetLibraryPanel /></ErrorBoundary>
             </div>
           )}
           {showReferencesPanel && (
             <div className="flex-1 min-h-0 border-b border-border overflow-y-auto">
-              <ErrorBoundary name="Referencias" compact><ReferencesPanel /></ErrorBoundary>
+              <ErrorBoundary name={t('sidebar.tabs.references')} compact><ReferencesPanel /></ErrorBoundary>
             </div>
           )}
           {showCloudSyncPanel && (
             <div className="flex-1 min-h-0 border-b border-border overflow-y-auto p-3">
-              <ErrorBoundary name="Nube" compact><CloudSyncPanel /></ErrorBoundary>
+              <ErrorBoundary name={t('sidebar.tabs.cloudSync')} compact><CloudSyncPanel /></ErrorBoundary>
             </div>
           )}
           {showCustomizationPanel && (
             <div className="flex-1 min-h-0 border-b border-border overflow-y-auto">
-              <ErrorBoundary name="Atajos" compact><CustomizationPanel /></ErrorBoundary>
+              <ErrorBoundary name={t('sidebar.tabs.customization')} compact><CustomizationPanel /></ErrorBoundary>
             </div>
           )}
           {showPerspectivePanel && (
             <div className="flex-1 min-h-0 border-b border-border overflow-y-auto">
-              <ErrorBoundary name="Perspectiva" compact><PerspectivePanel /></ErrorBoundary>
+              <ErrorBoundary name={t('sidebar.tabs.perspective')} compact><PerspectivePanel /></ErrorBoundary>
             </div>
           )}
           {showVersionsPanel && (
             <div className="flex-1 min-h-0 border-b border-border overflow-y-auto">
-              <ErrorBoundary name="Versiones" compact><VersionsPanel /></ErrorBoundary>
+              <ErrorBoundary name={t('sidebar.tabs.versions')} compact><VersionsPanel /></ErrorBoundary>
             </div>
           )}
           {showAssistantPanel && (
             <div className="flex-1 min-h-0 border-b border-border overflow-y-auto">
-              <ErrorBoundary name="Asistente de IA" compact><AssistantPanel /></ErrorBoundary>
+              <ErrorBoundary name={t('sidebar.tabs.assistant')} compact><AssistantPanel /></ErrorBoundary>
             </div>
           )}
           {showStudyPanel && (
             <div className="flex-1 min-h-0 border-b border-border overflow-y-auto">
-              <ErrorBoundary name="Estudio" compact><StudyPanel /></ErrorBoundary>
+              <ErrorBoundary name={t('sidebar.tabs.study')} compact><StudyPanel /></ErrorBoundary>
             </div>
           )}
           {showBatchPanel && (
             <div className="flex-1 min-h-0 border-b border-border overflow-y-auto p-3">
-              <ErrorBoundary name="Lotes" compact><BatchPanel /></ErrorBoundary>
+              <ErrorBoundary name={t('sidebar.tabs.batch')} compact><BatchPanel /></ErrorBoundary>
             </div>
           )}
           {showLearningPanel && (
             <div className="flex-1 min-h-0 border-b border-border overflow-y-auto">
-              <ErrorBoundary name="Aprender" compact><LearningPanel /></ErrorBoundary>
+              <ErrorBoundary name={t('sidebar.tabs.learning')} compact><LearningPanel /></ErrorBoundary>
             </div>
           )}
           {showRecordingPanel && (
             <div className="flex-1 min-h-0 border-b border-border overflow-y-auto">
-              <ErrorBoundary name="Grabación" compact><RecordingPanel /></ErrorBoundary>
+              <ErrorBoundary name={t('sidebar.tabs.recording')} compact><RecordingPanel /></ErrorBoundary>
             </div>
           )}
           {showHistogramPanel && (
             <div className="flex-1 min-h-0 border-b border-border overflow-y-auto">
-              <ErrorBoundary name="Histograma" compact><Histogram /></ErrorBoundary>
+              <ErrorBoundary name={t('sidebar.tabs.histogram')} compact><Histogram /></ErrorBoundary>
             </div>
           )}
           {showHistoryPanel && (
             <div className="flex-1 min-h-0 overflow-y-auto">
-              <ErrorBoundary name="Historial" compact><HistoryPanel /></ErrorBoundary>
+              <ErrorBoundary name={t('sidebar.tabs.history')} compact><HistoryPanel /></ErrorBoundary>
             </div>
           )}
           {showStatsPanel && (
             <div className="flex-1 min-h-0 border-t border-border overflow-y-auto">
-              <ErrorBoundary name="Estadísticas" compact><ProjectStatsPanel /></ErrorBoundary>
+              <ErrorBoundary name={t('sidebar.tabs.stats')} compact><ProjectStatsPanel /></ErrorBoundary>
             </div>
           )}
         </Suspense>
@@ -241,7 +236,7 @@ export default function Sidebar() {
       )}
       <div className="w-11 flex flex-col items-center py-2 gap-2 overflow-y-auto">
         {GROUP_ORDER.map((group, gi) => {
-          const groupTabs = tabs.filter((t) => t.group === group);
+          const groupTabs = tabs.filter((tab) => tab.group === group);
           if (groupTabs.length === 0) return null;
           return (
             <div key={group} className="flex flex-col items-center gap-1">
@@ -251,6 +246,7 @@ export default function Sidebar() {
                   key={id}
                   onClick={toggle}
                   title={label}
+                  data-tour={id === 'layers' ? 'layers-tab' : undefined}
                   className={`relative w-8 h-8 flex items-center justify-center rounded transition-colors ${
                     active ? 'bg-accentSoft text-accent' : 'text-textDim hover:bg-panelLight hover:text-text'
                   }`}

@@ -1,4 +1,5 @@
 import { Paintbrush, Eraser, BoxSelect, Lasso, Wand, PaintBucket, Blend, Type, Pipette, ZoomIn, Hand, Move3d, PenTool, Square, Circle, Hexagon, Star, CaseSensitive, Waves, Droplets, Minus, Spline, MousePointer2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useTools } from '@/hooks/useTools';
 import { useAppStore } from '@/store/appStore';
 import { ToolType, ProjectType } from '@/types';
@@ -17,36 +18,40 @@ import ShapeToolOptions from './ShapeToolOptions';
 // Grouped by what an artist reaches for together, not by when each tool was added — rendered as
 // its own little cluster (own mini-grid, small gap before the next one) instead of one undivided
 // 4-column grid, so the 20+ icons read as sections rather than a wall.
-const TOOLS: { id: ToolType; label: string; icon: typeof Paintbrush; group: string }[] = [
-  { id: 'brush', label: 'Pincel', icon: Paintbrush, group: 'paint' },
-  { id: 'eraser', label: 'Borrador', icon: Eraser, group: 'paint' },
-  { id: 'smudge', label: 'Mezclador de color (difuminar)', icon: Droplets, group: 'paint' },
+// `label` is the translation key under chrome.json's `toolbox` namespace — every id here matches
+// its own key 1:1 (see src/locales/*/chrome.json), so the key is just the id; kept as an explicit
+// field rather than reusing `id` inline so a future tool whose id and label key diverge doesn't
+// have to fight this table's shape.
+const TOOLS: { id: ToolType; labelKey: string; icon: typeof Paintbrush; group: string }[] = [
+  { id: 'brush', labelKey: 'brush', icon: Paintbrush, group: 'paint' },
+  { id: 'eraser', labelKey: 'eraser', icon: Eraser, group: 'paint' },
+  { id: 'smudge', labelKey: 'smudge', icon: Droplets, group: 'paint' },
 
-  { id: 'selection', label: 'Selección', icon: BoxSelect, group: 'select' },
-  { id: 'lasso', label: 'Lazo', icon: Lasso, group: 'select' },
-  { id: 'magicWand', label: 'Varita mágica', icon: Wand, group: 'select' },
+  { id: 'selection', labelKey: 'selection', icon: BoxSelect, group: 'select' },
+  { id: 'lasso', labelKey: 'lasso', icon: Lasso, group: 'select' },
+  { id: 'magicWand', labelKey: 'magicWand', icon: Wand, group: 'select' },
 
-  { id: 'paintbucket', label: 'Bote de pintura', icon: PaintBucket, group: 'fill' },
-  { id: 'gradient', label: 'Degradado', icon: Blend, group: 'fill' },
+  { id: 'paintbucket', labelKey: 'paintbucket', icon: PaintBucket, group: 'fill' },
+  { id: 'gradient', labelKey: 'gradient', icon: Blend, group: 'fill' },
 
-  { id: 'pen', label: 'Pluma', icon: PenTool, group: 'shape' },
-  { id: 'curve', label: 'Curva (arrastra, mueve para curvar, clic para fijar)', icon: Spline, group: 'shape' },
-  { id: 'line', label: 'Línea recta (Mayús = ángulos de 15°)', icon: Minus, group: 'shape' },
-  { id: 'shapeRect', label: 'Rectángulo', icon: Square, group: 'shape' },
-  { id: 'shapeEllipse', label: 'Elipse', icon: Circle, group: 'shape' },
-  { id: 'shapePolygon', label: 'Polígono', icon: Hexagon, group: 'shape' },
-  { id: 'shapeStar', label: 'Estrella', icon: Star, group: 'shape' },
-  { id: 'vectorSelect', label: 'Seleccionar objeto vectorial (capas vectoriales)', icon: MousePointer2, group: 'shape' },
+  { id: 'pen', labelKey: 'pen', icon: PenTool, group: 'shape' },
+  { id: 'curve', labelKey: 'curve', icon: Spline, group: 'shape' },
+  { id: 'line', labelKey: 'line', icon: Minus, group: 'shape' },
+  { id: 'shapeRect', labelKey: 'shapeRect', icon: Square, group: 'shape' },
+  { id: 'shapeEllipse', labelKey: 'shapeEllipse', icon: Circle, group: 'shape' },
+  { id: 'shapePolygon', labelKey: 'shapePolygon', icon: Hexagon, group: 'shape' },
+  { id: 'shapeStar', labelKey: 'shapeStar', icon: Star, group: 'shape' },
+  { id: 'vectorSelect', labelKey: 'vectorSelect', icon: MousePointer2, group: 'shape' },
 
-  { id: 'text', label: 'Texto', icon: Type, group: 'text' },
-  { id: 'vectorText', label: 'Texto vectorial', icon: CaseSensitive, group: 'text' },
+  { id: 'text', labelKey: 'text', icon: Type, group: 'text' },
+  { id: 'vectorText', labelKey: 'vectorText', icon: CaseSensitive, group: 'text' },
 
-  { id: 'eyedropper', label: 'Gotero', icon: Pipette, group: 'nav' },
-  { id: 'zoom', label: 'Zoom', icon: ZoomIn, group: 'nav' },
-  { id: 'pan', label: 'Mano', icon: Hand, group: 'nav' },
+  { id: 'eyedropper', labelKey: 'eyedropper', icon: Pipette, group: 'nav' },
+  { id: 'zoom', labelKey: 'zoom', icon: ZoomIn, group: 'nav' },
+  { id: 'pan', labelKey: 'pan', icon: Hand, group: 'nav' },
 
-  { id: 'transform', label: 'Transformar', icon: Move3d, group: 'transform' },
-  { id: 'warp', label: 'Deformar (liquify)', icon: Waves, group: 'transform' },
+  { id: 'transform', labelKey: 'transform', icon: Move3d, group: 'transform' },
+  { id: 'warp', labelKey: 'warp', icon: Waves, group: 'transform' },
 ];
 const GROUP_ORDER = ['paint', 'select', 'fill', 'shape', 'text', 'nav', 'transform'];
 
@@ -65,6 +70,7 @@ const TOOL_TO_ACTION_ID: Partial<Record<ToolType, string>> = Object.fromEntries(
 );
 
 export default function Toolbox() {
+  const { t } = useTranslation('chrome');
   const { currentTool, setCurrentTool } = useTools();
   const overrides = useCustomizationStore((s) => s.overrides);
   const projectType = useAppStore((s) => s.project?.type);
@@ -90,7 +96,8 @@ export default function Toolbox() {
           if (groupTools.length === 0) return null;
           return (
             <div key={group} className="grid grid-cols-4 gap-1">
-              {groupTools.map(({ id, label, icon: Icon }) => {
+              {groupTools.map(({ id, labelKey, icon: Icon }) => {
+                const label = t(`toolbox.${labelKey}`);
                 const shortcut = shortcutLabel(id);
                 const active = currentTool === id;
                 return (

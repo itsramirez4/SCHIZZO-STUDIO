@@ -16,6 +16,9 @@ fs.mkdirSync(outDir, { recursive: true });
 // that throttling for this process only; the shipped app keeps normal background throttling.
 app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
 app.commandLine.appendSwitch('disable-renderer-backgrounding');
+// The app's UI language now follows the OS locale by default — pin it to Spanish here so the
+// check battery's ~30 Spanish-text locators keep working regardless of the machine's real locale.
+app.commandLine.appendSwitch('lang', 'es');
 
 Object.defineProperty(app, 'isPackaged', { value: true }); // load dist/index.html, like the real build
 

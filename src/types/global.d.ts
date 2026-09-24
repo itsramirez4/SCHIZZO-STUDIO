@@ -66,6 +66,7 @@ declare global {
       onUpdateEvent: (channel: string, callback: (...args: unknown[]) => void) => () => void;
       onMenuEvent: (channel: string, callback: () => void) => () => void;
       isCheckMode: boolean;
+      getSystemLocale: () => Promise<string>;
     };
   }
 }
