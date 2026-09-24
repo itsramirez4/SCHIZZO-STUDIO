@@ -1,18 +1,16 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import { useAppStore } from '@/store/appStore';
 import { usePerspectiveStore } from '@/store/perspectiveStore';
 import { PerspectiveGridType, VanishingPoint } from '@/types/perspective';
 import { Lock, Unlock, Eye, EyeOff, Trash2 } from 'lucide-react';
 import { DEFAULT_HORIZON_COLOR, resolveHorizon } from '@/services/perspectiveGrid.service';
 
-const GRID_TYPES: { id: PerspectiveGridType; label: string }[] = [
-  { id: 'onePoint', label: '1 punto' },
-  { id: 'twoPoint', label: '2 puntos' },
-  { id: 'threePoint', label: '3 puntos' },
-];
+const GRID_TYPES: PerspectiveGridType[] = ['onePoint', 'twoPoint', 'threePoint'];
 
 export default function PerspectiveGridPanel() {
+  const { t } = useTranslation('panelsProduction');
   const project = useAppStore((s) => s.project);
   const grid = usePerspectiveStore((s) => s.grid);
   const setGridType = usePerspectiveStore((s) => s.setGridType);
@@ -45,23 +43,23 @@ export default function PerspectiveGridPanel() {
     if (!name || !project) return;
     saveCurrentAsPreset(name, project.width, project.height);
     setNewPresetName('');
-    toast.success('Preset guardado');
+    toast.success(t('perspective.grid.presetSavedToast'));
   }
 
   return (
     <div className="space-y-3">
       <div className="space-y-1.5 bg-panel rounded p-2" data-testid="horizon-controls">
-        <h4 className="text-[10px] font-semibold text-textDim">Horizonte (nivel de los ojos)</h4>
+        <h4 className="text-[10px] font-semibold text-textDim">{t('perspective.grid.horizonTitle')}</h4>
         <label className="flex items-center gap-2 text-[11px]">
           <input
             type="checkbox"
             checked={horizon.visible}
             onChange={(e) => updateHorizon(e.target.checked && !grid.horizon ? { visible: true, linked: true } : { visible: e.target.checked }, H)}
           />
-          Mostrar línea de horizonte
+          {t('perspective.grid.showHorizon')}
         </label>
         <label className="flex items-center gap-2 text-[9px] text-textDim">
-          <span className="w-12">Altura</span>
+          <span className="w-12">{t('perspective.grid.height')}</span>
           <input
             type="range"
             min={-50}
@@ -81,9 +79,9 @@ export default function PerspectiveGridPanel() {
         <div className="flex gap-1">
           {(
             [
-              ['Vista alta', 0.3],
-              ['Centro', 0.5],
-              ['Vista baja', 0.7],
+              [t('perspective.grid.highView'), 0.3],
+              [t('perspective.grid.centerView'), 0.5],
+              [t('perspective.grid.lowView'), 0.7],
             ] as [string, number][]
           ).map(([label, frac]) => (
             <button key={label} onClick={() => setHorizonY(Math.round(H * frac), H)} className="flex-1 bg-panelLight hover:bg-border text-[9px] rounded py-1">
@@ -93,10 +91,10 @@ export default function PerspectiveGridPanel() {
         </div>
         <label className="flex items-center gap-2 text-[10px]">
           <input type="checkbox" checked={horizon.linked} onChange={(e) => updateHorizon({ linked: e.target.checked }, H)} />
-          Mantener los puntos de fuga sobre el horizonte
+          {t('perspective.grid.keepVpOnHorizon')}
         </label>
         <label className="flex items-center gap-2 text-[9px] text-textDim">
-          <span className="w-12">Color</span>
+          <span className="w-12">{t('perspective.grid.color')}</span>
           <input
             type="color"
             value={horizon.color || DEFAULT_HORIZON_COLOR}
@@ -105,29 +103,29 @@ export default function PerspectiveGridPanel() {
           />
         </label>
         <p className="text-[9px] text-textDim">
-          Lo que queda por encima del horizonte se ve desde abajo, y lo de debajo, desde arriba. Arrastra la pestaña «Horizonte» en el lienzo o usa la barra. En perspectiva de 1 y 2 puntos, los puntos de fuga viven siempre sobre esta línea.
+          {t('perspective.grid.horizonHint')}
         </p>
       </div>
 
       <label className="flex items-center gap-2 text-[11px]">
         <input type="checkbox" checked={grid.enabled} onChange={toggleGridEnabled} />
-        Mostrar grilla de perspectiva
+        {t('perspective.grid.showGrid')}
       </label>
 
       <div className="grid grid-cols-3 gap-1">
-        {GRID_TYPES.map((t) => (
+        {GRID_TYPES.map((gt) => (
           <button
-            key={t.id}
-            onClick={() => setGridType(t.id, project.width, project.height)}
-            className={`text-[10px] py-1.5 rounded ${grid.type === t.id ? 'bg-accent text-white' : 'bg-panelLight text-textDim hover:text-text'}`}
+            key={gt}
+            onClick={() => setGridType(gt, project.width, project.height)}
+            className={`text-[10px] py-1.5 rounded ${grid.type === gt ? 'bg-accent text-white' : 'bg-panelLight text-textDim hover:text-text'}`}
           >
-            {t.label}
+            {t(`perspective.grid.types.${gt}`)}
           </button>
         ))}
       </div>
 
       <div className="space-y-1.5">
-        <h4 className="text-[10px] font-semibold text-textDim">Puntos de fuga</h4>
+        <h4 className="text-[10px] font-semibold text-textDim">{t('perspective.grid.vanishingPoints')}</h4>
         {points.map((vp) => (
           <div key={vp.id} className="flex items-center gap-1.5 text-[10px] bg-panel rounded px-1.5 py-1">
             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: vp.color }} />
@@ -144,24 +142,24 @@ export default function PerspectiveGridPanel() {
               onChange={(e) => moveVanishingPoint(vp.id, vp.x, Number(e.target.value))}
               className="w-14 bg-panelLight border border-border rounded px-1 py-0.5"
             />
-            <button onClick={() => toggleVanishingPointVisible(vp.id)} className="text-textDim hover:text-text" title={vp.visible ? 'Ocultar' : 'Mostrar'}>
+            <button onClick={() => toggleVanishingPointVisible(vp.id)} className="text-textDim hover:text-text" title={vp.visible ? t('perspective.grid.hide') : t('perspective.grid.show')}>
               {vp.visible ? <Eye size={11} /> : <EyeOff size={11} />}
             </button>
-            <button onClick={() => toggleVanishingPointLocked(vp.id)} className="text-textDim hover:text-text" title={vp.locked ? 'Desbloquear' : 'Bloquear'}>
+            <button onClick={() => toggleVanishingPointLocked(vp.id)} className="text-textDim hover:text-text" title={vp.locked ? t('perspective.grid.unlock') : t('perspective.grid.lock')}>
               {vp.locked ? <Lock size={11} /> : <Unlock size={11} />}
             </button>
           </div>
         ))}
-        <p className="text-[9px] text-textDim">También podés arrastrar los puntos directamente en el lienzo.</p>
+        <p className="text-[9px] text-textDim">{t('perspective.grid.dragHint')}</p>
       </div>
 
       <div className="space-y-1.5">
         <label className="flex items-center gap-2 text-[9px] text-textDim">
-          <span className="w-16">Color</span>
+          <span className="w-16">{t('perspective.grid.color')}</span>
           <input type="color" value={grid.color} onChange={(e) => updateGridSettings({ color: e.target.value })} className="flex-1 h-6 bg-panelLight border border-border rounded" />
         </label>
         <label className="flex items-center gap-2 text-[9px] text-textDim">
-          <span className="w-16">Opacidad</span>
+          <span className="w-16">{t('perspective.grid.opacity')}</span>
           <input
             type="range"
             min={0.1}
@@ -173,7 +171,7 @@ export default function PerspectiveGridPanel() {
           />
         </label>
         <label className="flex items-center gap-2 text-[9px] text-textDim">
-          <span className="w-16">Divisiones</span>
+          <span className="w-16">{t('perspective.grid.divisions')}</span>
           <input
             type="range"
             min={2}
@@ -188,13 +186,12 @@ export default function PerspectiveGridPanel() {
       </div>
 
       <div className="border-t border-border pt-2 space-y-1.5">
-        <h4 className="text-[10px] font-semibold text-textDim">Presets</h4>
+        <h4 className="text-[10px] font-semibold text-textDim">{t('perspective.grid.presets')}</h4>
         <p className="text-[9px] text-textDim">
-          Se guardan de forma global (no con el proyecto) — reutilizalos en cualquier dibujo. Cada punto se guarda
-          como proporción del lienzo, así se adapta a lienzos de otro tamaño.
+          {t('perspective.grid.presetsHint')}
         </p>
         {presets.length === 0 ? (
-          <p className="text-[9px] text-textDim">Sin presets todavía.</p>
+          <p className="text-[9px] text-textDim">{t('perspective.grid.noPresets')}</p>
         ) : (
           <div className="space-y-1">
             {presets.map((preset) => (
@@ -203,13 +200,13 @@ export default function PerspectiveGridPanel() {
                 <button
                   onClick={() => {
                     applyPreset(preset.id, project.width, project.height);
-                    toast.success(`Preset "${preset.name}" aplicado`);
+                    toast.success(t('perspective.grid.presetAppliedToast', { name: preset.name }));
                   }}
                   className="text-[9px] bg-panelLight rounded px-2 py-0.5"
                 >
-                  Aplicar
+                  {t('perspective.grid.apply')}
                 </button>
-                <button onClick={() => deletePreset(preset.id)} className="text-textDim hover:text-red-400" title="Eliminar">
+                <button onClick={() => deletePreset(preset.id)} className="text-textDim hover:text-red-400" title={t('perspective.grid.delete')}>
                   <Trash2 size={11} />
                 </button>
               </div>
@@ -221,11 +218,11 @@ export default function PerspectiveGridPanel() {
             type="text"
             value={newPresetName}
             onChange={(e) => setNewPresetName(e.target.value)}
-            placeholder="Nombre del preset"
+            placeholder={t('perspective.grid.presetNamePlaceholder')}
             className="flex-1 bg-panel border border-border rounded text-[10px] px-1.5 py-1"
           />
           <button onClick={handleSavePreset} disabled={!newPresetName.trim()} className="text-[10px] bg-panelLight rounded px-2 disabled:opacity-40">
-            Guardar actual
+            {t('perspective.grid.savePreset')}
           </button>
         </div>
       </div>

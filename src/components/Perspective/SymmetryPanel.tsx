@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useAppStore } from '@/store/appStore';
 import { usePerspectiveStore } from '@/store/perspectiveStore';
 import { SYMMETRY_MODE_LABELS, SymmetryMode } from '@/types/perspective';
@@ -5,6 +6,7 @@ import { SYMMETRY_MODE_LABELS, SymmetryMode } from '@/types/perspective';
 const MODES = Object.keys(SYMMETRY_MODE_LABELS) as SymmetryMode[];
 
 export default function SymmetryPanel() {
+  const { t } = useTranslation('panelsProduction');
   const project = useAppStore((s) => s.project);
   const symmetry = usePerspectiveStore((s) => s.symmetry);
   const setSymmetryMode = usePerspectiveStore((s) => s.setSymmetryMode);
@@ -16,8 +18,7 @@ export default function SymmetryPanel() {
   return (
     <div className="space-y-3">
       <p className="text-[9px] text-textDim">
-        Mientras pintás, cada trazo del pincel/borrador se repite reflejado o rotado según el modo elegido — pinta de
-        verdad sobre la capa, no es solo una vista previa.
+        {t('perspective.symmetry.hint')}
       </p>
 
       <div className="grid grid-cols-3 gap-1">
@@ -35,7 +36,7 @@ export default function SymmetryPanel() {
       {symmetry.mode !== 'none' && (
         <div className="space-y-1.5">
           <div className="flex items-center gap-2 text-[9px] text-textDim">
-            <span className="w-16">Centro X</span>
+            <span className="w-16">{t('perspective.symmetry.centerX')}</span>
             <input
               type="number"
               value={Math.round(symmetry.centerX)}
@@ -44,7 +45,7 @@ export default function SymmetryPanel() {
             />
           </div>
           <div className="flex items-center gap-2 text-[9px] text-textDim">
-            <span className="w-16">Centro Y</span>
+            <span className="w-16">{t('perspective.symmetry.centerY')}</span>
             <input
               type="number"
               value={Math.round(symmetry.centerY)}
@@ -56,12 +57,12 @@ export default function SymmetryPanel() {
             onClick={() => moveSymmetryCenter(project.width / 2, project.height / 2)}
             className="w-full text-[9px] bg-panelLight rounded py-1"
           >
-            Centrar en el lienzo
+            {t('perspective.symmetry.centerOnCanvas')}
           </button>
 
           {symmetry.mode === 'mirrorDiagonal' && (
             <label className="flex items-center gap-2 text-[9px] text-textDim">
-              <span className="w-16">Ángulo</span>
+              <span className="w-16">{t('perspective.symmetry.angle')}</span>
               <input
                 type="range"
                 min={0}
@@ -77,7 +78,7 @@ export default function SymmetryPanel() {
 
           <label className="flex items-center gap-2 text-[10px]">
             <input type="checkbox" checked={symmetry.showGuidelines} onChange={(e) => updateSymmetrySettings({ showGuidelines: e.target.checked })} />
-            Mostrar líneas guía
+            {t('perspective.symmetry.showGuidelines')}
           </label>
         </div>
       )}

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import { v4 as uuid } from 'uuid';
 import { canEncodeAvif } from '@/services/export.service';
 import { BatchFilterConfig, BatchItem, BatchOutputFormat, BatchResizeConfig, BATCH_FORMAT_LABELS } from '@/types/batchOperations';
@@ -15,6 +16,7 @@ const DEFAULT_FILTERS: BatchFilterConfig = { brightness: 0, contrast: 0, saturat
 const SIZE_CATEGORY_ORDER: SizePreset['category'][] = ['web', 'print', 'social', 'ui'];
 
 export default function BatchPanel() {
+  const { t } = useTranslation('panelsProduction');
   const [items, setItems] = useState<BatchItem[]>([]);
   const [resize, setResize] = useState<BatchResizeConfig>(DEFAULT_RESIZE);
   const [filters, setFilters] = useState<BatchFilterConfig>(DEFAULT_FILTERS);
@@ -50,7 +52,7 @@ export default function BatchPanel() {
 
       if (isElectron()) {
         const result = await window.electronAPI.exportBatch(files, sanitizeFilename(project.name));
-        if (!result.canceled) toast.success(`${files.length} tamaños exportados`);
+        if (!result.canceled) toast.success(t('batch.sizesSection.exportedToast', { count: files.length }));
       } else {
         files.forEach((f) => downloadDataUrl(f.dataUrl, f.name));
       }
@@ -64,7 +66,7 @@ export default function BatchPanel() {
 
   async function handleImport() {
     if (!isElectron()) {
-      toast.error('Importar imágenes solo está disponible en la app de escritorio');
+      toast.error(t('batch.importDesktopOnlyToast'));
       return;
     }
     const result = await window.electronAPI.importImages();
@@ -116,8 +118,8 @@ export default function BatchPanel() {
       }));
 
       if (isElectron()) {
-        const result = await window.electronAPI.exportBatch(files, 'lote-schizzo');
-        if (!result.canceled) toast.success(`${done.length} imágenes exportadas`);
+        const result = await window.electronAPI.exportBatch(files, t('batch.exportZipName'));
+        if (!result.canceled) toast.success(t('batch.exportedToast', { count: done.length }));
       } else {
         files.forEach((f) => downloadDataUrl(f.dataUrl, f.name));
       }
@@ -129,8 +131,8 @@ export default function BatchPanel() {
   return (
     <div className="space-y-3">
       <div className="border border-border rounded p-2 space-y-1.5">
-        <div className="text-[10px] text-textDim uppercase tracking-wide">Exportar proyecto actual en varios tamaños</div>
-        <p className="text-[9px] text-textDim">Aplana el lienzo actual y lo exporta redimensionado (con letterbox) a cada tamaño elegido, en un solo paso.</p>
+        <div className="text-[10px] text-textDim uppercase tracking-wide">{t('batch.sizesSection.title')}</div>
+        <p className="text-[9px] text-textDim">{t('batch.sizesSection.hint')}</p>
         <div className="max-h-32 overflow-y-auto space-y-1.5">
           {SIZE_CATEGORY_ORDER.map((category) => (
             <div key={category}>
@@ -159,24 +161,24 @@ export default function BatchPanel() {
             disabled={!project || selectedSizeIds.size === 0 || exportingSizes}
             className="bg-accent text-white text-xs rounded px-3 py-1.5 disabled:opacity-40"
           >
-            {exportingSizes ? 'Exportando…' : `Exportar (${selectedSizeIds.size})`}
+            {exportingSizes ? t('batch.sizesSection.exporting') : t('batch.sizesSection.exportButton', { count: selectedSizeIds.size })}
           </button>
         </div>
       </div>
 
       <div className="flex gap-1.5">
         <button onClick={handleImport} className="flex-1 bg-panelLight text-xs rounded py-1.5">
-          Importar imágenes…
+          {t('batch.importButton')}
         </button>
         <button onClick={clearAll} disabled={items.length === 0} className="bg-panelLight text-xs rounded px-2 disabled:opacity-40">
-          Limpiar
+          {t('batch.clear')}
         </button>
       </div>
 
       <div className="border border-border rounded p-2 space-y-1.5">
         <label className="flex items-center gap-1.5 text-[10px] text-textDim">
           <input type="checkbox" checked={resize.enabled} onChange={(e) => setResize((r) => ({ ...r, enabled: e.target.checked }))} />
-          Redimensionar
+          {t('batch.resize')}
         </label>
         {resize.enabled && (
           <div className="flex items-center gap-1.5">
@@ -200,19 +202,19 @@ export default function BatchPanel() {
               onChange={(e) => setResize((r) => ({ ...r, mode: e.target.value as BatchResizeConfig['mode'] }))}
               className="flex-1 bg-panel border border-border rounded text-[10px] px-1 py-0.5"
             >
-              <option value="fit">Ajustar (letterbox)</option>
-              <option value="fill">Llenar (recortar)</option>
-              <option value="exact">Exacto (estirar)</option>
+              <option value="fit">{t('batch.resizeModeFit')}</option>
+              <option value="fill">{t('batch.resizeModeFill')}</option>
+              <option value="exact">{t('batch.resizeModeExact')}</option>
             </select>
           </div>
         )}
       </div>
 
       <div className="border border-border rounded p-2 space-y-1.5">
-        <div className="text-[10px] text-textDim uppercase tracking-wide">Filtros</div>
+        <div className="text-[10px] text-textDim uppercase tracking-wide">{t('batch.filters.title')}</div>
         {(['brightness', 'contrast', 'saturation'] as const).map((key) => (
           <div key={key} className="flex items-center gap-1.5 text-[10px] text-textDim">
-            <span className="w-16 shrink-0">{key === 'brightness' ? 'Brillo' : key === 'contrast' ? 'Contraste' : 'Saturación'}</span>
+            <span className="w-16 shrink-0">{key === 'brightness' ? t('batch.filters.brightness') : key === 'contrast' ? t('batch.filters.contrast') : t('batch.filters.saturation')}</span>
             <input
               type="range"
               min={-100}
@@ -225,24 +227,24 @@ export default function BatchPanel() {
           </div>
         ))}
         <div className="flex items-center gap-1.5 text-[10px] text-textDim">
-          <span className="w-16 shrink-0">Sepia</span>
+          <span className="w-16 shrink-0">{t('batch.filters.sepia')}</span>
           <input type="range" min={0} max={100} value={filters.sepia} onChange={(e) => setFilters((f) => ({ ...f, sepia: Number(e.target.value) }))} className="flex-1" />
           <span className="w-8 text-right">{filters.sepia}</span>
         </div>
         <div className="flex gap-3">
           <label className="flex items-center gap-1.5 text-[10px] text-textDim">
             <input type="checkbox" checked={filters.grayscale} onChange={(e) => setFilters((f) => ({ ...f, grayscale: e.target.checked }))} />
-            Escala de grises
+            {t('batch.filters.grayscale')}
           </label>
           <label className="flex items-center gap-1.5 text-[10px] text-textDim">
             <input type="checkbox" checked={filters.invert} onChange={(e) => setFilters((f) => ({ ...f, invert: e.target.checked }))} />
-            Invertir
+            {t('batch.filters.invert')}
           </label>
         </div>
       </div>
 
       <div className="border border-border rounded p-2 space-y-1.5">
-        <div className="text-[10px] text-textDim uppercase tracking-wide">Formato de salida</div>
+        <div className="text-[10px] text-textDim uppercase tracking-wide">{t('batch.outputFormat')}</div>
         <select
           value={format}
           onChange={(e) => setFormat(e.target.value as BatchOutputFormat)}
@@ -256,7 +258,7 @@ export default function BatchPanel() {
         </select>
         {supportsQuality && (
           <div className="flex items-center gap-1.5 text-[10px] text-textDim">
-            <span className="w-16 shrink-0">Calidad</span>
+            <span className="w-16 shrink-0">{t('batch.quality')}</span>
             <input type="range" min={0.1} max={1} step={0.05} value={quality} onChange={(e) => setQuality(Number(e.target.value))} className="flex-1" />
             <span className="w-8 text-right">{Math.round(quality * 100)}%</span>
           </div>
@@ -269,14 +271,14 @@ export default function BatchPanel() {
           disabled={items.length === 0 || processing}
           className="flex-1 bg-accent text-white text-xs rounded py-1.5 disabled:opacity-40"
         >
-          {processing ? 'Procesando…' : `Procesar ${items.length ? `(${items.length})` : ''}`}
+          {processing ? t('batch.processing') : `${t('batch.process')}${items.length ? ` (${items.length})` : ''}`}
         </button>
         <button
           onClick={exportAll}
           disabled={doneCount === 0 || exporting}
           className="flex-1 bg-panelLight text-xs rounded py-1.5 disabled:opacity-40"
         >
-          {exporting ? 'Exportando…' : `Exportar (${doneCount})`}
+          {exporting ? t('batch.exporting') : t('batch.exportButton', { count: doneCount })}
         </button>
       </div>
 
@@ -301,10 +303,10 @@ export default function BatchPanel() {
                           : 'text-textDim'
                   }`}
                 >
-                  {item.status === 'pending' && 'Pendiente'}
-                  {item.status === 'processing' && 'Procesando…'}
-                  {item.status === 'done' && 'Listo'}
-                  {item.status === 'error' && (item.error ?? 'Error')}
+                  {item.status === 'pending' && t('batch.status.pending')}
+                  {item.status === 'processing' && t('batch.status.processing')}
+                  {item.status === 'done' && t('batch.status.done')}
+                  {item.status === 'error' && (item.error ?? t('batch.status.error'))}
                 </div>
               </div>
             </div>

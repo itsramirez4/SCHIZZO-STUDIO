@@ -1,6 +1,8 @@
+import { useTranslation } from 'react-i18next';
 import { useAppStore } from '@/store/appStore';
 
 export default function OnionSkinSettingsPanel() {
+  const { t } = useTranslation('panelsProduction');
   const settings = useAppStore((s) => s.onionSkinSettings);
   const setOnionSkinSettings = useAppStore((s) => s.setOnionSkinSettings);
 
@@ -8,7 +10,7 @@ export default function OnionSkinSettingsPanel() {
     <div className="border border-border rounded p-2 mb-2 space-y-1.5">
       <div className="grid grid-cols-2 gap-2">
         <label className="flex items-center justify-between text-[10px] text-textDim gap-1">
-          Frames atrás
+          {t('animation.onionSkin.framesBack')}
           <input
             type="number"
             min={0}
@@ -19,7 +21,7 @@ export default function OnionSkinSettingsPanel() {
           />
         </label>
         <label className="flex items-center justify-between text-[10px] text-textDim gap-1">
-          Frames adelante
+          {t('animation.onionSkin.framesForward')}
           <input
             type="number"
             min={0}
@@ -32,7 +34,7 @@ export default function OnionSkinSettingsPanel() {
       </div>
       <div>
         <div className="flex justify-between text-[10px] text-textDim mb-0.5">
-          <span>Opacidad</span>
+          <span>{t('animation.onionSkin.opacity')}</span>
           <span>{Math.round(settings.opacityBack * 100)}%</span>
         </div>
         <input
@@ -49,7 +51,7 @@ export default function OnionSkinSettingsPanel() {
       </div>
       <label className="flex items-center gap-1.5 text-[10px] text-textDim">
         <input type="checkbox" checked={settings.tint} onChange={(e) => setOnionSkinSettings({ tint: e.target.checked })} />
-        Teñir (rojo = atrás, azul = adelante)
+        {t('animation.onionSkin.tint')}
       </label>
     </div>
   );

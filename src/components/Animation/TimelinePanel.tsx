@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import { Film, Play, Pause, Square, Repeat, Copy, Plus, Trash2, Eye, Download, Images, Clapperboard, Grid3x3 } from 'lucide-react';
 import { useAppStore, getFrameLayers } from '@/store/appStore';
 import { useHistory } from '@/hooks/useHistory';
@@ -29,6 +30,7 @@ function FrameThumbnail({ project, frameIndex }: { project: Project; frameIndex:
 }
 
 export default function TimelinePanel() {
+  const { t } = useTranslation('panelsProduction');
   const project = useAppStore((s) => s.project);
   const enableAnimation = useAppStore((s) => s.enableAnimation);
   const addFrame = useAppStore((s) => s.addFrame);
@@ -76,9 +78,9 @@ export default function TimelinePanel() {
   if (!animation) {
     return (
       <div className="p-3">
-        <h3 className="text-xs font-semibold mb-2 text-textDim uppercase tracking-wide">Animación</h3>
+        <h3 className="text-xs font-semibold mb-2 text-textDim uppercase tracking-wide">{t('animation.timeline.title')}</h3>
         <button onClick={enableAnimation} className="w-full flex items-center justify-center gap-1.5 bg-accent text-white text-xs rounded py-1.5">
-          <Film size={13} /> Activar animación
+          <Film size={13} /> {t('animation.timeline.enableAnimation')}
         </button>
       </div>
     );
@@ -89,9 +91,9 @@ export default function TimelinePanel() {
     setExporting(true);
     try {
       const result = await exportAnimationAsGif(project);
-      if (!result.canceled) toast.success('Animación exportada como GIF');
+      if (!result.canceled) toast.success(t('animation.timeline.gifExportedToast'));
     } catch (err) {
-      toast.error('No se pudo exportar el GIF');
+      toast.error(t('animation.timeline.gifExportErrorToast'));
       console.error(err);
     } finally {
       setExporting(false);
@@ -103,9 +105,9 @@ export default function TimelinePanel() {
     setExportingPng(true);
     try {
       const result = await exportAnimationAsPngSequence(project);
-      if (!result.canceled) toast.success('Secuencia PNG exportada');
+      if (!result.canceled) toast.success(t('animation.timeline.pngSequenceExportedToast'));
     } catch (err) {
-      toast.error('No se pudo exportar la secuencia PNG');
+      toast.error(t('animation.timeline.pngSequenceExportErrorToast'));
       console.error(err);
     } finally {
       setExportingPng(false);
@@ -117,9 +119,9 @@ export default function TimelinePanel() {
     setExportingApng(true);
     try {
       const result = await exportAnimationAsApng(project);
-      if (!result.canceled) toast.success('Animación exportada como APNG');
+      if (!result.canceled) toast.success(t('animation.timeline.apngExportedToast'));
     } catch (err) {
-      toast.error('No se pudo exportar el APNG');
+      toast.error(t('animation.timeline.apngExportErrorToast'));
       console.error(err);
     } finally {
       setExportingApng(false);
@@ -131,9 +133,9 @@ export default function TimelinePanel() {
     setExportingWebm(true);
     try {
       const result = await exportAnimationAsWebm(project);
-      if (!result.canceled) toast.success('Animación exportada como WebM');
+      if (!result.canceled) toast.success(t('animation.timeline.webmExportedToast'));
     } catch (err) {
-      toast.error('No se pudo exportar el WebM');
+      toast.error(t('animation.timeline.webmExportErrorToast'));
       console.error(err);
     } finally {
       setExportingWebm(false);
@@ -145,9 +147,9 @@ export default function TimelinePanel() {
     setExportingSpritesheet(true);
     try {
       const result = await exportAnimationAsSpritesheet(project);
-      if (!result.canceled) toast.success('Spritesheet exportado');
+      if (!result.canceled) toast.success(t('animation.timeline.spritesheetExportedToast'));
     } catch (err) {
-      toast.error('No se pudo exportar el spritesheet');
+      toast.error(t('animation.timeline.spritesheetExportErrorToast'));
       console.error(err);
     } finally {
       setExportingSpritesheet(false);
@@ -167,12 +169,12 @@ export default function TimelinePanel() {
 
   return (
     <div className="p-3">
-      <h3 className="text-xs font-semibold mb-2 text-textDim uppercase tracking-wide">Animación</h3>
+      <h3 className="text-xs font-semibold mb-2 text-textDim uppercase tracking-wide">{t('animation.timeline.title')}</h3>
 
       <div className="flex items-center gap-1 mb-2">
         <button
           onClick={() => setIsPlaying((p) => !p)}
-          title={isPlaying ? 'Pausar' : 'Reproducir'}
+          title={isPlaying ? t('animation.timeline.pause') : t('animation.timeline.play')}
           className="icon-btn"
         >
           {isPlaying ? <Pause size={14} /> : <Play size={14} />}
@@ -182,20 +184,20 @@ export default function TimelinePanel() {
             setIsPlaying(false);
             selectFrame(0);
           }}
-          title="Detener"
+          title={t('animation.timeline.stop')}
           className="icon-btn"
         >
           <Square size={14} />
         </button>
         <button
           onClick={() => toggleOnionSkin()}
-          title="Onion skin"
+          title={t('animation.timeline.onionSkin')}
           className={`icon-btn ${onionSkinEnabled ? 'text-accent' : ''}`}
         >
           <Eye size={14} />
         </button>
         <label className="flex items-center gap-1 text-[10px] text-textDim ml-1">
-          FPS
+          {t('animation.timeline.fps')}
           <input
             type="number"
             min={1}
@@ -207,7 +209,7 @@ export default function TimelinePanel() {
         </label>
         <button
           onClick={() => setAnimationLoop(!animation.loop)}
-          title="Repetir en bucle"
+          title={t('animation.timeline.loop')}
           className={`icon-btn ml-auto ${animation.loop ? 'text-accent' : ''}`}
         >
           <Repeat size={14} />
@@ -269,10 +271,10 @@ export default function TimelinePanel() {
 
       <div className="grid grid-cols-2 gap-1.5 mb-1.5">
         <button onClick={() => addFrame('blank')} className="flex items-center justify-center gap-1 bg-panelLight text-[11px] rounded py-1.5">
-          <Plus size={12} /> Frame en blanco
+          <Plus size={12} /> {t('animation.timeline.blankFrame')}
         </button>
         <button onClick={() => addFrame('duplicate')} className="flex items-center justify-center gap-1 bg-panelLight text-[11px] rounded py-1.5">
-          <Copy size={12} /> Duplicar frame
+          <Copy size={12} /> {t('animation.timeline.duplicateFrame')}
         </button>
       </div>
 
@@ -284,24 +286,24 @@ export default function TimelinePanel() {
           disabled={exporting || exportingPng || exportingApng || exportingWebm || exportingSpritesheet}
           className="flex items-center justify-center gap-1.5 bg-accent text-white text-xs rounded py-1.5 disabled:opacity-50"
         >
-          <Download size={13} /> {exporting ? 'Exportando…' : 'Como GIF'}
+          <Download size={13} /> {exporting ? t('animation.timeline.exporting') : t('animation.timeline.asGif')}
         </button>
         <button
           onClick={handleExportApng}
           disabled={exporting || exportingPng || exportingApng || exportingWebm || exportingSpritesheet}
           className="flex items-center justify-center gap-1.5 bg-panelLight text-xs rounded py-1.5 disabled:opacity-50"
-          title="APNG: igual que GIF pero sin límite de paleta (color RGBA completo)"
+          title={t('animation.timeline.apngTitle')}
         >
-          <Download size={13} /> {exportingApng ? 'Exportando…' : 'Como APNG'}
+          <Download size={13} /> {exportingApng ? t('animation.timeline.exporting') : t('animation.timeline.asApng')}
         </button>
       </div>
       <button
         onClick={handleExportPngSequence}
         disabled={exporting || exportingPng || exportingApng || exportingWebm || exportingSpritesheet}
         className="w-full flex items-center justify-center gap-1.5 bg-panelLight text-xs rounded py-1.5 disabled:opacity-50 mb-1.5"
-        title="Exporta cada frame como un PNG numerado en una carpeta"
+        title={t('animation.timeline.pngSequenceTitle')}
       >
-        <Images size={13} /> {exportingPng ? 'Exportando…' : 'Secuencia PNG'}
+        <Images size={13} /> {exportingPng ? t('animation.timeline.exporting') : t('animation.timeline.pngSequence')}
       </button>
 
       <div className="grid grid-cols-2 gap-1.5">
@@ -309,17 +311,17 @@ export default function TimelinePanel() {
           onClick={handleExportWebm}
           disabled={exporting || exportingPng || exportingApng || exportingWebm || exportingSpritesheet}
           className="flex items-center justify-center gap-1.5 bg-panelLight text-xs rounded py-1.5 disabled:opacity-50"
-          title="Video WebM real (MediaRecorder) — tarda tanto como dura la animación en exportarse. MP4 no está disponible: requeriría empaquetar ffmpeg.wasm (~30MB)."
+          title={t('animation.timeline.webmTitle')}
         >
-          <Clapperboard size={13} /> {exportingWebm ? 'Exportando…' : 'Como WebM'}
+          <Clapperboard size={13} /> {exportingWebm ? t('animation.timeline.exporting') : t('animation.timeline.asWebm')}
         </button>
         <button
           onClick={handleExportSpritesheet}
           disabled={exporting || exportingPng || exportingApng || exportingWebm || exportingSpritesheet}
           className="flex items-center justify-center gap-1.5 bg-panelLight text-xs rounded py-1.5 disabled:opacity-50"
-          title="Todos los frames en una sola imagen en cuadrícula"
+          title={t('animation.timeline.spritesheetTitle')}
         >
-          <Grid3x3 size={13} /> {exportingSpritesheet ? 'Exportando…' : 'Spritesheet'}
+          <Grid3x3 size={13} /> {exportingSpritesheet ? t('animation.timeline.exporting') : t('animation.timeline.spritesheet')}
         </button>
       </div>
     </div>
