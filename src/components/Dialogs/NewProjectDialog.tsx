@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useUIStore } from '@/store/uiStore';
 import { useAppStore } from '@/store/appStore';
+import { useLearningStore } from '@/store/learningStore';
 import { ProjectType } from '@/types';
 import { DEFAULT_CANVAS_WIDTH, DEFAULT_CANVAS_HEIGHT, DEFAULT_DPI } from '@/utils/constants';
 import { SIZE_PRESETS, SIZE_PRESET_CATEGORY_LABELS, SizePreset } from '@/data/sizePresets';
@@ -50,6 +51,7 @@ export default function NewProjectDialog() {
       useUIStore.setState({ showReference3DPanel: true });
     }
     close();
+    useLearningStore.getState().maybeStartOnboardingTour();
   }
 
   return (

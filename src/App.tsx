@@ -403,7 +403,7 @@ export default function App() {
         <StartScreen />
       )}
 
-      <TourOverlay />
+      <ErrorBoundary name="Tour guiado" compact><TourOverlay /></ErrorBoundary>
       <ErrorBoundary name="Diálogo"><NewProjectDialog /></ErrorBoundary>
       {showExportDialog && (
         <ErrorBoundary name="Diálogo de exportación">

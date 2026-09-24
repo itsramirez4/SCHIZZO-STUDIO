@@ -2,7 +2,9 @@ import { Tour } from '@/types/learning';
 
 /** Every selector here targets a real button in the app (verified against the actual title
  * attributes in Header.tsx, Toolbox.tsx and Sidebar.tsx) — not a placeholder class name that
- * happens to not exist in the DOM. */
+ * happens to not exist in the DOM. The 3 tool steps in `getting-started` use `data-tool`
+ * instead of `title`, since Toolbox.tsx rebuilds each button's title with the user's *current*
+ * shortcut — a remapped key would otherwise silently break the selector. */
 export const TOURS: Tour[] = [
   {
     id: 'getting-started',
@@ -15,17 +17,17 @@ export const TOURS: Tour[] = [
         description: 'Desde acá creás un lienzo nuevo, eligiendo tamaño o un preset (pixel art, HD, A4).',
       },
       {
-        selector: 'button[title="Pincel (B)"]',
+        selector: '[data-tool="brush"]',
         title: 'El pincel',
         description: 'Tu herramienta principal para dibujar. Tiene tamaño, dureza, opacidad y espaciado configurables más abajo en esta barra.',
       },
       {
-        selector: 'button[title="Bote de pintura (G)"]',
+        selector: '[data-tool="paintbucket"]',
         title: 'Bote de pintura',
         description: 'Rellena una zona con el color o patrón activo — probá también los patrones y degradados desde la Biblioteca de assets.',
       },
       {
-        selector: 'button[title="Selección (M)"]',
+        selector: '[data-tool="selection"]',
         title: 'Selección',
         description: 'Delimita una zona del lienzo para que los demás cambios solo la afecten a ella.',
       },

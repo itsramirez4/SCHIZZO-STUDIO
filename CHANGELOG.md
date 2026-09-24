@@ -6,7 +6,12 @@ puede cambiar sin previo aviso (ver "Versionado" en [README.md](README.md)).
 
 ## [Sin publicar]
 
-Nada todavía.
+### Añadido
+- Tour guiado de bienvenida: al crear tu primer proyecto, un recorrido de 8 pasos señala el
+  pincel, el bote de pintura, la selección, las capas, deshacer, guardar y exportar. Ya existía
+  como algo que se podía abrir a mano desde el panel Aprender; ahora se dispara solo una vez, la
+  primera vez, y nunca vuelve a interrumpir después (se puede repetir cuando quieras desde ese
+  mismo panel).
 
 ## [0.1.2] - 2026-09-23
 

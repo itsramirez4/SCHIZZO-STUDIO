@@ -825,6 +825,22 @@ module.exports = function extraGroups({ ok, sleep, fs }) {
         }
         ok(wrong.length === 0, `atajos que no cambian de herramienta: ${wrong.join(', ')}`);
       },
+      'el tour de bienvenida aparece solo en el primer proyecto de verdad, y no se repite': async (c) => {
+        await fresh(c, { width: 400, height: 300 });
+        // fresh() ya creó un proyecto, pero con isCheckMode real (true) — no debería haber
+        // disparado el tour. Lo pisamos para simular a alguien usando la app de verdad, solo
+        // para este test.
+        await c.page.evaluate(() => localStorage.setItem('schizzo-onboarding-force-real-user', '1'));
+        await c.newProject({ name: 'primero' });
+        await sleep(500);
+        ok(await c.page.locator('text=Crear un proyecto').isVisible().catch(() => false), 'el tour no apareció en el primer proyecto de verdad');
+        await c.page.locator('button:has-text("Saltar tour")').click();
+        await sleep(300);
+        ok(!(await c.page.locator('text=Crear un proyecto').isVisible().catch(() => false)), '"Saltar tour" no cerró el tour');
+        await c.newProject({ name: 'segundo' });
+        await sleep(500);
+        ok(!(await c.page.locator('text=Crear un proyecto').isVisible().catch(() => false)), 'el tour volvió a aparecer en un segundo proyecto');
+      },
     },
 
     // -----------------------------------------------------------------------------------------

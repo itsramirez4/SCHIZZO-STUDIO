@@ -65,6 +65,7 @@ declare global {
       updateInstall: () => Promise<void>;
       onUpdateEvent: (channel: string, callback: (...args: unknown[]) => void) => () => void;
       onMenuEvent: (channel: string, callback: () => void) => () => void;
+      isCheckMode: boolean;
     };
   }
 }

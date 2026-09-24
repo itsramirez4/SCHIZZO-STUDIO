@@ -21,7 +21,7 @@ Electron 31 · React 18 · TypeScript · Vite · Tailwind · Zustand.
 - **Ayudas de dibujo**: regla a mano alzada (recta, paralelas, elipse, perspectiva), perspectiva de 1 a 3 puntos, simetría, guías de estudio y cuadrículas.
 - **Referencias**: por proyecto y en carpetas, ventana flotante con zoom/rotación/desplazamiento, comparación con el dibujo (superposición).
 - **Maniquí y modelos 3D**: maniquí con pose (pies incluidos), 12 especies de animales, 17 prendas, más de 50 objetos, línea de horizonte ajustable y biblioteca personal de poses.
-- **Aprender**: tutor, academia de dibujo y guías paso a paso.
+- **Aprender**: tutor, academia de dibujo y guías paso a paso. Un tour guiado de 8 pasos aparece solo la primera vez que creas un proyecto, y se puede repetir cuando quieras desde el panel Aprender.
 - **Reproducción del proceso**: cada paso queda registrado con el proyecto; puedes reproducirlo, recorrerlo paso a paso y exportarlo como timelapse WebM (Historial → *Reproducir el proceso*).
 - **Historial** de deshacer con salto directo a cualquier estado, versiones del proyecto y copias automáticas.
 - **Animación**, procesamiento por lotes, grabación de sesión y exportación a PNG, JPG, WebP, GIF/APNG, SVG y más.
@@ -59,7 +59,7 @@ npm run check      # batería local de comprobaciones (ver abajo)
 | `pixelart` | El pincel no deja semitransparencias, cuantizar y tramar solo usan la paleta, pixelar. |
 | `comic` | Plantillas de viñetas, tramas, globos de texto, líneas de velocidad y el panel de cómic. |
 | `animacion` | Fotogramas (crear, duplicar, borrar, duración, fps), deshacer/rehacer y exportar GIF y APNG. |
-| `paneles` | Los 19 paneles laterales y los diálogos se abren sin errores; los atajos de herramienta. |
+| `paneles` | Los 19 paneles laterales y los diálogos se abren sin errores; los atajos de herramienta; el tour de bienvenida se dispara solo una vez, en el primer proyecto. |
 | `ia` | Desactivar la IA quita el asistente, se guarda la preferencia y no hay peticiones de red. |
 | `asistente` | Las 8 funciones de IA que son en realidad proceso local (sin modelo ni red): limpieza de trazos, composición, separar capas, sugerir paletas, ajustar el maniquí a una pose, prompts de referencia, reiluminar e interpretar texto. |
 | `ia-generativa` | Generar imagen y reescribir texto llegan de verdad al proveedor configurado (contra un servidor mock local, sin API de pago) y no se hace ninguna petición con la IA desactivada. |

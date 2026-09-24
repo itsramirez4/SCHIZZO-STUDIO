@@ -98,6 +98,7 @@ export default function Toolbox() {
                     key={id}
                     onClick={() => setCurrentTool(id)}
                     title={shortcut ? `${label} (${shortcut})` : label}
+                    data-tool={id}
                     className={`relative h-9 flex items-center justify-center rounded transition-colors ${
                       active ? 'bg-accentSoft text-accent' : 'text-textDim hover:bg-panelLight hover:text-text'
                     }`}

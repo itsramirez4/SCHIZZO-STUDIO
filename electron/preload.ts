@@ -103,6 +103,11 @@ const electronAPI = {
     ipcRenderer.on(channel, listener);
     return () => ipcRenderer.removeListener(channel, listener);
   },
+
+  // True only inside scripts/check.cjs's Electron process (SCHIZZO_CHECK_DIR), never in a real
+  // launch — lets renderer-side code opt out of behavior that shouldn't fire during the automated
+  // check battery, the same way autoUpdateHandler.ts already opts out on the main-process side.
+  isCheckMode: Boolean(process.env.SCHIZZO_CHECK_DIR),
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);
