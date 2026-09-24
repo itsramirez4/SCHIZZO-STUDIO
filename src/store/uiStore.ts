@@ -32,7 +32,12 @@ interface UIState {
   showVersionsPanel: boolean;
   toggleVersionsPanel: () => void;
   showFeedbackDialog: boolean;
+  /** Pre-fills the dialog's message when it was opened automatically (see openAutoFeedbackDialog). */
+  feedbackContext: string | null;
   openFeedbackDialog: () => void;
+  /** Opens the dialog with an explanatory message, unless one is already open — never steals a
+   * draft someone's already writing. Used by ErrorBoundary when a whole region crashes. */
+  openAutoFeedbackDialog: (context: string) => void;
   closeFeedbackDialog: () => void;
   /** Left-handed layout: toolbox on the right, side panels on the left. */
   leftHanded: boolean;
@@ -113,7 +118,7 @@ function closeAllSidebarPanels() {
   };
 }
 
-export const useUIStore = create<UIState>((set) => ({
+export const useUIStore = create<UIState>((set, get) => ({
   showLayerPanel: true,
   showBrushPanel: false,
   showFilterPanel: false,
@@ -145,8 +150,13 @@ export const useUIStore = create<UIState>((set) => ({
   showVersionsPanel: false,
   toggleVersionsPanel: () => set((s) => ({ ...closeAllSidebarPanels(), showVersionsPanel: !s.showVersionsPanel })),
   showFeedbackDialog: false,
-  openFeedbackDialog: () => set({ showFeedbackDialog: true }),
-  closeFeedbackDialog: () => set({ showFeedbackDialog: false }),
+  feedbackContext: null,
+  openFeedbackDialog: () => set({ showFeedbackDialog: true, feedbackContext: null }),
+  openAutoFeedbackDialog: (context) => {
+    if (get().showFeedbackDialog) return; // no pisar un mensaje que ya se está escribiendo
+    set({ showFeedbackDialog: true, feedbackContext: context });
+  },
+  closeFeedbackDialog: () => set({ showFeedbackDialog: false, feedbackContext: null }),
   leftHanded: readLeftHanded(),
   toggleLeftHanded: () =>
     set((s) => {

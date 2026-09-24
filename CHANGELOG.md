@@ -12,6 +12,10 @@ puede cambiar sin previo aviso (ver "Versionado" en [README.md](README.md)).
   como algo que se podía abrir a mano desde el panel Aprender; ahora se dispara solo una vez, la
   primera vez, y nunca vuelve a interrumpir después (se puede repetir cuando quieras desde ese
   mismo panel).
+- Aviso automático cuando algo se rompe de verdad: si una región entera de la app deja de
+  funcionar, se abre solo el diálogo de "Enviar comentario" con el diagnóstico ya listo — sigue
+  haciendo falta un clic para copiarlo, guardarlo o enviarlo, nada sale sin que lo veas antes. No
+  pisa un mensaje que ya estuvieras escribiendo si otra región falla mientras tanto.
 
 ## [0.1.2] - 2026-09-23
 

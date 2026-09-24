@@ -1211,6 +1211,23 @@ module.exports = function extraGroups({ ok, sleep, fs }) {
         ok(await c.page.locator('textarea').isVisible(), 'el diálogo no se abrió desde la pantalla de inicio');
         ok(!(await c.page.locator('label:has-text("miniatura")').isVisible()), 'no debería ofrecer miniatura sin ningún proyecto abierto');
       },
+      'un fallo automático abre el diálogo con contexto, sin pisar un borrador en curso': async (c) => {
+        await fresh(c, { width: 400, height: 300 }); // necesario para que exista window.__schizzo
+        await c.page.evaluate(() => window.__schizzo.ui.getState().openAutoFeedbackDialog('mensaje de prueba automático'));
+        await sleep(400);
+        ok(await c.page.locator('textarea').inputValue().then((v) => v === 'mensaje de prueba automático'), 'el textarea no arrancó con el contexto automático');
+
+        await c.page.locator('textarea').type(' — añado un detalle');
+        await c.page.evaluate(() => window.__schizzo.ui.getState().openAutoFeedbackDialog('otro mensaje'));
+        await sleep(200);
+        ok(await c.page.locator('textarea').inputValue().then((v) => v === 'mensaje de prueba automático — añado un detalle'), 'un segundo fallo automático pisó el borrador ya escrito');
+
+        await c.page.evaluate(() => window.__schizzo.ui.getState().closeFeedbackDialog());
+        await sleep(200);
+        await c.page.evaluate(() => window.__schizzo.ui.getState().openFeedbackDialog());
+        await sleep(300);
+        ok(await c.page.locator('textarea').inputValue().then((v) => v === ''), 'la apertura manual no debería arrancar con contexto residual');
+      },
     },
   };
 };

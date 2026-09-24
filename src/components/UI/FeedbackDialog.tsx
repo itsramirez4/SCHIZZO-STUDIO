@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { X, Copy, Save, Mail, Globe, ChevronDown, ChevronRight } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
@@ -32,11 +32,19 @@ function buildDiagnosticText(project: ReturnType<typeof useAppStore.getState>['p
 export default function FeedbackDialog() {
   const show = useUIStore((s) => s.showFeedbackDialog);
   const close = useUIStore((s) => s.closeFeedbackDialog);
+  const feedbackContext = useUIStore((s) => s.feedbackContext);
   const project = useAppStore((s) => s.project);
   const [message, setMessage] = useState('');
   const [showDiagnostic, setShowDiagnostic] = useState(false);
   const [includeThumb, setIncludeThumb] = useState(false);
   const [thumb, setThumb] = useState<string | null>(null);
+
+  // The component never actually unmounts (it just renders null below when closed), so a useState
+  // initializer would only ever run once, at app startup — this re-seeds the message every time
+  // the dialog actually opens instead.
+  useEffect(() => {
+    if (show) setMessage(feedbackContext ?? '');
+  }, [show, feedbackContext]);
 
   const diagnostic = useMemo(() => (show ? buildDiagnosticText(project) : ''), [show, project]);
 
