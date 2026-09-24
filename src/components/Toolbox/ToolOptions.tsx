@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useTools } from '@/hooks/useTools';
 import { useBrush } from '@/hooks/useBrush';
 import { useAppStore } from '@/store/appStore';
@@ -5,16 +6,10 @@ import { useWarpToolStore } from '@/store/warpToolStore';
 import { LiquifyMode } from '@/services/warpTool.service';
 import { useFillOptionsStore, useSmudgeStore } from '@/store/fillOptionsStore';
 
-const WARP_MODE_LABELS: Record<LiquifyMode, string> = {
-  push: 'Empujar',
-  twirl: 'Remolino',
-  pinch: 'Pellizcar',
-  expand: 'Expandir',
-  turbulence: 'Turbulencia',
-  smooth: 'Suavizar',
-};
+const WARP_MODES: LiquifyMode[] = ['push', 'twirl', 'pinch', 'expand', 'turbulence', 'smooth'];
 
 export default function ToolOptions() {
+  const { t } = useTranslation('panelsPaint');
   const { currentTool } = useTools();
   const { currentBrush, updateCurrentBrush } = useBrush();
   const magicWandTolerance = useAppStore((s) => s.magicWandTolerance);
@@ -48,25 +43,25 @@ export default function ToolOptions() {
           onChange={(e) => setWarpMode(e.target.value as LiquifyMode)}
           className="w-full bg-panel border border-border rounded text-[10px] px-1.5 py-1"
         >
-          {(Object.keys(WARP_MODE_LABELS) as LiquifyMode[]).map((m) => (
-            <option key={m} value={m}>{WARP_MODE_LABELS[m]}</option>
+          {WARP_MODES.map((m) => (
+            <option key={m} value={m}>{t(`toolOptions.warpModes.${m}`)}</option>
           ))}
         </select>
         <div>
           <div className="flex justify-between text-xs text-textDim mb-1">
-            <span>Tamaño de pincel</span>
+            <span>{t('toolOptions.brushSize')}</span>
             <span>{warpRadius}px</span>
           </div>
           <input type="range" min={5} max={300} value={warpRadius} onChange={(e) => setWarpRadius(Number(e.target.value))} className="w-full" />
         </div>
         <div>
           <div className="flex justify-between text-xs text-textDim mb-1">
-            <span>Fuerza</span>
+            <span>{t('toolOptions.strength')}</span>
             <span>{warpStrength}%</span>
           </div>
           <input type="range" min={1} max={100} value={warpStrength} onChange={(e) => setWarpStrength(Number(e.target.value))} className="w-full" />
         </div>
-        <p className="text-[10px] text-textDim">Pintá sobre el lienzo para deformar los píxeles en vivo — "Empujar" arrastra en la dirección del trazo.</p>
+        <p className="text-[10px] text-textDim">{t('toolOptions.warpHint')}</p>
       </div>
     );
   }
@@ -76,7 +71,7 @@ export default function ToolOptions() {
       <div className="p-2 border-t border-border space-y-2">
         <div>
           <div className="flex justify-between text-xs text-textDim mb-1">
-            <span>Tolerancia</span>
+            <span>{t('toolOptions.tolerance')}</span>
             <span>{magicWandTolerance}</span>
           </div>
           <input
@@ -88,7 +83,7 @@ export default function ToolOptions() {
             className="w-full"
           />
         </div>
-        <p className="text-[10px] text-textDim">Hacé clic en el lienzo para seleccionar el área conectada de color similar.</p>
+        <p className="text-[10px] text-textDim">{t('toolOptions.magicWandHint')}</p>
       </div>
     );
   }
@@ -101,19 +96,19 @@ export default function ToolOptions() {
             onClick={() => setGradientToolMode('linear')}
             className={`flex-1 text-[10px] rounded py-1 ${gradientToolMode === 'linear' ? 'bg-accent text-white' : 'bg-panel text-textDim hover:text-text'}`}
           >
-            Lineal
+            {t('toolOptions.linear')}
           </button>
           <button
             onClick={() => setGradientToolMode('radial')}
             className={`flex-1 text-[10px] rounded py-1 ${gradientToolMode === 'radial' ? 'bg-accent text-white' : 'bg-panel text-textDim hover:text-text'}`}
           >
-            Radial
+            {t('toolOptions.radial')}
           </button>
         </div>
         <p className="text-[10px] text-textDim">
           {gradientToolMode === 'radial'
-            ? 'Arrastrá desde el centro hacia afuera — color primario en el centro, secundario en el borde.'
-            : 'Arrastrá sobre el lienzo para definir el eje del degradado — color primario en el inicio, secundario en el final. Mantené Shift para ajustar a 45°.'}
+            ? t('toolOptions.gradientHintRadial')
+            : t('toolOptions.gradientHintLinear')}
         </p>
       </div>
     );
@@ -123,7 +118,7 @@ export default function ToolOptions() {
     return (
       <div className="p-2 border-t border-border space-y-2">
         <div>
-          <div className="text-xs text-textDim mb-1">Tamaño de muestra</div>
+          <div className="text-xs text-textDim mb-1">{t('toolOptions.sampleSize')}</div>
           <div className="flex gap-1">
             {([1, 3, 5] as const).map((size) => (
               <button
@@ -131,26 +126,26 @@ export default function ToolOptions() {
                 onClick={() => setEyedropperSampleSize(size)}
                 className={`flex-1 text-[10px] rounded py-1 ${eyedropperSampleSize === size ? 'bg-accent text-white' : 'bg-panel text-textDim hover:text-text'}`}
               >
-                {size === 1 ? '1 píxel' : `${size}×${size}`}
+                {size === 1 ? t('toolOptions.samplePixel') : t('toolOptions.sampleSizeSquare', { size })}
               </button>
             ))}
           </div>
         </div>
-        <p className="text-[10px] text-textDim">Un promedio del área evita tomar un color "raro" en bordes con anti-aliasing o texturas.</p>
+        <p className="text-[10px] text-textDim">{t('toolOptions.eyedropperAverageHint')}</p>
         <div>
-          <div className="text-xs text-textDim mb-1">Muestrear</div>
+          <div className="text-xs text-textDim mb-1">{t('toolOptions.sampleFrom')}</div>
           <div className="flex gap-1">
             <button
               onClick={() => setEyedropperSampleAllLayers(false)}
               className={`flex-1 text-[10px] rounded py-1 ${!eyedropperSampleAllLayers ? 'bg-accent text-white' : 'bg-panel text-textDim hover:text-text'}`}
             >
-              Capa actual
+              {t('toolOptions.currentLayer')}
             </button>
             <button
               onClick={() => setEyedropperSampleAllLayers(true)}
               className={`flex-1 text-[10px] rounded py-1 ${eyedropperSampleAllLayers ? 'bg-accent text-white' : 'bg-panel text-textDim hover:text-text'}`}
             >
-              Todas las capas
+              {t('toolOptions.allLayers')}
             </button>
           </div>
         </div>
@@ -161,7 +156,7 @@ export default function ToolOptions() {
   if (currentTool === 'lasso') {
     return (
       <div className="p-2 border-t border-border">
-        <p className="text-[10px] text-textDim">Arrastrá para dibujar el contorno de la selección — se cierra solo al soltar.</p>
+        <p className="text-[10px] text-textDim">{t('toolOptions.lassoHint')}</p>
       </div>
     );
   }
@@ -173,7 +168,7 @@ export default function ToolOptions() {
     <div className="p-2 border-t border-border space-y-2">
       <div>
         <div className="flex justify-between text-xs text-textDim mb-1">
-          <span>Tamaño</span>
+          <span>{t('toolOptions.size')}</span>
           <span>{Math.round(currentBrush.size)}px</span>
         </div>
         <input
@@ -187,7 +182,7 @@ export default function ToolOptions() {
       </div>
       <div>
         <div className="flex justify-between text-xs text-textDim mb-1">
-          <span>Suavizado</span>
+          <span>{t('toolOptions.smoothing')}</span>
           <span>{Math.round((currentBrush.smoothing ?? 0) * 100)}%</span>
         </div>
         <input
@@ -201,9 +196,9 @@ export default function ToolOptions() {
       </div>
       {isBrushLike && (
         <>
-          <OptionSlider label="Afilado al empezar" value={currentBrush.taperStart ?? 0} min={0} max={200} unit="px" onChange={(v) => updateCurrentBrush({ taperStart: v })} />
+          <OptionSlider label={t('toolOptions.taperStart')} value={currentBrush.taperStart ?? 0} min={0} max={200} unit="px" onChange={(v) => updateCurrentBrush({ taperStart: v })} />
           {currentTool !== 'brush' && (
-            <OptionSlider label="Afilado al terminar" value={currentBrush.taperEnd ?? 0} min={0} max={200} unit="px" onChange={(v) => updateCurrentBrush({ taperEnd: v })} />
+            <OptionSlider label={t('toolOptions.taperEnd')} value={currentBrush.taperEnd ?? 0} min={0} max={200} unit="px" onChange={(v) => updateCurrentBrush({ taperEnd: v })} />
           )}
         </>
       )}
@@ -211,7 +206,7 @@ export default function ToolOptions() {
         <>
           <div>
             <div className="flex justify-between text-xs text-textDim mb-1">
-              <span>Dureza</span>
+              <span>{t('toolOptions.hardness')}</span>
               <span>{Math.round(currentBrush.hardness * 100)}%</span>
             </div>
             <input
@@ -225,7 +220,7 @@ export default function ToolOptions() {
           </div>
           <div>
             <div className="flex justify-between text-xs text-textDim mb-1">
-              <span>Opacidad</span>
+              <span>{t('toolOptions.opacity')}</span>
               <span>{Math.round(currentBrush.opacity * 100)}%</span>
             </div>
             <input
@@ -238,9 +233,9 @@ export default function ToolOptions() {
             />
           </div>
           <div>
-            <div className="flex justify-between text-xs text-textDim mb-1" title="Cantidad de pintura por sello. Con el flujo activado, la opacidad pasa a ser el máximo de todo el trazo.">
-              <span>Flujo</span>
-              <span>{currentBrush.flow === undefined ? 'clásico' : `${Math.round(currentBrush.flow * 100)}%`}</span>
+            <div className="flex justify-between text-xs text-textDim mb-1" title={t('toolOptions.flowTitle')}>
+              <span>{t('toolOptions.flow')}</span>
+              <span>{currentBrush.flow === undefined ? t('toolOptions.flowClassic') : `${Math.round(currentBrush.flow * 100)}%`}</span>
             </div>
             <input
               type="range"
@@ -273,24 +268,25 @@ function OptionSlider({ label, value, min, max, step = 1, unit = '', onChange }:
 }
 
 function FillOptions() {
+  const { t } = useTranslation('panelsPaint');
   const o = useFillOptionsStore();
   return (
     <div className="p-2 border-t border-border space-y-2">
       <label className="flex items-center gap-2 text-xs">
         <input type="checkbox" checked={o.smart} onChange={(e) => o.set({ smart: e.target.checked })} />
-        Relleno inteligente
+        {t('toolOptions.smartFill')}
       </label>
       {o.smart && (
         <>
           <label className="flex items-center gap-2 text-[11px] text-textDim">
             <input type="checkbox" checked={o.sampleAllLayers} onChange={(e) => o.set({ sampleAllLayers: e.target.checked })} />
-            Detectar el área en todas las capas
+            {t('toolOptions.sampleAllLayers')}
           </label>
-          <OptionSlider label="Tolerancia" value={o.tolerance} min={0} max={128} onChange={(v) => o.set({ tolerance: v })} />
-          <OptionSlider label="Cerrar huecos" value={o.gapClose} min={0} max={8} unit="px" onChange={(v) => o.set({ gapClose: v })} />
-          <OptionSlider label="Expandir bajo la línea" value={o.grow} min={0} max={4} unit="px" onChange={(v) => o.set({ grow: v })} />
+          <OptionSlider label={t('toolOptions.tolerance')} value={o.tolerance} min={0} max={128} onChange={(v) => o.set({ tolerance: v })} />
+          <OptionSlider label={t('toolOptions.closeGaps')} value={o.gapClose} min={0} max={8} unit="px" onChange={(v) => o.set({ gapClose: v })} />
+          <OptionSlider label={t('toolOptions.growUnderLine')} value={o.grow} min={0} max={4} unit="px" onChange={(v) => o.set({ grow: v })} />
           <p className="text-[10px] text-textDim">
-            Pensado para colorear line art: activa «todas las capas», colorea en una capa por debajo del dibujo y sube «Cerrar huecos» si el contorno tiene aberturas pequeñas.
+            {t('toolOptions.fillHint')}
           </p>
         </>
       )}
@@ -299,13 +295,14 @@ function FillOptions() {
 }
 
 function SmudgeOptions() {
+  const { t } = useTranslation('panelsPaint');
   const o = useSmudgeStore();
   return (
     <div className="p-2 border-t border-border space-y-2">
-      <OptionSlider label="Tamaño" value={o.size} min={6} max={200} unit="px" onChange={(v) => o.set({ size: v })} />
-      <OptionSlider label="Fuerza de arrastre" value={Math.round(o.strength * 100)} min={5} max={100} unit="%" onChange={(v) => o.set({ strength: v / 100 })} />
-      <OptionSlider label="Carga de color" value={Math.round(o.paintLoad * 100)} min={0} max={60} unit="%" onChange={(v) => o.set({ paintLoad: v / 100 })} />
-      <p className="text-[10px] text-textDim">Arrastra sobre el lienzo para mezclar los colores como pintura fresca. Con «Carga de color» añade poco a poco el color principal mientras mezclas.</p>
+      <OptionSlider label={t('toolOptions.size')} value={o.size} min={6} max={200} unit="px" onChange={(v) => o.set({ size: v })} />
+      <OptionSlider label={t('toolOptions.dragStrength')} value={Math.round(o.strength * 100)} min={5} max={100} unit="%" onChange={(v) => o.set({ strength: v / 100 })} />
+      <OptionSlider label={t('toolOptions.colorLoad')} value={Math.round(o.paintLoad * 100)} min={0} max={60} unit="%" onChange={(v) => o.set({ paintLoad: v / 100 })} />
+      <p className="text-[10px] text-textDim">{t('toolOptions.smudgeHint')}</p>
     </div>
   );
 }

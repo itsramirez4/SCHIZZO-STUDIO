@@ -4,12 +4,14 @@ import esCommon from '@/locales/es/common.json';
 import esChrome from '@/locales/es/chrome.json';
 import esDialogs from '@/locales/es/dialogs.json';
 import esTours from '@/locales/es/tours.json';
+import esPanelsPaint from '@/locales/es/panelsPaint.json';
 import enCommon from '@/locales/en/common.json';
 import enChrome from '@/locales/en/chrome.json';
 import enDialogs from '@/locales/en/dialogs.json';
 import enTours from '@/locales/en/tours.json';
+import enPanelsPaint from '@/locales/en/panelsPaint.json';
 
-export const NAMESPACES = ['common', 'chrome', 'dialogs', 'tours'] as const;
+export const NAMESPACES = ['common', 'chrome', 'dialogs', 'tours', 'panelsPaint'] as const;
 
 // Only the app's core "chrome" is translated so far (see src/store/languageStore.ts's docblock
 // for the full list of what isn't yet) — fallbackLng: 'es' means anything not wrapped in `t()`
@@ -17,8 +19,8 @@ export const NAMESPACES = ['common', 'chrome', 'dialogs', 'tours'] as const;
 // or a blank gap.
 void i18n.use(initReactI18next).init({
   resources: {
-    es: { common: esCommon, chrome: esChrome, dialogs: esDialogs, tours: esTours },
-    en: { common: enCommon, chrome: enChrome, dialogs: enDialogs, tours: enTours },
+    es: { common: esCommon, chrome: esChrome, dialogs: esDialogs, tours: esTours, panelsPaint: esPanelsPaint },
+    en: { common: enCommon, chrome: enChrome, dialogs: enDialogs, tours: enTours, panelsPaint: enPanelsPaint },
   },
   lng: 'es',
   fallbackLng: 'es',

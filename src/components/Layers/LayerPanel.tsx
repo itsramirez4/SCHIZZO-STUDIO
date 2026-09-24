@@ -1,5 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import { Plus, FolderPlus, Image as ImageIcon, Group, GitMerge, Layers, X, Eye, EyeOff, Lock, Unlock, Camera, Trash2, ChevronDown, ChevronRight, Shapes } from 'lucide-react';
 import { Layer, AdjustmentType, FillType } from '@/types';
 import { ADJUSTMENT_LABELS } from '@/services/filter.service';
@@ -8,9 +9,10 @@ import { useLayers } from '@/hooks/useLayers';
 import { useAppStore } from '@/store/appStore';
 import LayerItem from './LayerItem';
 
-const FILL_TYPE_LABELS: Record<FillType, string> = { solid: 'Color sólido', gradient: 'Degradado', pattern: 'Patrón' };
+const FILL_TYPE_IDS: FillType[] = ['solid', 'gradient', 'pattern'];
 
 export default function LayerPanel() {
+  const { t } = useTranslation('panelsPaint');
   const { layers, currentLayerId, addLayer, reorderLayers, addAdjustmentLayer, addFillLayer, addReferenceLayer, addVectorLayer } = useLayers();
   const createGroup = useAppStore((s) => s.createGroup);
   const setLayerParent = useAppStore((s) => s.setLayerParent);
@@ -129,7 +131,7 @@ export default function LayerPanel() {
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between p-2 border-b border-border">
-        <span className="text-xs font-semibold">Capas</span>
+        <span className="text-xs font-semibold">{t('layerPanel.title')}</span>
         <div className="flex items-center gap-1">
           <select
             value=""
@@ -137,10 +139,10 @@ export default function LayerPanel() {
               if (e.target.value) addAdjustmentLayer(e.target.value as AdjustmentType);
               e.target.value = '';
             }}
-            title="Nueva capa de ajuste"
+            title={t('layerPanel.newAdjustmentLayerTitle')}
             className="bg-panel border border-border rounded text-[10px] text-textDim hover:text-text px-0.5 py-0.5 max-w-[64px]"
           >
-            <option value="">+ Ajuste</option>
+            <option value="">{t('layerPanel.addAdjustment')}</option>
             {(Object.keys(ADJUSTMENT_LABELS) as AdjustmentType[]).map((type) => (
               <option key={type} value={type}>
                 {ADJUSTMENT_LABELS[type]}
@@ -153,65 +155,65 @@ export default function LayerPanel() {
               if (e.target.value) addFillLayer(e.target.value as FillType);
               e.target.value = '';
             }}
-            title="Nueva capa de relleno"
+            title={t('layerPanel.newFillLayerTitle')}
             className="bg-panel border border-border rounded text-[10px] text-textDim hover:text-text px-0.5 py-0.5 max-w-[62px]"
           >
-            <option value="">+ Relleno</option>
-            {(Object.keys(FILL_TYPE_LABELS) as FillType[]).map((type) => (
+            <option value="">{t('layerPanel.addFill')}</option>
+            {FILL_TYPE_IDS.map((type) => (
               <option key={type} value={type}>
-                {FILL_TYPE_LABELS[type]}
+                {t(`layerPanel.fillTypes.${type}`)}
               </option>
             ))}
           </select>
           <button
             onClick={() => importReferenceImages(addReferenceLayer)}
             className="text-textDim hover:text-text"
-            title="Importar imagen de referencia"
+            title={t('layerPanel.importReferenceTitle')}
           >
             <ImageIcon size={14} />
           </button>
-          <button onClick={() => addVectorLayer()} className="text-textDim hover:text-text" title="Nueva capa vectorial (formas, texto y trazados editables)">
+          <button onClick={() => addVectorLayer()} className="text-textDim hover:text-text" title={t('layerPanel.newVectorLayerTitle')}>
             <Shapes size={14} />
           </button>
-          <button onClick={() => createGroup()} className="text-textDim hover:text-text" title="Nuevo grupo">
+          <button onClick={() => createGroup()} className="text-textDim hover:text-text" title={t('layerPanel.newGroupTitle')}>
             <FolderPlus size={15} />
           </button>
-          <button onClick={mergeVisibleLayers} className="text-textDim hover:text-text" title="Combinar todas las capas visibles">
+          <button onClick={mergeVisibleLayers} className="text-textDim hover:text-text" title={t('layerPanel.mergeVisibleTitle')}>
             <GitMerge size={14} />
           </button>
           <button
             onClick={() => {
-              if (!flattenImage()) toast('Nada que aplanar — ya hay una sola capa');
+              if (!flattenImage()) toast(t('layerPanel.nothingToFlattenToast'));
             }}
             className="text-textDim hover:text-text"
-            title="Aplanar imagen — combina TODAS las capas (incluso ocultas) en una sola, descartando lo oculto"
+            title={t('layerPanel.flattenTitle')}
           >
             <Layers size={14} />
           </button>
-          <button onClick={() => addLayer()} className="text-textDim hover:text-text" title="Nueva capa">
+          <button onClick={() => addLayer()} className="text-textDim hover:text-text" title={t('layerPanel.newLayerTitle')}>
             <Plus size={16} />
           </button>
         </div>
       </div>
       {selectedLayerIds.length > 0 && (
         <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-border bg-accent/10 text-[10px]">
-          <span className="text-textDim">{selectedLayerIds.length} seleccionadas</span>
-          <button onClick={() => groupSelectedLayers()} title="Agrupar selección" className="text-textDim hover:text-text ml-auto">
+          <span className="text-textDim">{t('layerPanel.selectedCount', { count: selectedLayerIds.length })}</span>
+          <button onClick={() => groupSelectedLayers()} title={t('layerPanel.groupSelectionTitle')} className="text-textDim hover:text-text ml-auto">
             <Group size={13} />
           </button>
-          <button onClick={() => setSelectedLayersVisibility(true)} title="Mostrar todas" className="text-textDim hover:text-text">
+          <button onClick={() => setSelectedLayersVisibility(true)} title={t('layerPanel.showAllTitle')} className="text-textDim hover:text-text">
             <Eye size={13} />
           </button>
-          <button onClick={() => setSelectedLayersVisibility(false)} title="Ocultar todas" className="text-textDim hover:text-text">
+          <button onClick={() => setSelectedLayersVisibility(false)} title={t('layerPanel.hideAllTitle')} className="text-textDim hover:text-text">
             <EyeOff size={13} />
           </button>
-          <button onClick={() => setSelectedLayersLocked(true)} title="Bloquear todas" className="text-textDim hover:text-text">
+          <button onClick={() => setSelectedLayersLocked(true)} title={t('layerPanel.lockAllTitle')} className="text-textDim hover:text-text">
             <Lock size={13} />
           </button>
-          <button onClick={() => setSelectedLayersLocked(false)} title="Desbloquear todas" className="text-textDim hover:text-text">
+          <button onClick={() => setSelectedLayersLocked(false)} title={t('layerPanel.unlockAllTitle')} className="text-textDim hover:text-text">
             <Unlock size={13} />
           </button>
-          <button onClick={clearLayerSelection} title="Deseleccionar" className="text-textDim hover:text-red-400">
+          <button onClick={clearLayerSelection} title={t('layerPanel.deselectTitle')} className="text-textDim hover:text-red-400">
             <X size={13} />
           </button>
         </div>
@@ -224,17 +226,17 @@ export default function LayerPanel() {
           className="w-full flex items-center gap-1.5 px-2 py-1.5 text-[10px] text-textDim hover:text-text"
         >
           {compsOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-          Escenas (composiciones de capas)
+          {t('layerPanel.scenesToggle')}
         </button>
         {compsOpen && (
           <div className="px-2 pb-2 space-y-1.5">
-            <p className="text-[9px] text-textDim">Guarda una instantánea de qué capas están visibles, su opacidad, modo de fusión, efectos, y el zoom/posición del lienzo — para saltar entre distintas versiones o encuadres del proyecto.</p>
+            <p className="text-[9px] text-textDim">{t('layerPanel.scenesDescription')}</p>
             <div className="flex gap-1">
               <input
                 type="text"
                 value={newCompName}
                 onChange={(e) => setNewCompName(e.target.value)}
-                placeholder="Nombre de la escena"
+                placeholder={t('layerPanel.scenesNamePlaceholder')}
                 className="flex-1 bg-panel border border-border rounded text-[10px] px-1.5 py-1"
               />
               <button
@@ -245,23 +247,23 @@ export default function LayerPanel() {
                   setNewCompName('');
                 }}
                 disabled={!newCompName.trim()}
-                title="Capturar estado actual"
+                title={t('layerPanel.captureTitle')}
                 className="text-[10px] bg-panelLight rounded px-2 disabled:opacity-40"
               >
                 <Camera size={12} />
               </button>
             </div>
             {(project?.layerComps ?? []).length === 0 ? (
-              <p className="text-[9px] text-textDim">Sin composiciones todavía.</p>
+              <p className="text-[9px] text-textDim">{t('layerPanel.noScenesYet')}</p>
             ) : (
               <div className="space-y-1">
                 {project!.layerComps!.map((comp) => (
                   <div key={comp.id} className="flex items-center gap-1.5 text-[10px] bg-panel rounded px-1.5 py-1">
                     <span className="flex-1 truncate">{comp.name}</span>
                     <button onClick={() => applyLayerComp(comp.id)} className="text-[9px] bg-panelLight rounded px-2 py-0.5">
-                      Aplicar
+                      {t('layerPanel.apply')}
                     </button>
-                    <button onClick={() => deleteLayerComp(comp.id)} className="text-textDim hover:text-red-400" title="Eliminar">
+                    <button onClick={() => deleteLayerComp(comp.id)} className="text-textDim hover:text-red-400" title={t('layerPanel.deleteTitle')}>
                       <Trash2 size={11} />
                     </button>
                   </div>

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAppStore } from '@/store/appStore';
 import { useTools } from '@/hooks/useTools';
 import { useLayers } from '@/hooks/useLayers';
@@ -7,6 +8,7 @@ import { useLayers } from '@/hooks/useLayers';
  * selection) or whenever any selection already exists (to offer the modifiers) — kept out of
  * the way otherwise, since the toolbox already stacks several conditional panels. */
 export default function SelectionModifiers() {
+  const { t } = useTranslation('panelsPaint');
   const { currentTool, primaryColor } = useTools();
   const { currentLayer } = useLayers();
   const selection = useAppStore((s) => s.selection);
@@ -24,7 +26,7 @@ export default function SelectionModifiers() {
 
   return (
     <div className="p-2 border-t border-border space-y-2">
-      <div className="text-[10px] text-textDim uppercase tracking-wide">Rango de color</div>
+      <div className="text-[10px] text-textDim uppercase tracking-wide">{t('selectionModifiers.colorRange')}</div>
       <div className="flex items-center gap-2">
         <input
           type="range"
@@ -40,31 +42,31 @@ export default function SelectionModifiers() {
         onClick={() => selectColorRange(primaryColor, colorTolerance)}
         disabled={!currentLayer}
         className="w-full text-[11px] bg-panelLight rounded py-1.5 disabled:opacity-40"
-        title="Selecciona todos los píxeles del color primario en cualquier parte de la capa, no solo el área contigua"
+        title={t('selectionModifiers.selectPrimaryTitle')}
       >
-        Seleccionar color primario en toda la capa
+        {t('selectionModifiers.selectPrimary')}
       </button>
 
       {selection && (
         <>
           <hr className="border-border" />
-          <div className="text-[10px] text-textDim uppercase tracking-wide">Modificar selección</div>
+          <div className="text-[10px] text-textDim uppercase tracking-wide">{t('selectionModifiers.modifySelection')}</div>
           <div className="grid grid-cols-2 gap-1">
             <button onClick={invertSelection} className="text-[11px] bg-panelLight rounded py-1">
-              Invertir
+              {t('selectionModifiers.invert')}
             </button>
             <button onClick={() => featherSelection(amount)} className="text-[11px] bg-panelLight rounded py-1">
-              Difuminar
+              {t('selectionModifiers.feather')}
             </button>
             <button onClick={() => expandSelection(amount)} className="text-[11px] bg-panelLight rounded py-1">
-              Expandir
+              {t('selectionModifiers.expand')}
             </button>
             <button onClick={() => contractSelection(amount)} className="text-[11px] bg-panelLight rounded py-1">
-              Contraer
+              {t('selectionModifiers.contract')}
             </button>
           </div>
           <label className="flex items-center gap-2 text-[10px] text-textDim">
-            Cantidad (px)
+            {t('selectionModifiers.amount')}
             <input
               type="number"
               min={1}

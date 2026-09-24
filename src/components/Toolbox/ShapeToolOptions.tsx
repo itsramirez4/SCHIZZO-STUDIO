@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useTools } from '@/hooks/useTools';
 import { useShapeStore } from '@/store/shapeStore';
 import { useVectorTextStore } from '@/store/vectorTextStore';
@@ -10,18 +11,14 @@ const SHAPE_TOOL_KIND: Partial<Record<string, ShapeKind>> = {
   shapeStar: 'star',
 };
 
-const BOOLEAN_LABELS: Record<BooleanOp, string> = {
-  union: 'Unión',
-  subtract: 'Restar',
-  intersect: 'Intersección',
-  exclude: 'Excluir',
-};
+const BOOLEAN_OPS: BooleanOp[] = ['union', 'subtract', 'intersect', 'exclude'];
 
 /** Shape/text params + stroke/fill editor + commit actions — shown while a shape or vector-text
  * tool is active, or while a draft/saved slot is still pending after switching away. Vector text
  * reuses this same stroke/fill editor (both are "draft then bake" vector content) instead of a
  * duplicate one. */
 export default function ShapeToolOptions() {
+  const { t } = useTranslation('panelsPaint');
   const { currentTool } = useTools();
   const shapeDraft = useShapeStore((s) => s.shapeDraft);
   const pendingSlotA = useShapeStore((s) => s.pendingSlotA);
@@ -55,9 +52,9 @@ export default function ShapeToolOptions() {
     <div className="p-2 border-t border-border space-y-2">
       {isTextTool || textDraft ? (
         <>
-          <div className="text-[10px] text-textDim uppercase tracking-wide">Texto vectorial</div>
+          <div className="text-[10px] text-textDim uppercase tracking-wide">{t('shapeToolOptions.vectorText')}</div>
           <label className="flex items-center gap-2 text-[10px] text-textDim">
-            Tamaño
+            {t('shapeToolOptions.size')}
             <input
               type="range"
               min={8}
@@ -68,15 +65,15 @@ export default function ShapeToolOptions() {
             />
             <span className="w-9 text-right">{textFontSize}px</span>
           </label>
-          {!textDraft && <p className="text-[10px] text-textDim">Hacé clic en el lienzo y escribí — Enter confirma el texto tipeado.</p>}
+          {!textDraft && <p className="text-[10px] text-textDim">{t('shapeToolOptions.textHint')}</p>}
         </>
       ) : (
         <>
-          <div className="text-[10px] text-textDim uppercase tracking-wide">Forma</div>
+          <div className="text-[10px] text-textDim uppercase tracking-wide">{t('shapeToolOptions.shape')}</div>
 
           {kind === 'rectangle' && (
             <label className="flex items-center gap-2 text-[10px] text-textDim">
-              Radio de esquina
+              {t('shapeToolOptions.cornerRadius')}
               <input
                 type="range"
                 min={0}
@@ -91,7 +88,7 @@ export default function ShapeToolOptions() {
 
           {(kind === 'polygon' || kind === 'star') && (
             <label className="flex items-center gap-2 text-[10px] text-textDim">
-              {kind === 'star' ? 'Puntas' : 'Lados'}
+              {kind === 'star' ? t('shapeToolOptions.points') : t('shapeToolOptions.sides')}
               <input
                 type="range"
                 min={3}
@@ -106,7 +103,7 @@ export default function ShapeToolOptions() {
 
           {kind === 'star' && (
             <label className="flex items-center gap-2 text-[10px] text-textDim">
-              Radio interno
+              {t('shapeToolOptions.innerRadius')}
               <input
                 type="range"
                 min={5}
@@ -122,15 +119,15 @@ export default function ShapeToolOptions() {
       )}
 
       <hr className="border-border" />
-      <div className="text-[10px] text-textDim uppercase tracking-wide">Trazo</div>
+      <div className="text-[10px] text-textDim uppercase tracking-wide">{t('shapeToolOptions.strokeHeading')}</div>
       <div className="flex items-center gap-2">
-        <input type="checkbox" title="Activar trazo" checked={stroke.enabled} onChange={(e) => setStroke({ enabled: e.target.checked })} />
+        <input type="checkbox" title={t('shapeToolOptions.enableStrokeTitle')} checked={stroke.enabled} onChange={(e) => setStroke({ enabled: e.target.checked })} />
         <input
           type="color"
           value={stroke.color}
           onChange={(e) => setStroke({ color: e.target.value })}
           className="w-7 h-6 rounded border border-border bg-transparent"
-          title="Color de trazo"
+          title={t('shapeToolOptions.strokeColorTitle')}
         />
         <input
           type="number"
@@ -139,23 +136,23 @@ export default function ShapeToolOptions() {
           value={stroke.width}
           onChange={(e) => setStroke({ width: Math.max(0, Number(e.target.value)) })}
           className="w-12 bg-panel border border-border rounded px-1 py-0.5 text-[11px]"
-          title="Grosor (px)"
+          title={t('shapeToolOptions.strokeWidthTitle')}
         />
         <label className="flex items-center gap-1 text-[10px] text-textDim">
           <input type="checkbox" checked={stroke.dashed} onChange={(e) => setStroke({ dashed: e.target.checked })} />
-          Punteado
+          {t('shapeToolOptions.dashed')}
         </label>
       </div>
 
-      <div className="text-[10px] text-textDim uppercase tracking-wide">Relleno</div>
+      <div className="text-[10px] text-textDim uppercase tracking-wide">{t('shapeToolOptions.fillHeading')}</div>
       <div className="flex items-center gap-2">
-        <input type="checkbox" title="Activar relleno" checked={fill.enabled} onChange={(e) => setFill({ enabled: e.target.checked })} />
+        <input type="checkbox" title={t('shapeToolOptions.enableFillTitle')} checked={fill.enabled} onChange={(e) => setFill({ enabled: e.target.checked })} />
         <input
           type="color"
           value={fill.color}
           onChange={(e) => setFill({ color: e.target.value })}
           className="w-7 h-6 rounded border border-border bg-transparent"
-          title="Color de relleno"
+          title={t('shapeToolOptions.fillColorTitle')}
         />
         <input
           type="range"
@@ -164,7 +161,7 @@ export default function ShapeToolOptions() {
           value={Math.round(fill.opacity * 100)}
           onChange={(e) => setFill({ opacity: Number(e.target.value) / 100 })}
           className="flex-1"
-          title="Opacidad"
+          title={t('shapeToolOptions.opacityTitle')}
         />
       </div>
 
@@ -176,12 +173,12 @@ export default function ShapeToolOptions() {
             onClick={commitTextDraft}
             disabled={!textDraft}
             className="text-[11px] bg-accent text-white rounded py-1 disabled:opacity-40"
-            title="Confirmar (Enter)"
+            title={t('shapeToolOptions.confirmTitle')}
           >
-            Confirmar
+            {t('shapeToolOptions.confirm')}
           </button>
-          <button onClick={cancelTextDraft} disabled={!textDraft} className="text-[11px] bg-panelLight rounded py-1 disabled:opacity-40" title="Cancelar (Esc)">
-            Cancelar
+          <button onClick={cancelTextDraft} disabled={!textDraft} className="text-[11px] bg-panelLight rounded py-1 disabled:opacity-40" title={t('shapeToolOptions.cancelTitle')}>
+            {t('common:cancel')}
           </button>
         </div>
       ) : (
@@ -191,34 +188,34 @@ export default function ShapeToolOptions() {
               onClick={commitDraft}
               disabled={!shapeDraft}
               className="text-[11px] bg-accent text-white rounded py-1 disabled:opacity-40"
-              title="Confirmar (Enter)"
+              title={t('shapeToolOptions.confirmTitle')}
             >
-              Confirmar
+              {t('shapeToolOptions.confirm')}
             </button>
             <button
               onClick={saveDraftAsSlotA}
               disabled={!shapeDraft}
               className="text-[11px] bg-panelLight rounded py-1 disabled:opacity-40"
-              title="Guarda esta forma para combinarla con la siguiente"
+              title={t('shapeToolOptions.saveAsShapeATitle')}
             >
-              Guardar como Forma A
+              {t('shapeToolOptions.saveAsShapeA')}
             </button>
           </div>
 
           {pendingSlotA && (
             <>
               <div className="text-[10px] text-textDim">
-                Forma A guardada — dibujá una segunda forma y elegí cómo combinarlas:
+                {t('shapeToolOptions.shapeASaved')}
               </div>
               <div className="grid grid-cols-2 gap-1">
-                {(Object.keys(BOOLEAN_LABELS) as BooleanOp[]).map((op) => (
+                {BOOLEAN_OPS.map((op) => (
                   <button
                     key={op}
                     onClick={() => performBoolean(op)}
                     disabled={!shapeDraft}
                     className="text-[11px] bg-panelLight rounded py-1 disabled:opacity-40"
                   >
-                    {BOOLEAN_LABELS[op]}
+                    {t(`shapeToolOptions.booleanOps.${op}`)}
                   </button>
                 ))}
               </div>
@@ -226,16 +223,16 @@ export default function ShapeToolOptions() {
                 onClick={performDivide}
                 disabled={!shapeDraft}
                 className="w-full text-[11px] bg-panelLight rounded py-1 disabled:opacity-40"
-                title="Separa el área A-solo, B-solo y la intersección en capas independientes"
+                title={t('shapeToolOptions.divideTitle')}
               >
-                Dividir (en capas separadas)
+                {t('shapeToolOptions.divide')}
               </button>
             </>
           )}
 
           {(shapeDraft || pendingSlotA) && (
-            <button onClick={cancelAll} className="w-full text-[11px] bg-panelLight rounded py-1" title="Cancelar (Esc)">
-              Cancelar
+            <button onClick={cancelAll} className="w-full text-[11px] bg-panelLight rounded py-1" title={t('shapeToolOptions.cancelTitle')}>
+              {t('common:cancel')}
             </button>
           )}
         </>
