@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import { Cloud, Download, Trash2, Upload, RefreshCw } from 'lucide-react';
 import { useCloudSyncStore } from '@/store/cloudSyncStore';
 import { useAppStore } from '@/store/appStore';
@@ -17,6 +18,7 @@ const PROVIDERS = Object.keys(CLOUD_PROVIDER_LABELS) as CloudProvider[];
  * it doesn't control. The exact redirect URI to register is shown below each provider's fields.
  */
 export default function CloudSyncPanel() {
+  const { t } = useTranslation('panelsProject');
   const loadAll = useCloudSyncStore((s) => s.loadAll);
   const configs = useCloudSyncStore((s) => s.configs);
   const status = useCloudSyncStore((s) => s.status);
@@ -44,25 +46,25 @@ export default function CloudSyncPanel() {
   }, [configs]);
 
   if (!isElectron()) {
-    return <p className="text-[10px] text-textDim p-3">La sincronización en la nube solo está disponible en la app de escritorio.</p>;
+    return <p className="text-[10px] text-textDim p-3">{t('cloudSync.desktopOnly')}</p>;
   }
 
   async function saveConfig(provider: CloudProvider) {
     await setConfig(provider, { clientId: (clientIdDrafts[provider] || '').trim(), clientSecret: (clientSecretDrafts[provider] || '').trim() || undefined });
-    toast.success('Guardado');
+    toast.success(t('cloudSync.savedToast'));
   }
 
   async function handleConnect(provider: CloudProvider) {
     if (!configs[provider]?.clientId) {
-      toast.error('Guardá el Client ID primero');
+      toast.error(t('cloudSync.saveClientIdFirst'));
       return;
     }
     const result = await connect(provider);
     if (result.ok) {
-      toast.success(`${CLOUD_PROVIDER_LABELS[provider]} conectado`);
+      toast.success(t('cloudSync.connectedToast', { provider: CLOUD_PROVIDER_LABELS[provider] }));
       refreshFiles(provider);
     } else {
-      toast.error(result.error || 'No se pudo conectar');
+      toast.error(result.error || t('cloudSync.connectError'));
     }
   }
 
@@ -70,10 +72,10 @@ export default function CloudSyncPanel() {
     if (!project) return;
     const result = await uploadProjectToCloud(provider, project);
     if (result.ok) {
-      toast.success('Proyecto subido');
+      toast.success(t('cloudSync.uploadedToast'));
       refreshFiles(provider);
     } else {
-      toast.error(result.error || 'No se pudo subir');
+      toast.error(result.error || t('cloudSync.uploadError'));
     }
   }
 
@@ -81,19 +83,19 @@ export default function CloudSyncPanel() {
     const result = await downloadProjectFromCloud(provider, fileId);
     if (result.ok && result.project) {
       loadProjectData(result.project);
-      toast.success('Proyecto abierto');
+      toast.success(t('cloudSync.openedToast'));
     } else {
-      toast.error(result.error || 'No se pudo descargar');
+      toast.error(result.error || t('cloudSync.downloadError'));
     }
   }
 
   async function handleDelete(provider: CloudProvider, fileId: string) {
     const result = await window.electronAPI.cloudDelete(provider, fileId);
     if (result.ok) {
-      toast.success('Eliminado');
+      toast.success(t('cloudSync.deletedToast'));
       refreshFiles(provider);
     } else {
-      toast.error(result.error || 'No se pudo eliminar');
+      toast.error(result.error || t('cloudSync.deleteError'));
     }
   }
 
@@ -112,7 +114,7 @@ export default function CloudSyncPanel() {
                 {CLOUD_PROVIDER_LABELS[provider]}
               </span>
               <span className={`text-[9px] px-1.5 py-0.5 rounded ${connected ? 'bg-accent text-white' : 'bg-panelLight text-textDim'}`}>
-                {connected ? 'Conectado' : 'No conectado'}
+                {connected ? t('cloudSync.connected') : t('cloudSync.notConnected')}
               </span>
             </div>
 
@@ -130,24 +132,24 @@ export default function CloudSyncPanel() {
                     type="text"
                     value={clientSecretDrafts[provider] ?? ''}
                     onChange={(e) => setClientSecretDrafts((s) => ({ ...s, [provider]: e.target.value }))}
-                    placeholder="Client Secret (Google lo requiere)"
+                    placeholder={t('cloudSync.clientSecretPlaceholder')}
                     className="w-full bg-panel border border-border rounded text-[10px] px-1.5 py-1 font-mono"
                   />
                 )}
                 <div className="flex gap-1.5">
                   <button onClick={() => saveConfig(provider)} className="flex-1 text-[10px] bg-panelLight rounded py-1">
-                    Guardar
+                    {t('common:save')}
                   </button>
                   <button
                     onClick={() => handleConnect(provider)}
                     disabled={isBusy || !configs[provider]?.clientId}
                     className="flex-1 text-[10px] bg-accent text-white rounded py-1 disabled:opacity-40"
                   >
-                    {isBusy ? 'Conectando…' : 'Conectar'}
+                    {isBusy ? t('cloudSync.connecting') : t('cloudSync.connect')}
                   </button>
                 </div>
                 <p className="text-[9px] text-textDim">
-                  Redirect URI a registrar en la app de {CLOUD_PROVIDER_LABELS[provider]}: <span className="font-mono break-all">{redirectUri}</span>
+                  {t('cloudSync.redirectUriLabel', { provider: CLOUD_PROVIDER_LABELS[provider] })} <span className="font-mono break-all">{redirectUri}</span>
                 </p>
               </>
             )}
@@ -160,27 +162,27 @@ export default function CloudSyncPanel() {
                     disabled={!project || isBusy}
                     className="flex-1 flex items-center justify-center gap-1 text-[10px] bg-panelLight rounded py-1 disabled:opacity-40"
                   >
-                    <Upload size={11} /> Subir proyecto actual
+                    <Upload size={11} /> {t('cloudSync.uploadCurrentProject')}
                   </button>
-                  <button onClick={() => refreshFiles(provider)} disabled={isBusy} className="text-[10px] bg-panelLight rounded px-2 disabled:opacity-40" title="Actualizar lista">
+                  <button onClick={() => refreshFiles(provider)} disabled={isBusy} className="text-[10px] bg-panelLight rounded px-2 disabled:opacity-40" title={t('cloudSync.refreshList')}>
                     <RefreshCw size={11} />
                   </button>
-                  <button onClick={() => disconnect(provider)} className="text-[10px] bg-panelLight rounded px-2 text-textDim hover:text-red-400" title="Desconectar">
-                    Salir
+                  <button onClick={() => disconnect(provider)} className="text-[10px] bg-panelLight rounded px-2 text-textDim hover:text-red-400" title={t('cloudSync.disconnect')}>
+                    {t('cloudSync.logout')}
                   </button>
                 </div>
 
                 {providerFiles.length === 0 ? (
-                  <p className="text-[9px] text-textDim">Sin proyectos en la nube todavía.</p>
+                  <p className="text-[9px] text-textDim">{t('cloudSync.noProjectsYet')}</p>
                 ) : (
                   <div className="space-y-1">
                     {providerFiles.map((f) => (
                       <div key={f.id} className="flex items-center justify-between gap-1 text-[10px] bg-panel rounded px-1.5 py-1">
                         <span className="truncate flex-1">{f.name}</span>
-                        <button onClick={() => handleDownload(provider, f.id)} className="text-textDim hover:text-text" title="Abrir">
+                        <button onClick={() => handleDownload(provider, f.id)} className="text-textDim hover:text-text" title={t('cloudSync.open')}>
                           <Download size={11} />
                         </button>
-                        <button onClick={() => handleDelete(provider, f.id)} className="text-textDim hover:text-red-400" title="Eliminar">
+                        <button onClick={() => handleDelete(provider, f.id)} className="text-textDim hover:text-red-400" title={t('cloudSync.delete')}>
                           <Trash2 size={11} />
                         </button>
                       </div>

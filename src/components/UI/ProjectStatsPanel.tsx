@@ -1,15 +1,16 @@
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAppStore, historyManager } from '@/store/appStore';
 import { useHistory } from '@/hooks/useHistory';
 import { computeProjectStats } from '@/services/projectStats.service';
 
-const TYPE_LABELS: Record<string, string> = {
-  raster: 'Ráster',
-  text: 'Texto',
-  reference: 'Referencia',
-  group: 'Grupo',
-  adjustment: 'Ajuste',
-  fill: 'Relleno',
+const TYPE_LABEL_KEYS: Record<string, string> = {
+  raster: 'projectStats.typeLabels.raster',
+  text: 'projectStats.typeLabels.text',
+  reference: 'projectStats.typeLabels.reference',
+  group: 'projectStats.typeLabels.group',
+  adjustment: 'projectStats.typeLabels.adjustment',
+  fill: 'projectStats.typeLabels.fill',
 };
 
 function formatSize(bytes: number): string {
@@ -27,6 +28,7 @@ function formatDate(iso: string): string {
 }
 
 export default function ProjectStatsPanel() {
+  const { t } = useTranslation('panelsProject');
   const project = useAppStore((s) => s.project);
   // historyVersion changes on every push/undo/redo — recompute stats (and re-read the
   // history stack depth) whenever it does, not just when the panel first mounts.
@@ -41,44 +43,44 @@ export default function ProjectStatsPanel() {
   }, [project, historyVersion]);
 
   if (!project || !stats) {
-    return <p className="text-xs text-textDim p-3">Abrí un proyecto para ver sus estadísticas.</p>;
+    return <p className="text-xs text-textDim p-3">{t('projectStats.openProjectHint')}</p>;
   }
 
   return (
     <div className="p-3 space-y-3 text-xs">
       <div>
-        <h3 className="text-textDim uppercase text-[10px] tracking-wide mb-1.5">Lienzo</h3>
-        <Row label="Tamaño" value={`${stats.canvasWidth} × ${stats.canvasHeight} px`} />
-        <Row label="Colores distintos (aprox.)" value={stats.approxDistinctColors.toLocaleString()} />
+        <h3 className="text-textDim uppercase text-[10px] tracking-wide mb-1.5">{t('projectStats.sections.canvas')}</h3>
+        <Row label={t('projectStats.labels.size')} value={`${stats.canvasWidth} × ${stats.canvasHeight} px`} />
+        <Row label={t('projectStats.labels.distinctColors')} value={stats.approxDistinctColors.toLocaleString()} />
       </div>
 
       <div>
-        <h3 className="text-textDim uppercase text-[10px] tracking-wide mb-1.5">Capas</h3>
-        <Row label="Total" value={String(stats.layerCount)} />
+        <h3 className="text-textDim uppercase text-[10px] tracking-wide mb-1.5">{t('projectStats.sections.layers')}</h3>
+        <Row label={t('projectStats.labels.total')} value={String(stats.layerCount)} />
         {Object.entries(stats.layerCountByType).map(([type, count]) => (
-          <Row key={type} label={TYPE_LABELS[type] ?? type} value={String(count)} indent />
+          <Row key={type} label={TYPE_LABEL_KEYS[type] ? t(TYPE_LABEL_KEYS[type]) : type} value={String(count)} indent />
         ))}
-        <Row label="Modos de fusión usados" value={stats.blendModesUsed.join(', ') || '—'} />
+        <Row label={t('projectStats.labels.blendModesUsed')} value={stats.blendModesUsed.join(', ') || '—'} />
       </div>
 
       {stats.hasAnimation && (
         <div>
-          <h3 className="text-textDim uppercase text-[10px] tracking-wide mb-1.5">Animación</h3>
-          <Row label="Fotogramas" value={String(stats.frameCount)} />
+          <h3 className="text-textDim uppercase text-[10px] tracking-wide mb-1.5">{t('projectStats.sections.animation')}</h3>
+          <Row label={t('projectStats.labels.frames')} value={String(stats.frameCount)} />
         </div>
       )}
 
       <div>
-        <h3 className="text-textDim uppercase text-[10px] tracking-wide mb-1.5">Archivo</h3>
-        <Row label="Tamaño estimado" value={formatSize(stats.estimatedFileSizeBytes)} />
-        <Row label="Creado" value={formatDate(stats.created)} />
-        <Row label="Modificado" value={formatDate(stats.lastModified)} />
+        <h3 className="text-textDim uppercase text-[10px] tracking-wide mb-1.5">{t('projectStats.sections.file')}</h3>
+        <Row label={t('projectStats.labels.estimatedSize')} value={formatSize(stats.estimatedFileSizeBytes)} />
+        <Row label={t('projectStats.labels.created')} value={formatDate(stats.created)} />
+        <Row label={t('projectStats.labels.modified')} value={formatDate(stats.lastModified)} />
       </div>
 
       <div>
-        <h3 className="text-textDim uppercase text-[10px] tracking-wide mb-1.5">Historial</h3>
-        <Row label="Pasos para deshacer" value={String(stats.undoStepsAvailable)} />
-        <Row label="Pasos para rehacer" value={String(stats.redoStepsAvailable)} />
+        <h3 className="text-textDim uppercase text-[10px] tracking-wide mb-1.5">{t('projectStats.sections.history')}</h3>
+        <Row label={t('projectStats.labels.undoSteps')} value={String(stats.undoStepsAvailable)} />
+        <Row label={t('projectStats.labels.redoSteps')} value={String(stats.redoStepsAvailable)} />
       </div>
     </div>
   );

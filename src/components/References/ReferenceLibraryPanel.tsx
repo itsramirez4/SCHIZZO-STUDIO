@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import { Star, Trash2, ExternalLink, FolderInput, GitCompare, Folder } from 'lucide-react';
 import { useAppStore } from '@/store/appStore';
 import { useReferenceLibraryStore } from '@/store/referenceLibraryStore';
@@ -40,6 +41,7 @@ async function fitToCanvas(dataUrl: string, w: number, h: number, mirror: boolea
  * reference layer" (which lives only inside one project's layer stack and is gone once deleted).
  * Same Electron-fs-JSON persistence pattern as the Asset Library, in its own file. */
 export default function ReferenceLibraryPanel() {
+  const { t } = useTranslation('panelsProject');
   const globalRefs = useReferenceLibraryStore((s) => s.references);
   const loadLibrary = useReferenceLibraryStore((s) => s.loadLibrary);
   const addGlobal = useReferenceLibraryStore((s) => s.addReference);
@@ -82,7 +84,7 @@ export default function ReferenceLibraryPanel() {
     const copy = { ...ref, id: `${ref.id}-${Date.now().toString(36)}` };
     if (inProject) addGlobal(copy);
     else updateProjectReferences([copy, ...freshProjectRefs()]);
-    toast.success(inProject ? 'Copiada a la biblioteca global' : 'Copiada a este proyecto');
+    toast.success(inProject ? t('referenceLibrary.copiedToGlobalToast') : t('referenceLibrary.copiedToProjectToast'));
   };
 
   const [search, setSearch] = useState('');
@@ -99,7 +101,7 @@ export default function ReferenceLibraryPanel() {
 
   async function importFromFile() {
     if (!isElectron()) {
-      toast.error('Importar solo está disponible en la app de escritorio');
+      toast.error(t('referenceLibrary.importDesktopOnly'));
       return;
     }
     const result = await window.electronAPI.importImages();
@@ -110,7 +112,7 @@ export default function ReferenceLibraryPanel() {
         const ref = await buildReferenceFromDataUrl(file.dataUrl, file.name.replace(/\.[^.]+$/, ''));
         addReference(ref);
       }
-      toast.success(`${result.files.length} referencia(s) importada(s)`);
+      toast.success(t('referenceLibrary.importedCount', { count: result.files.length }));
     } finally {
       setIsImporting(false);
     }
@@ -123,14 +125,14 @@ export default function ReferenceLibraryPanel() {
     try {
       const result = await window.electronAPI.fetchImageUrl(url);
       if (!result.ok || !result.dataUrl) {
-        toast.error(result.error || 'No se pudo descargar la imagen');
+        toast.error(result.error || t('referenceLibrary.downloadError'));
         return;
       }
-      const name = decodeURIComponent(url.split('/').pop()?.split('?')[0] || 'Referencia');
+      const name = decodeURIComponent(url.split('/').pop()?.split('?')[0] || t('referenceLibrary.defaultReferenceName'));
       const ref = await buildReferenceFromDataUrl(result.dataUrl, name, url);
       addReference(ref);
       setUrlInput('');
-      toast.success('Referencia importada');
+      toast.success(t('referenceLibrary.importedToast'));
     } finally {
       setIsImporting(false);
     }
@@ -143,7 +145,7 @@ export default function ReferenceLibraryPanel() {
     try {
       setWebResults(await searchReferences(q));
     } catch {
-      toast.error('No se pudo buscar: comprueba tu conexión a internet');
+      toast.error(t('referenceLibrary.searchConnectionError'));
     } finally {
       setWebBusy(false);
     }
@@ -156,9 +158,9 @@ export default function ReferenceLibraryPanel() {
       const ref = await buildReferenceFromDataUrl(dataUrl, r.title, r.pageUrl);
       ref.tags = ['web', r.license];
       addReference(ref);
-      toast.success('Guardada en tus referencias');
+      toast.success(t('referenceLibrary.savedToast'));
     } catch {
-      toast.error('No se pudo descargar la imagen');
+      toast.error(t('referenceLibrary.downloadError'));
     } finally {
       setWebBusy(false);
     }
@@ -167,7 +169,7 @@ export default function ReferenceLibraryPanel() {
   async function openWindow(ref: ReferenceImage) {
     recordView(ref.id);
     if (!isElectron()) {
-      toast.error('Las ventanas de referencia solo están disponibles en la app de escritorio');
+      toast.error(t('referenceLibrary.windowsDesktopOnly'));
       return;
     }
     await window.electronAPI.openReferenceWindow(ref.dataUrl, ref.name);
@@ -206,7 +208,7 @@ export default function ReferenceLibraryPanel() {
     else setActiveFolder(name);
   }
   function removeFolder(old: string) {
-    if (!window.confirm(`¿Quitar la carpeta «${old}»? Sus referencias no se borran: pasan a «Sin carpeta».`)) return;
+    if (!window.confirm(t('referenceLibrary.removeFolderConfirm', { folder: old }))) return;
     mapRefs((r) => (r.folder === old ? { ...r, folder: undefined } : r));
     setExtraFolders((f) => f.filter((x) => x !== old));
     setActiveFolder(null);
@@ -215,7 +217,7 @@ export default function ReferenceLibraryPanel() {
   /** Puts the drawing and this reference (fitted to the canvas, plus a mirrored copy) into the compare dialog. */
   async function compareWithDrawing(ref: ReferenceImage) {
     if (!project) {
-      toast.error('Abre un proyecto para comparar');
+      toast.error(t('referenceLibrary.openProjectToCompare'));
       return;
     }
     try {
@@ -226,13 +228,13 @@ export default function ReferenceLibraryPanel() {
       ]);
       setCompare({
         sources: [
-          { id: 'drawing', label: 'Tu dibujo (estado actual)', url: drawing },
-          { id: 'ref', label: `Referencia · ${ref.name}`, url: fit },
-          { id: 'ref-mirrored', label: `Referencia volteada (espejo) · ${ref.name}`, url: mirrored },
+          { id: 'drawing', label: t('referenceLibrary.compareLabelDrawing'), url: drawing },
+          { id: 'ref', label: t('referenceLibrary.compareLabelReference', { name: ref.name }), url: fit },
+          { id: 'ref-mirrored', label: t('referenceLibrary.compareLabelReferenceMirrored', { name: ref.name }), url: mirrored },
         ],
       });
     } catch {
-      toast.error('No se pudo preparar la comparación');
+      toast.error(t('referenceLibrary.compareError'));
     }
   }
 
@@ -256,13 +258,13 @@ export default function ReferenceLibraryPanel() {
             disabled={s === 'project' && !project}
             className={`flex-1 py-1 disabled:opacity-40 ${scope === s ? 'bg-accent text-white' : 'bg-panel text-textDim hover:text-text'}`}
           >
-            {s === 'global' ? 'Biblioteca global' : `Este proyecto (${projectRefs.length})`}
+            {s === 'global' ? t('referenceLibrary.scopeGlobal') : t('referenceLibrary.scopeProject', { count: projectRefs.length })}
           </button>
         ))}
       </div>
       <div className="space-y-1" data-testid="reference-folders">
         <div className="flex flex-wrap gap-1 items-center">
-          {([[null, 'Todas', references.length], [NO_FOLDER, 'Sin carpeta', folderCount(NO_FOLDER)]] as [string | null, string, number][]).map(([key, label, n]) => (
+          {([[null, t('referenceLibrary.filterAll'), references.length], [NO_FOLDER, t('referenceLibrary.filterNoFolder'), folderCount(NO_FOLDER)]] as [string | null, string, number][]).map(([key, label, n]) => (
             <button
               key={label}
               onClick={() => setActiveFolder(key)}
@@ -282,7 +284,7 @@ export default function ReferenceLibraryPanel() {
             </button>
           ))}
           <button onClick={newFolder} className="text-[10px] rounded px-2 py-0.5 border border-dashed border-border text-textDim hover:text-text">
-            + Carpeta
+            {t('referenceLibrary.newFolderButton')}
           </button>
         </div>
         {folderEditor && (
@@ -299,25 +301,25 @@ export default function ReferenceLibraryPanel() {
               value={folderEditor.value}
               onChange={(e) => setFolderEditor({ ...folderEditor, value: e.target.value })}
               onKeyDown={(e) => e.key === 'Escape' && setFolderEditor(null)}
-              placeholder={folderEditor.mode === 'new' ? 'Nombre de la carpeta (p. ej. «Manos»)…' : 'Nuevo nombre…'}
+              placeholder={folderEditor.mode === 'new' ? t('referenceLibrary.folderNamePlaceholderNew') : t('referenceLibrary.folderNamePlaceholderRename')}
               className="flex-1 min-w-0 bg-panel border border-border rounded text-[10px] px-1.5 py-0.5"
             />
             <button type="submit" className="text-[10px] bg-accent text-white rounded px-2">
-              Aceptar
+              {t('referenceLibrary.accept')}
             </button>
             <button type="button" onClick={() => setFolderEditor(null)} className="text-[10px] bg-panelLight rounded px-2">
-              Cancelar
+              {t('common:cancel')}
             </button>
           </form>
         )}
         {activeFolder && activeFolder !== NO_FOLDER && !folderEditor && (
           <div className="flex gap-3 text-[9px] text-textDim">
-            <span>Lo que importes ahora se guarda en «{activeFolder}».</span>
+            <span>{t('referenceLibrary.activeFolderHint', { folder: activeFolder })}</span>
             <button onClick={() => renameFolder(activeFolder)} className="underline hover:text-text">
-              Renombrar
+              {t('referenceLibrary.renameFolder')}
             </button>
             <button onClick={() => removeFolder(activeFolder)} className="underline hover:text-red-400">
-              Quitar carpeta
+              {t('referenceLibrary.removeFolder')}
             </button>
           </div>
         )}
@@ -325,24 +327,24 @@ export default function ReferenceLibraryPanel() {
 
       <div className="grid grid-cols-2 gap-1.5">
         <button onClick={importFromFile} disabled={isImporting} className="text-[11px] bg-panelLight rounded py-1.5 disabled:opacity-40">
-          Importar archivo…
+          {t('referenceLibrary.importFile')}
         </button>
         <div className="flex gap-1">
           <input
             type="text"
             value={urlInput}
             onChange={(e) => setUrlInput(e.target.value)}
-            placeholder="URL de imagen…"
+            placeholder={t('referenceLibrary.urlPlaceholder')}
             className="flex-1 min-w-0 bg-panel border border-border rounded text-[10px] px-1.5"
           />
           <button onClick={importFromUrl} disabled={isImporting || !urlInput.trim()} className="text-[10px] bg-panelLight rounded px-2 disabled:opacity-40">
-            Ir
+            {t('referenceLibrary.go')}
           </button>
         </div>
       </div>
 
       <details className="border border-border rounded">
-        <summary className="text-[11px] px-2 py-1.5 cursor-pointer">Buscar referencias en internet</summary>
+        <summary className="text-[11px] px-2 py-1.5 cursor-pointer">{t('referenceLibrary.webSearchSummary')}</summary>
         <div className="p-2 space-y-2">
           <div className="flex gap-1">
             <input
@@ -350,20 +352,29 @@ export default function ReferenceLibraryPanel() {
               value={webQuery}
               onChange={(e) => setWebQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && runWebSearch()}
-              placeholder="p. ej. «hands study», «horse anatomy»…"
+              placeholder={t('referenceLibrary.webSearchPlaceholder')}
               className="flex-1 min-w-0 bg-panel border border-border rounded text-[10px] px-1.5 py-1"
             />
             <button onClick={runWebSearch} disabled={webBusy || !webQuery.trim()} className="text-[10px] bg-panelLight rounded px-2 disabled:opacity-40">
-              {webBusy ? '…' : 'Buscar'}
+              {webBusy ? '…' : t('referenceLibrary.webSearchButton')}
             </button>
           </div>
-          <p className="text-[9px] text-textDim">Imágenes de Wikimedia Commons (licencias libres, se guarda la licencia como etiqueta). Requiere conexión; la búsqueda en inglés da más resultados.</p>
-          {webResults && webResults.length === 0 && <p className="text-[10px] text-textDim">Sin resultados.</p>}
+          <p className="text-[9px] text-textDim">{t('referenceLibrary.webSearchHint')}</p>
+          {webResults && webResults.length === 0 && <p className="text-[10px] text-textDim">{t('referenceLibrary.webSearchNoResults')}</p>}
           {webResults && webResults.length > 0 && (
             <div className="grid grid-cols-3 gap-1 max-h-64 overflow-y-auto">
               {webResults.map((r) => (
-                <button key={r.id} onClick={() => saveWebResult(r)} disabled={webBusy} title={`${r.title} — ${r.license}${r.author ? ` — ${r.author}` : ''}
-Clic para guardar en tus referencias`} className="relative aspect-square overflow-hidden rounded border border-border hover:border-accent">
+                <button
+                  key={r.id}
+                  onClick={() => saveWebResult(r)}
+                  disabled={webBusy}
+                  title={t('referenceLibrary.webResultTitle', {
+                    title: r.title,
+                    license: r.license,
+                    authorPart: r.author ? t('referenceLibrary.webResultAuthorPart', { author: r.author }) : '',
+                  })}
+                  className="relative aspect-square overflow-hidden rounded border border-border hover:border-accent"
+                >
                   <img src={r.thumbUrl} alt={r.title} loading="lazy" className="w-full h-full object-cover" />
                 </button>
               ))}
@@ -376,7 +387,7 @@ Clic para guardar en tus referencias`} className="relative aspect-square overflo
         type="text"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        placeholder="Buscar por nombre o etiqueta…"
+        placeholder={t('referenceLibrary.searchPlaceholder')}
         className="w-full bg-panel border border-border rounded text-[11px] px-1.5 py-1"
       />
 
@@ -397,7 +408,7 @@ Clic para guardar en tus referencias`} className="relative aspect-square overflo
       )}
 
       {filtered.length === 0 ? (
-        <p className="text-[10px] text-textDim">No hay referencias{search || activeTag ? ' que coincidan' : ' guardadas todavía'}.</p>
+        <p className="text-[10px] text-textDim">{search || activeTag ? t('referenceLibrary.noneMatching') : t('referenceLibrary.noneSaved')}</p>
       ) : (
         <div className="space-y-2">
           {filtered.map((ref) => (
@@ -408,31 +419,31 @@ Clic para guardar en tus referencias`} className="relative aspect-square overflo
                   <div className="flex items-center justify-between gap-1">
                     <span className="text-[11px] truncate">{ref.name}</span>
                     <div className="flex items-center gap-1 shrink-0">
-                      <button onClick={() => openWindow(ref)} className="text-textDim hover:text-text" title="Abrir en ventana flotante">
+                      <button onClick={() => openWindow(ref)} className="text-textDim hover:text-text" title={t('referenceLibrary.openInWindow')}>
                         <ExternalLink size={12} />
                       </button>
-                      <button onClick={() => compareWithDrawing(ref)} className="text-textDim hover:text-text" title="Comparar con mi dibujo (superposición, deslizador, espejo…)" data-testid="compare-reference">
+                      <button onClick={() => compareWithDrawing(ref)} className="text-textDim hover:text-text" title={t('referenceLibrary.compareTitle')} data-testid="compare-reference">
                         <GitCompare size={12} />
                       </button>
                       <button
                         onClick={() => toggleFavorite(ref.id)}
                         className={ref.favorite ? 'text-accent' : 'text-textDim hover:text-text'}
-                        title="Favorita"
+                        title={t('referenceLibrary.favorite')}
                       >
                         <Star size={12} fill={ref.favorite ? 'currentColor' : 'none'} />
                       </button>
                       {project && (
-                        <button onClick={() => copyToOtherShelf(ref)} className="text-textDim hover:text-text" title={inProject ? 'Copiar a la biblioteca global' : 'Copiar a este proyecto'}>
+                        <button onClick={() => copyToOtherShelf(ref)} className="text-textDim hover:text-text" title={inProject ? t('referenceLibrary.copyToGlobal') : t('referenceLibrary.copyToProject')}>
                           <FolderInput size={12} />
                         </button>
                       )}
-                      <button onClick={() => removeReference(ref.id)} className="text-textDim hover:text-red-400" title="Eliminar">
+                      <button onClick={() => removeReference(ref.id)} className="text-textDim hover:text-red-400" title={t('referenceLibrary.delete')}>
                         <Trash2 size={12} />
                       </button>
                     </div>
                   </div>
                   <div className="text-[9px] text-textDim">
-                    {ref.width}×{ref.height} · {ref.viewCount} vista(s)
+                    {t('referenceLibrary.dimensionsAndViews', { width: ref.width, height: ref.height, count: ref.viewCount })}
                   </div>
                   <select
                     value={ref.folder ?? ''}
@@ -441,21 +452,21 @@ Clic para guardar en tus referencias`} className="relative aspect-square overflo
                       else setFolder(ref.id, e.target.value || undefined);
                     }}
                     className="w-full bg-panel border border-border rounded text-[9px] px-1 py-0.5"
-                    title="Carpeta"
+                    title={t('referenceLibrary.folderTitle')}
                   >
-                    <option value="">Sin carpeta</option>
+                    <option value="">{t('referenceLibrary.noFolderOption')}</option>
                     {folders.map((f) => (
                       <option key={f} value={f}>
                         {f}
                       </option>
                     ))}
-                    <option value={'\u0000new'}>+ Nueva carpeta…</option>
+                    <option value={'\u0000new'}>{t('referenceLibrary.newFolderOption')}</option>
                   </select>
                   <input
                     type="text"
                     defaultValue={ref.tags.join(', ')}
                     onBlur={(e) => commitTags(ref.id, e.target.value)}
-                    placeholder="etiquetas separadas por coma"
+                    placeholder={t('referenceLibrary.tagsPlaceholder')}
                     className="w-full bg-panel border border-border rounded text-[9px] px-1 py-0.5"
                   />
                 </div>
@@ -470,9 +481,9 @@ Clic para guardar en tus referencias`} className="relative aspect-square overflo
           sources={compare.sources}
           initialA="drawing"
           initialB="ref"
-          title="Comparar dibujo y referencia"
-          labelA="Dibujo"
-          labelB="Referencia"
+          title={t('referenceLibrary.compareDialogTitle')}
+          labelA={t('referenceLibrary.compareDialogLabelA')}
+          labelB={t('referenceLibrary.compareDialogLabelB')}
           initialMode="overlay"
           onClose={() => setCompare(null)}
         />
