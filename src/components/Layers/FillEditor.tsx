@@ -1,39 +1,37 @@
+import { useTranslation } from 'react-i18next';
 import { Layer, FillType } from '@/types';
 import { useLayers } from '@/hooks/useLayers';
 import { PATTERN_PRESETS, getPatternTile } from '@/services/pattern.service';
 
-const FILL_TYPES: { id: FillType; label: string }[] = [
-  { id: 'solid', label: 'Sólido' },
-  { id: 'gradient', label: 'Degradado' },
-  { id: 'pattern', label: 'Patrón' },
-];
+const FILL_TYPE_IDS: FillType[] = ['solid', 'gradient', 'pattern'];
 
 export default function FillEditor({ layer }: { layer: Layer }) {
+  const { t } = useTranslation('panelsPaint');
   const { setFillType, setFillProps, commitFillProps } = useLayers();
   const fillType = layer.fillType ?? 'solid';
 
   return (
     <div className="space-y-1.5">
       <div className="flex gap-1">
-        {FILL_TYPES.map((f) => (
+        {FILL_TYPE_IDS.map((id) => (
           <button
-            key={f.id}
-            onClick={() => setFillType(layer.id, f.id)}
+            key={id}
+            onClick={() => setFillType(layer.id, id)}
             className={`flex-1 text-[10px] rounded py-1 border ${
-              fillType === f.id ? 'bg-accent text-white border-accent' : 'bg-panel border-border text-textDim hover:text-text'
+              fillType === id ? 'bg-accent text-white border-accent' : 'bg-panel border-border text-textDim hover:text-text'
             }`}
           >
-            {f.label}
+            {t(`fillEditor.fillTypes.${id}`)}
           </button>
         ))}
       </div>
 
       {fillType === 'solid' && (
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-textDim w-14">Color</span>
+          <span className="text-[10px] text-textDim w-14">{t('fillEditor.color')}</span>
           <input
             type="color"
-            title="Color de relleno"
+            title={t('fillEditor.fillColorTitle')}
             value={layer.fillColor ?? '#808080'}
             onChange={(e) => {
               setFillProps(layer.id, { fillColor: e.target.value });
@@ -58,15 +56,15 @@ export default function FillEditor({ layer }: { layer: Layer }) {
                   layer.gradient?.kind === kind ? 'bg-accent text-white border-accent' : 'bg-panel border-border text-textDim hover:text-text'
                 }`}
               >
-                {kind === 'linear' ? 'Lineal' : 'Radial'}
+                {kind === 'linear' ? t('fillEditor.linear') : t('fillEditor.radial')}
               </button>
             ))}
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] text-textDim w-14">Color 1</span>
+            <span className="text-[10px] text-textDim w-14">{t('fillEditor.color1')}</span>
             <input
               type="color"
-              title="Color 1 del degradado"
+              title={t('fillEditor.color1Title')}
               value={layer.gradient?.color1 ?? '#000000'}
               onChange={(e) => {
                 setFillProps(layer.id, { gradient: { ...(layer.gradient ?? { kind: 'linear', color2: '#ffffff', angle: 0 }), color1: e.target.value } as Layer['gradient'] });
@@ -76,10 +74,10 @@ export default function FillEditor({ layer }: { layer: Layer }) {
             />
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] text-textDim w-14">Color 2</span>
+            <span className="text-[10px] text-textDim w-14">{t('fillEditor.color2')}</span>
             <input
               type="color"
-              title="Color 2 del degradado"
+              title={t('fillEditor.color2Title')}
               value={layer.gradient?.color2 ?? '#ffffff'}
               onChange={(e) => {
                 setFillProps(layer.id, { gradient: { ...(layer.gradient ?? { kind: 'linear', color1: '#000000', angle: 0 }), color2: e.target.value } as Layer['gradient'] });
@@ -91,12 +89,12 @@ export default function FillEditor({ layer }: { layer: Layer }) {
           {layer.gradient?.kind !== 'radial' && (
             <div>
               <div className="flex justify-between text-[10px] text-textDim mb-0.5">
-                <span>Ángulo</span>
+                <span>{t('fillEditor.angle')}</span>
                 <span>{layer.gradient?.angle ?? 0}°</span>
               </div>
               <input
                 type="range"
-                title="Ángulo"
+                title={t('fillEditor.angle')}
                 min={0}
                 max={359}
                 value={layer.gradient?.angle ?? 0}
@@ -136,7 +134,7 @@ export default function FillEditor({ layer }: { layer: Layer }) {
             ))}
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] text-textDim w-14">Color</span>
+            <span className="text-[10px] text-textDim w-14">{t('fillEditor.color')}</span>
             <input
               type="color"
               value={layer.patternColor ?? '#000000'}

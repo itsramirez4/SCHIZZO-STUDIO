@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTools } from '@/hooks/useTools';
 import { hexToRgba, rgbaToHex, rgbaToHsv, hsvToRgba } from '@/utils/colorUtils';
 import { useRecentColorsStore } from '@/store/recentColorsStore';
@@ -13,6 +14,7 @@ const SV_H = 110;
 const HUE_H = 12;
 
 export default function AdvancedColorPicker() {
+  const { t } = useTranslation('panelsPaint');
   const { primaryColor, setPrimaryColor } = useTools();
   const addRecentColor = useRecentColorsStore((s) => s.addColor);
   const svRef = useRef<HTMLCanvasElement>(null);
@@ -166,29 +168,29 @@ export default function AdvancedColorPicker() {
   }
 
   return (
-    <div className="p-2 border-t border-border space-y-1.5" title="Selector de color avanzado">
+    <div className="p-2 border-t border-border space-y-1.5" title={t('advancedColorPicker.title')}>
       <div className="flex gap-1" data-testid="picker-mode">
-        {([['square', 'Cuadrado'], ['wheel', 'Rueda']] as const).map(([id, label]) => (
+        {(['square', 'wheel'] as const).map((id) => (
           <button
             key={id}
             onClick={() => chooseMode(id)}
             className={`flex-1 text-[10px] rounded py-0.5 ${mode === id ? 'bg-accent text-white' : 'bg-panelLight text-textDim hover:text-text'}`}
           >
-            {label}
+            {id === 'square' ? t('advancedColorPicker.square') : t('advancedColorPicker.wheel')}
           </button>
         ))}
       </div>
       {mode === 'wheel' && (
         <>
           <div className="flex gap-1">
-            {([['ryb', 'Pintor'], ['rgb', 'Pantalla']] as const).map(([id, label]) => (
+            {(['ryb', 'rgb'] as const).map((id) => (
               <button
                 key={id}
                 onClick={() => chooseWheelModel(id)}
-                title={id === 'ryb' ? 'Rueda de pintor: rojo–verde, azul–naranja' : 'Rueda de pantalla: rojo–cian'}
+                title={id === 'ryb' ? t('advancedColorPicker.painterWheelTitle') : t('advancedColorPicker.screenWheelTitle')}
                 className={`flex-1 text-[9px] rounded py-0.5 border ${wheelModel === id ? 'border-accent text-accent' : 'border-border text-textDim'}`}
               >
-                {label}
+                {id === 'ryb' ? t('advancedColorPicker.painterModel') : t('advancedColorPicker.screenModel')}
               </button>
             ))}
           </div>

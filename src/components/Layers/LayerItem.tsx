@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Eye,
   EyeOff,
@@ -73,6 +74,7 @@ export default function LayerItem({
   onDropRow,
   onDragEndRow,
 }: Props) {
+  const { t } = useTranslation('panelsPaint');
   const {
     selectLayer,
     renameLayer,
@@ -161,7 +163,7 @@ export default function LayerItem({
             if (e.altKey) toggleIsolateLayer(layer.id);
             else setLayerVisibility(layer.id, !layer.visible);
           }}
-          title={isolatedLayerId === layer.id ? 'Aislada — Alt+clic para restaurar las demás' : 'Alt+clic para aislar (ver solo esta capa)'}
+          title={isolatedLayerId === layer.id ? t('layerItem.isolatedTitle') : t('layerItem.isolateTitle')}
           className={isolatedLayerId === layer.id ? 'text-accent' : 'text-textDim hover:text-text'}
         >
           {layer.visible ? <Eye size={14} /> : <EyeOff size={14} />}
@@ -181,7 +183,7 @@ export default function LayerItem({
               e.stopPropagation();
               setLayerAlphaLock(layer.id, !layer.lockAlpha);
             }}
-            title={layer.lockAlpha ? 'Transparencia bloqueada — pintar solo sobre píxeles existentes' : 'Bloquear transparencia'}
+            title={layer.lockAlpha ? t('layerItem.alphaLockedTitle') : t('layerItem.alphaLockTitle')}
             className={`hover:text-text ${layer.lockAlpha ? 'text-accent' : 'text-textDim'}`}
           >
             <Grid2x2 size={13} />
@@ -230,7 +232,7 @@ export default function LayerItem({
                 addMaskToLayer(layer.id);
               }
             }}
-            title={layer.hasMask ? 'Editar máscara' : 'Añadir máscara'}
+            title={layer.hasMask ? t('layerItem.editMaskTitle') : t('layerItem.addMaskTitle')}
             className={`hover:text-text ${isEditingMask ? 'text-accent' : layer.hasMask ? 'text-text' : 'text-textDim'}`}
           >
             <Contrast size={13} />
@@ -242,7 +244,7 @@ export default function LayerItem({
               e.stopPropagation();
               removeMaskFromLayer(layer.id);
             }}
-            title="Quitar máscara"
+            title={t('layerItem.removeMaskTitle')}
             className="text-textDim hover:text-red-400"
           >
             <X size={12} />
@@ -255,7 +257,7 @@ export default function LayerItem({
               setShowEffects((v) => !v);
               if (!isActive) selectLayer(layer.id);
             }}
-            title="Efectos de capa"
+            title={t('layerItem.effectsTitle')}
             className={`hover:text-text ${hasAnyEnabledEffect(layer.effects) ? 'text-accent' : 'text-textDim'}`}
           >
             <Sparkles size={13} />
@@ -267,7 +269,7 @@ export default function LayerItem({
               e.stopPropagation();
               setLayerClipTo(layer.id, !layer.clipTo);
             }}
-            title={layer.clipTo ? 'Quitar recorte a la capa de abajo' : 'Recortar a la capa de abajo'}
+            title={layer.clipTo ? t('layerItem.unclipTitle') : t('layerItem.clipTitle')}
             className={`hover:text-text ${layer.clipTo ? 'text-accent' : 'text-textDim'}`}
           >
             <Scissors size={13} />
@@ -279,7 +281,7 @@ export default function LayerItem({
               e.stopPropagation();
               createLinkedInstance(layer.id);
             }}
-            title="Crear instancia vinculada (comparte contenido, estilo independiente)"
+            title={t('layerItem.linkedInstanceTitle')}
             className="text-textDim hover:text-text"
           >
             <Link2 size={13} />
@@ -294,10 +296,10 @@ export default function LayerItem({
             <ChevronDown size={12} />
           </button>
         </div>
-        <button onClick={(e) => { e.stopPropagation(); duplicateLayer(layer.id); }} className="text-textDim hover:text-text" title="Duplicar">
+        <button onClick={(e) => { e.stopPropagation(); duplicateLayer(layer.id); }} className="text-textDim hover:text-text" title={t('layerItem.duplicateTitle')}>
           <Copy size={13} />
         </button>
-        <button onClick={(e) => { e.stopPropagation(); deleteLayer(layer.id); }} className="text-textDim hover:text-red-400" title="Eliminar">
+        <button onClick={(e) => { e.stopPropagation(); deleteLayer(layer.id); }} className="text-textDim hover:text-red-400" title={t('layerItem.deleteTitle')}>
           <Trash2 size={13} />
         </button>
       </div>
@@ -305,7 +307,7 @@ export default function LayerItem({
       {isActive && (
         <div className="mt-2 space-y-1" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] text-textDim w-14">Opacidad</span>
+            <span className="text-[10px] text-textDim w-14">{t('layerItem.opacity')}</span>
             <input
               type="range"
               min={0}
@@ -335,9 +337,9 @@ export default function LayerItem({
                   const canvas = layerService.getLayerCanvas(layer.id);
                   if (!canvas || layer.locked) return;
                   flipHorizontal(canvas);
-                  pushHistory('Voltear horizontal');
+                  pushHistory(t('layerItem.flipHorizontal'));
                 }}
-                title="Voltear horizontal"
+                title={t('layerItem.flipHorizontal')}
                 className="flex-1 flex items-center justify-center py-1 rounded bg-panel border border-border text-textDim hover:text-text"
               >
                 <FlipHorizontal size={13} />
@@ -347,23 +349,23 @@ export default function LayerItem({
                   const canvas = layerService.getLayerCanvas(layer.id);
                   if (!canvas || layer.locked) return;
                   flipVertical(canvas);
-                  pushHistory('Voltear vertical');
+                  pushHistory(t('layerItem.flipVertical'));
                 }}
-                title="Voltear vertical"
+                title={t('layerItem.flipVertical')}
                 className="flex-1 flex items-center justify-center py-1 rounded bg-panel border border-border text-textDim hover:text-text"
               >
                 <FlipVertical size={13} />
               </button>
               <button
                 onClick={() => invertLayerColors(layer.id)}
-                title="Invertir colores (Ctrl+I) — destructivo; para un ajuste no destructivo, usá una capa de ajuste"
+                title={t('layerItem.invertColorsTitle')}
                 className="flex-1 flex items-center justify-center py-1 rounded bg-panel border border-border text-textDim hover:text-text"
               >
                 <Contrast size={13} />
               </button>
               <button
                 onClick={() => desaturateLayerColors(layer.id)}
-                title="Desaturar (Ctrl+Shift+U) — destructivo; para un ajuste no destructivo, usá una capa de ajuste"
+                title={t('layerItem.desaturateTitle')}
                 className="flex-1 flex items-center justify-center py-1 rounded bg-panel border border-border text-textDim hover:text-text"
               >
                 <Droplet size={13} />
@@ -385,17 +387,17 @@ export default function LayerItem({
             <div className="flex gap-1">
               <button
                 onClick={() => featherLayerMask(layer.id, 4)}
-                title="Difuminar bordes de la máscara"
+                title={t('layerItem.featherMaskTitle')}
                 className="flex-1 text-[9px] py-1 rounded bg-panel border border-border text-textDim hover:text-text"
               >
-                Difuminar máscara
+                {t('layerItem.featherMask')}
               </button>
               <button
                 onClick={() => invertLayerMask(layer.id)}
-                title="Invertir la máscara"
+                title={t('layerItem.invertMaskTitle')}
                 className="flex-1 text-[9px] py-1 rounded bg-panel border border-border text-textDim hover:text-text"
               >
-                Invertir máscara
+                {t('layerItem.invertMask')}
               </button>
             </div>
           )}
@@ -410,7 +412,7 @@ export default function LayerItem({
               onChange={(e) => setLayerParent(layer.id, e.target.value || null)}
               className="w-full bg-panel border border-border rounded text-[10px] px-1 py-0.5"
             >
-              <option value="">Sin grupo</option>
+              <option value="">{t('layerItem.noGroup')}</option>
               {otherGroups.map((g) => (
                 <option key={g.id} value={g.id}>
                   {g.name}
