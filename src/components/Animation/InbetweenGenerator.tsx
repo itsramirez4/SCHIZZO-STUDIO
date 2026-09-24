@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAppStore } from '@/store/appStore';
 import { TweenEasing, TWEEN_EASING_LABELS } from '@/types/animation';
 
 const EASINGS = Object.keys(TWEEN_EASING_LABELS) as TweenEasing[];
 
 export default function InbetweenGenerator() {
+  const { t } = useTranslation('panelsProduction');
   const project = useAppStore((s) => s.project);
   const generateInbetweenFrames = useAppStore((s) => s.generateInbetweenFrames);
   const [count, setCount] = useState(2);
@@ -16,11 +18,11 @@ export default function InbetweenGenerator() {
   return (
     <div className="border border-border rounded p-2 mb-2 space-y-1.5">
       <div className="text-[10px] text-textDim">
-        Genera frames de transición (crossfade) entre el frame actual y el siguiente — una guía aproximada, no un reemplazo de intermedios dibujados a mano.
+        {t('animation.inbetween.hint')}
       </div>
       <div className="flex items-center gap-1.5">
         <label className="flex items-center gap-1 text-[10px] text-textDim">
-          Cantidad
+          {t('animation.inbetween.count')}
           <input
             type="number"
             min={1}
@@ -45,10 +47,10 @@ export default function InbetweenGenerator() {
       <button
         onClick={() => generateInbetweenFrames(count, easing)}
         disabled={!hasNextFrame}
-        title={hasNextFrame ? undefined : 'No hay un frame siguiente con el que interpolar'}
+        title={hasNextFrame ? undefined : t('animation.inbetween.noNextFrameTitle')}
         className="w-full bg-panelLight text-[11px] rounded py-1.5 disabled:opacity-40"
       >
-        Generar intermedios
+        {t('animation.inbetween.generate')}
       </button>
     </div>
   );

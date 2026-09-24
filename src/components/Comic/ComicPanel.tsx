@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import * as comicService from '@/services/comic.service';
 import { BubbleType, PanelTemplate, BUBBLE_TYPE_LABELS, PANEL_TEMPLATE_LABELS } from '@/services/comic.service';
 import { useLayers } from '@/hooks/useLayers';
@@ -14,6 +15,7 @@ import * as layerService from '@/services/layer.service';
  * canvas and don't need a selection at all.
  */
 export default function ComicPanel() {
+  const { t } = useTranslation('panelsProduction');
   const { currentLayer } = useLayers();
   const { primaryColor } = useTools();
   const selection = useAppStore((s) => s.selection);
@@ -32,11 +34,10 @@ export default function ComicPanel() {
 
   return (
     <div className="p-3 overflow-y-auto space-y-4">
-      <h3 className="text-xs font-semibold text-textDim uppercase tracking-wide">Cómic / Manga</h3>
+      <h3 className="text-xs font-semibold text-textDim uppercase tracking-wide">{t('comic.title')}</h3>
       {!canApplyToSelection && (
         <p className="text-[10px] text-amber-400">
-          Hacé una selección rectangular en el lienzo para ubicar viñetas, líneas de velocidad o globos (las plantillas de página no la
-          necesitan).
+          {t('comic.selectionHint')}
         </p>
       )}
 
@@ -91,6 +92,7 @@ function ScreentoneSection({
   selection: { x: number; y: number; w: number; h: number } | null;
   withCanvas: WithCanvas;
 }) {
+  const { t } = useTranslation('panelsProduction');
   const [type, setType] = useState<comicService.ScreentoneType>('dot');
   const [frequency, setFrequency] = useState(8);
   const [angle, setAngle] = useState(45);
@@ -98,35 +100,35 @@ function ScreentoneSection({
   const [color, setColor] = useState('#000000');
 
   return (
-    <Section title="Tramas (screentone)" hint="Se aplica a la selección, o a toda la capa si no hay ninguna.">
+    <Section title={t('comic.screentone.title')} hint={t('comic.screentone.hint')}>
       <div className="flex gap-1">
-        {(['dot', 'line'] as const).map((t) => (
+        {(['dot', 'line'] as const).map((st) => (
           <button
-            key={t}
-            onClick={() => setType(t)}
-            className={`flex-1 text-[10px] rounded py-1 border ${type === t ? 'bg-accent text-white border-accent' : 'bg-panel border-border text-textDim'}`}
+            key={st}
+            onClick={() => setType(st)}
+            className={`flex-1 text-[10px] rounded py-1 border ${type === st ? 'bg-accent text-white border-accent' : 'bg-panel border-border text-textDim'}`}
           >
-            {t === 'dot' ? 'Puntos' : 'Líneas'}
+            {st === 'dot' ? t('comic.screentone.dot') : t('comic.screentone.line')}
           </button>
         ))}
         <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="w-7 h-7 bg-transparent border border-border rounded cursor-pointer" />
       </div>
       <div className="flex justify-between text-[10px] text-textDim">
-        <span>Frecuencia</span>
+        <span>{t('comic.screentone.frequency')}</span>
         <span>{frequency}</span>
       </div>
       <input type="range" min={1} max={20} value={frequency} onChange={(e) => setFrequency(Number(e.target.value))} className="w-full" />
       {type === 'line' && (
         <>
           <div className="flex justify-between text-[10px] text-textDim">
-            <span>Ángulo</span>
+            <span>{t('comic.screentone.angle')}</span>
             <span>{angle}°</span>
           </div>
           <input type="range" min={0} max={179} value={angle} onChange={(e) => setAngle(Number(e.target.value))} className="w-full" />
         </>
       )}
       <div className="flex justify-between text-[10px] text-textDim">
-        <span>Tono (tamaño)</span>
+        <span>{t('comic.screentone.tone')}</span>
         <span>{Math.round(weight * 100)}%</span>
       </div>
       <input type="range" min={5} max={100} value={weight * 100} onChange={(e) => setWeight(Number(e.target.value) / 100)} className="w-full" />
@@ -134,13 +136,13 @@ function ScreentoneSection({
         onClick={() =>
           withCanvas(
             (canvas) => comicService.fillWithScreentone(canvas, type, frequency, angle, weight, color, selection ?? undefined),
-            'Aplicar trama'
+            t('comic.screentone.apply')
           )
         }
         disabled={currentLayerLocked}
         className="w-full bg-panelLight text-xs rounded py-1.5 disabled:opacity-40"
       >
-        Aplicar trama
+        {t('comic.screentone.apply')}
       </button>
     </Section>
   );
@@ -159,6 +161,7 @@ function PanelSection({
   project: { width: number; height: number } | null;
   withCanvas: WithCanvas;
 }) {
+  const { t } = useTranslation('panelsProduction');
   const [borderWidth, setBorderWidth] = useState(4);
   const [borderStyle, setBorderStyle] = useState<'solid' | 'double' | 'dashed'>('solid');
   const [fillEnabled, setFillEnabled] = useState(false);
@@ -172,43 +175,43 @@ function PanelSection({
   };
 
   return (
-    <Section title="Viñetas de panel">
+    <Section title={t('comic.panel.title')}>
       <div className="flex gap-3">
-        <NumberField label="Grosor" value={borderWidth} onChange={setBorderWidth} min={1} max={20} />
+        <NumberField label={t('comic.panel.thickness')} value={borderWidth} onChange={setBorderWidth} min={1} max={20} />
         <select
           value={borderStyle}
           onChange={(e) => setBorderStyle(e.target.value as typeof borderStyle)}
           className="bg-panel border border-border rounded text-[11px] px-1 py-0.5"
         >
-          <option value="solid">Sólido</option>
-          <option value="double">Doble</option>
-          <option value="dashed">Punteado</option>
+          <option value="solid">{t('comic.panel.solid')}</option>
+          <option value="double">{t('comic.panel.double')}</option>
+          <option value="dashed">{t('comic.panel.dashed')}</option>
         </select>
       </div>
       <label className="flex items-center gap-1.5 text-[10px] text-textDim">
         <input type="checkbox" checked={fillEnabled} onChange={(e) => setFillEnabled(e.target.checked)} />
-        Fondo
+        {t('comic.panel.fill')}
         {fillEnabled && (
           <input type="color" value={fillColor} onChange={(e) => setFillColor(e.target.value)} className="w-6 h-5 bg-transparent border border-border rounded cursor-pointer" />
         )}
       </label>
       <button
-        onClick={() => selection && withCanvas((canvas) => comicService.drawPanelBorder(canvas, selection, style), 'Dibujar viñeta')}
+        onClick={() => selection && withCanvas((canvas) => comicService.drawPanelBorder(canvas, selection, style), t('comic.panel.drawHistoryLabel'))}
         disabled={!canApply}
         className="w-full bg-panelLight text-xs rounded py-1.5 disabled:opacity-40"
       >
-        Dibujar viñeta en selección
+        {t('comic.panel.drawButton')}
       </button>
-      <div className="text-[10px] text-textDim pt-1">Plantillas de página (usan toda la capa)</div>
+      <div className="text-[10px] text-textDim pt-1">{t('comic.panel.templatesHint')}</div>
       <div className="grid grid-cols-2 gap-1">
-        {(Object.keys(PANEL_TEMPLATE_LABELS) as PanelTemplate[]).map((t) => (
+        {(Object.keys(PANEL_TEMPLATE_LABELS) as PanelTemplate[]).map((pt) => (
           <button
-            key={t}
-            onClick={() => project && withCanvas((canvas) => comicService.applyPanelTemplate(canvas, t, style), 'Plantilla de página')}
+            key={pt}
+            onClick={() => project && withCanvas((canvas) => comicService.applyPanelTemplate(canvas, pt, style), t('comic.panel.templateHistoryLabel'))}
             disabled={!project || currentLayerLocked}
             className="text-[10px] bg-panel border border-border rounded py-1 disabled:opacity-40 hover:bg-panelLight"
           >
-            {PANEL_TEMPLATE_LABELS[t]}
+            {PANEL_TEMPLATE_LABELS[pt]}
           </button>
         ))}
       </div>
@@ -227,6 +230,7 @@ function SpeedLinesSection({
   primaryColor: string;
   withCanvas: WithCanvas;
 }) {
+  const { t } = useTranslation('panelsProduction');
   const [mode, setMode] = useState<'radial' | 'parallel'>('radial');
   const [count, setCount] = useState(24);
   const [thickness, setThickness] = useState(2);
@@ -250,11 +254,11 @@ function SpeedLinesSection({
           spacing: selection.h / Math.max(1, count),
         });
       }
-    }, 'Líneas de velocidad');
+    }, t('comic.speedLines.title'));
   }
 
   return (
-    <Section title="Líneas de velocidad" hint="Radial: ráfaga desde el centro de la selección. Paralelas: franjas horizontales que llenan la selección.">
+    <Section title={t('comic.speedLines.title')} hint={t('comic.speedLines.hint')}>
       <div className="flex gap-1">
         {(['radial', 'parallel'] as const).map((m) => (
           <button
@@ -262,25 +266,25 @@ function SpeedLinesSection({
             onClick={() => setMode(m)}
             className={`flex-1 text-[10px] rounded py-1 border ${mode === m ? 'bg-accent text-white border-accent' : 'bg-panel border-border text-textDim'}`}
           >
-            {m === 'radial' ? 'Radial' : 'Paralelas'}
+            {m === 'radial' ? t('comic.speedLines.radial') : t('comic.speedLines.parallel')}
           </button>
         ))}
       </div>
       <div className="flex gap-3">
-        <NumberField label="Cantidad" value={count} onChange={setCount} min={3} max={120} />
-        <NumberField label="Grosor" value={thickness} onChange={setThickness} min={1} max={20} />
+        <NumberField label={t('comic.speedLines.count')} value={count} onChange={setCount} min={3} max={120} />
+        <NumberField label={t('comic.speedLines.thickness')} value={thickness} onChange={setThickness} min={1} max={20} />
       </div>
       {mode === 'radial' && (
         <>
           <div className="flex justify-between text-[10px] text-textDim">
-            <span>Hueco central</span>
+            <span>{t('comic.speedLines.centralGap')}</span>
             <span>{Math.round(hollow * 100)}%</span>
           </div>
           <input type="range" min={0} max={90} value={hollow * 100} onChange={(e) => setHollow(Number(e.target.value) / 100)} className="w-full" />
         </>
       )}
       <button onClick={apply} disabled={!canApply} className="w-full bg-panelLight text-xs rounded py-1.5 disabled:opacity-40">
-        Dibujar en selección
+        {t('comic.speedLines.drawButton')}
       </button>
     </Section>
   );
@@ -295,42 +299,43 @@ function BubbleSection({
   selection: { x: number; y: number; w: number; h: number } | null;
   withCanvas: WithCanvas;
 }) {
+  const { t } = useTranslation('panelsProduction');
   const [type, setType] = useState<BubbleType>('speech');
   const [text, setText] = useState('');
   const [fontSize, setFontSize] = useState(18);
 
   return (
-    <Section title="Globos de diálogo">
+    <Section title={t('comic.bubble.title')}>
       <select
         value={type}
         onChange={(e) => setType(e.target.value as BubbleType)}
         className="w-full bg-panel border border-border rounded text-[11px] px-1.5 py-1"
       >
-        {(Object.keys(BUBBLE_TYPE_LABELS) as BubbleType[]).map((t) => (
-          <option key={t} value={t}>
-            {BUBBLE_TYPE_LABELS[t]}
+        {(Object.keys(BUBBLE_TYPE_LABELS) as BubbleType[]).map((bt) => (
+          <option key={bt} value={bt}>
+            {BUBBLE_TYPE_LABELS[bt]}
           </option>
         ))}
       </select>
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder="Texto del globo…"
+        placeholder={t('comic.bubble.placeholder')}
         rows={2}
         className="w-full bg-panel border border-border rounded text-[11px] px-1.5 py-1 resize-none"
       />
-      <NumberField label="Tamaño de texto" value={fontSize} onChange={setFontSize} min={8} max={60} />
+      <NumberField label={t('comic.bubble.fontSize')} value={fontSize} onChange={setFontSize} min={8} max={60} />
       <button
         onClick={() =>
           selection &&
           withCanvas((canvas) => {
             comicService.drawSpeechBubble(canvas, selection, text, type, fontSize);
-          }, 'Globo de diálogo')
+          }, t('comic.bubble.historyLabel'))
         }
         disabled={!canApply}
         className="w-full bg-panelLight text-xs rounded py-1.5 disabled:opacity-40"
       >
-        Insertar en selección
+        {t('comic.bubble.insertButton')}
       </button>
     </Section>
   );

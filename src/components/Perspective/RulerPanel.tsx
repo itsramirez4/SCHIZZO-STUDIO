@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useAppStore } from '@/store/appStore';
 import { usePerspectiveStore } from '@/store/perspectiveStore';
 import { RULER_HELP, RULER_LABELS, RulerKind } from '@/services/rulerAssist.service';
@@ -6,6 +7,7 @@ const KINDS: RulerKind[] = ['off', 'line', 'parallel', 'ellipse', 'perspective']
 
 /** Drawing rulers: freehand strokes get pulled onto the ruler so the line comes out clean. */
 export default function RulerPanel() {
+  const { t } = useTranslation('panelsProduction');
   const project = useAppStore((s) => s.project);
   const ruler = usePerspectiveStore((s) => s.ruler);
   const setRuler = usePerspectiveStore((s) => s.setRuler);
@@ -31,7 +33,7 @@ export default function RulerPanel() {
       </div>
       <p className="text-[9px] text-textDim">{RULER_HELP[ruler.kind]}</p>
       {ruler.kind === 'perspective' && !gridEnabled && (
-        <p className="text-[9px] text-amber-400">Activa «Mostrar grilla de perspectiva» en la pestaña Perspectiva: la regla usa sus puntos de fuga.</p>
+        <p className="text-[9px] text-amber-400">{t('perspective.ruler.gridWarning')}</p>
       )}
 
       {ruler.kind !== 'off' && (
@@ -39,14 +41,14 @@ export default function RulerPanel() {
           {ruler.kind !== 'perspective' && (
             <label className="flex items-center gap-2 text-[11px]">
               <input type="checkbox" checked={ruler.visible} onChange={(e) => setRuler({ visible: e.target.checked })} />
-              Mostrar la regla en el lienzo
+              {t('perspective.ruler.showOnCanvas')}
             </label>
           )}
 
           {usesAngle && (
             <>
               <label className="flex items-center gap-2 text-[9px] text-textDim">
-                <span className="w-14">{ruler.kind === 'ellipse' ? 'Giro' : 'Ángulo'}</span>
+                <span className="w-14">{ruler.kind === 'ellipse' ? t('perspective.ruler.rotation') : t('perspective.ruler.angle')}</span>
                 <input type="range" min={-180} max={180} value={Math.round(ruler.angle)} onChange={(e) => setRuler({ angle: Number(e.target.value) })} className="flex-1" data-testid="ruler-angle" />
                 <input
                   type="number"
@@ -56,7 +58,7 @@ export default function RulerPanel() {
                 />
               </label>
               <div className="flex gap-1">
-                {([['Horizontal', 0], ['Vertical', 90], ['45°', 45], ['-45°', -45]] as [string, number][]).map(([label, a]) => (
+                {([[t('perspective.ruler.horizontal'), 0], [t('perspective.ruler.vertical'), 90], ['45°', 45], ['-45°', -45]] as [string, number][]).map(([label, a]) => (
                   <button key={label} onClick={() => setRuler({ angle: a })} className="flex-1 bg-panelLight hover:bg-border text-[9px] rounded py-1">
                     {label}
                   </button>
@@ -68,22 +70,22 @@ export default function RulerPanel() {
           {ruler.kind === 'ellipse' && (
             <div className="grid grid-cols-2 gap-1.5 text-[9px] text-textDim">
               <label className="flex items-center gap-1">
-                Radio X
+                {t('perspective.ruler.radiusX')}
                 <input type="number" min={1} value={Math.round(ruler.rx)} onChange={(e) => setRuler({ rx: Math.max(1, Number(e.target.value)) })} className="flex-1 min-w-0 bg-panelLight border border-border rounded px-1 py-0.5 text-[10px]" data-testid="ruler-rx" />
               </label>
               <label className="flex items-center gap-1">
-                Radio Y
+                {t('perspective.ruler.radiusY')}
                 <input type="number" min={1} value={Math.round(ruler.ry)} onChange={(e) => setRuler({ ry: Math.max(1, Number(e.target.value)) })} className="flex-1 min-w-0 bg-panelLight border border-border rounded px-1 py-0.5 text-[10px]" />
               </label>
               <button onClick={() => setRuler({ ry: ruler.rx })} className="col-span-2 bg-panelLight hover:bg-border text-[9px] rounded py-1">
-                Convertir en círculo
+                {t('perspective.ruler.makeCircle')}
               </button>
             </div>
           )}
 
           {ruler.kind !== 'parallel' && ruler.kind !== 'perspective' && (
             <label className="flex items-center gap-2 text-[9px] text-textDim">
-              <span className="w-14">Imán</span>
+              <span className="w-14">{t('perspective.ruler.magnet')}</span>
               <input type="range" min={4} max={60} step={1} value={ruler.snapDistance} onChange={(e) => setRuler({ snapDistance: Number(e.target.value) })} className="flex-1" />
               <span className="w-8 text-right">{ruler.snapDistance}px</span>
             </label>
@@ -91,12 +93,12 @@ export default function RulerPanel() {
 
           {ruler.kind !== 'perspective' && (
             <button onClick={() => resetRuler(project.width, project.height)} className="w-full bg-panelLight hover:bg-border text-[10px] rounded py-1">
-              Centrar la regla en el lienzo
+              {t('perspective.ruler.centerOnCanvas')}
             </button>
           )}
         </div>
       )}
-      <p className="text-[9px] text-textDim">Funciona con el pincel, el borrador y el difuminado, y se combina con la simetría. Cada tipo se guarda con el proyecto.</p>
+      <p className="text-[9px] text-textDim">{t('perspective.ruler.footerHint')}</p>
     </div>
   );
 }
