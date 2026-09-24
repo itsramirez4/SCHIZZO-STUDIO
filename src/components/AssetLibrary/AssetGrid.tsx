@@ -1,5 +1,6 @@
 import { Star, Trash2 } from 'lucide-react';
 import { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface AssetGridProps<T> {
   items: T[];
@@ -28,6 +29,7 @@ export default function AssetGrid<T>({
   onDelete,
   emptyMessage,
 }: AssetGridProps<T>) {
+  const { t } = useTranslation('panelsColor');
   if (items.length === 0) {
     return <p className="text-[10px] text-textDim text-center py-4">{emptyMessage}</p>;
   }
@@ -45,11 +47,11 @@ export default function AssetGrid<T>({
             </button>
             <div className="flex items-center justify-between px-1.5 py-1 gap-1">
               <span className="text-[9px] text-textDim truncate flex-1">{getName(item)}</span>
-              <button onClick={() => onToggleFavorite(item)} title="Favorito">
+              <button onClick={() => onToggleFavorite(item)} title={t('assetGrid.favorite')}>
                 <Star size={11} className={favorite ? 'fill-amber-400 text-amber-400' : 'text-textDim'} />
               </button>
               {deletable && onDelete && (
-                <button onClick={() => onDelete(item)} title="Eliminar">
+                <button onClick={() => onDelete(item)} title={t('assetGrid.delete')}>
                   <Trash2 size={11} className="text-textDim hover:text-red-400" />
                 </button>
               )}

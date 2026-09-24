@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import ColorBlindnessSimulator from './ColorBlindnessSimulator';
 import HarmonyGenerator from './HarmonyGenerator';
 import PaletteExtractor from './PaletteExtractor';
@@ -13,17 +14,17 @@ import { useAssetLibraryStore } from '@/store/assetLibraryStore';
 
 type Tab = 'blindness' | 'harmony' | 'extraction' | 'converter' | 'accessibility' | 'print' | 'naming' | 'mood' | 'library' | 'pigment';
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'blindness', label: 'Daltonismo' },
-  { id: 'pigment', label: 'Pigmentos' },
-  { id: 'harmony', label: 'Armonía' },
-  { id: 'extraction', label: 'Paleta' },
-  { id: 'mood', label: 'Generador' },
-  { id: 'naming', label: 'Nombres' },
-  { id: 'library', label: 'Biblioteca' },
-  { id: 'converter', label: 'Espacios' },
-  { id: 'accessibility', label: 'Accesibilidad' },
-  { id: 'print', label: 'Imprenta' },
+const TAB_KEYS: { id: Tab; labelKey: string }[] = [
+  { id: 'blindness', labelKey: 'colorToolsPanel.tabs.blindness' },
+  { id: 'pigment', labelKey: 'colorToolsPanel.tabs.pigment' },
+  { id: 'harmony', labelKey: 'colorToolsPanel.tabs.harmony' },
+  { id: 'extraction', labelKey: 'colorToolsPanel.tabs.extraction' },
+  { id: 'mood', labelKey: 'colorToolsPanel.tabs.mood' },
+  { id: 'naming', labelKey: 'colorToolsPanel.tabs.naming' },
+  { id: 'library', labelKey: 'colorToolsPanel.tabs.library' },
+  { id: 'converter', labelKey: 'colorToolsPanel.tabs.converter' },
+  { id: 'accessibility', labelKey: 'colorToolsPanel.tabs.accessibility' },
+  { id: 'print', labelKey: 'colorToolsPanel.tabs.print' },
 ];
 
 /**
@@ -34,6 +35,7 @@ const TABS: { id: Tab; label: string }[] = [
  * from outside this panel.
  */
 export default function ColorToolsPanel() {
+  const { t } = useTranslation('panelsColor');
   const [tab, setTab] = useState<Tab>('blindness');
   const loadLibrary = useAssetLibraryStore((s) => s.loadLibrary);
 
@@ -44,15 +46,15 @@ export default function ColorToolsPanel() {
   return (
     <div className="flex flex-col h-full">
       <div className="flex flex-wrap border-b border-border shrink-0">
-        {TABS.map((t) => (
+        {TAB_KEYS.map((tabInfo) => (
           <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
+            key={tabInfo.id}
+            onClick={() => setTab(tabInfo.id)}
             className={`px-2.5 py-2 text-[11px] whitespace-nowrap border-b-2 ${
-              tab === t.id ? 'border-accent text-accent' : 'border-transparent text-textDim hover:text-text'
+              tab === tabInfo.id ? 'border-accent text-accent' : 'border-transparent text-textDim hover:text-text'
             }`}
           >
-            {t.label}
+            {t(tabInfo.labelKey)}
           </button>
         ))}
       </div>

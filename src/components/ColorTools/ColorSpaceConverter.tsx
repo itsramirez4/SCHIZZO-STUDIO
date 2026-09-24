@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { hexToRgbaColor, rgbaColorToHex, rgbToHsl, rgbToHsv, rgbToLab, rgbToCmyk, hslToRgb } from '@/services/colorSpace.service';
 import { useTools } from '@/hooks/useTools';
 
 export default function ColorSpaceConverter() {
+  const { t } = useTranslation('panelsColor');
   const { primaryColor, setPrimaryColor } = useTools();
   const [localHex, setLocalHex] = useState(primaryColor);
 
@@ -37,7 +39,7 @@ export default function ColorSpaceConverter() {
       </div>
 
       <div className="space-y-2">
-        <div className="text-[10px] text-textDim uppercase tracking-wide">HSL (editable)</div>
+        <div className="text-[10px] text-textDim uppercase tracking-wide">{t('colorSpaceConverter.hslEditable')}</div>
         <SliderRow label="H" value={hsl.h} min={0} max={359} onChange={(v) => commitHsl({ h: v })} />
         <SliderRow label="S" value={hsl.s} min={0} max={100} onChange={(v) => commitHsl({ s: v })} />
         <SliderRow label="L" value={hsl.l} min={0} max={100} onChange={(v) => commitHsl({ l: v })} />

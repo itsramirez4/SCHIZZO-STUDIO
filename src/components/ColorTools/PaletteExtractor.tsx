@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import { RGBA } from '@/types/colorTools';
 import * as extraction from '@/services/paletteExtraction.service';
 import { rgbaColorToHex } from '@/services/colorSpace.service';
@@ -14,6 +15,7 @@ type Method = 'kmeans' | 'dominant';
 type SortBy = 'hue' | 'lightness' | 'saturation';
 
 export default function PaletteExtractor() {
+  const { t } = useTranslation('panelsColor');
   const { currentLayer } = useLayers();
   const [colors, setColors] = useState<RGBA[]>([]);
   const [method, setMethod] = useState<Method>('kmeans');
@@ -25,7 +27,8 @@ export default function PaletteExtractor() {
 
   function saveToLibrary() {
     const hexColors = colors.map(rgbaColorToHex);
-    addPalette(createPalette(`Extraída (${method === 'kmeans' ? 'K-means' : 'Dominantes'})`, hexColors));
+    const methodLabel = method === 'kmeans' ? t('paletteExtractor.methodKmeans') : t('paletteExtractor.methodDominant');
+    addPalette(createPalette(t('paletteExtractor.extractedName', { method: methodLabel }), hexColors));
     setSaved(true);
   }
 
@@ -39,7 +42,7 @@ export default function PaletteExtractor() {
     if (!currentLayer) return;
     const canvas = layerService.getLayerCanvas(currentLayer.id);
     if (!canvas) {
-      toast.error('Esta capa no tiene píxeles propios — elegí una capa normal, de texto o de referencia');
+      toast.error(t('paletteExtractor.errorNoPixels'));
       return;
     }
     const imageData = canvas.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height);
@@ -50,7 +53,7 @@ export default function PaletteExtractor() {
 
   async function extractFromImage() {
     if (!isElectron()) {
-      toast.error('Importar imágenes solo está disponible en la app de escritorio');
+      toast.error(t('paletteExtractor.errorElectronOnly'));
       return;
     }
     const result = await window.electronAPI.importImages();
@@ -110,13 +113,13 @@ export default function PaletteExtractor() {
             onClick={() => setMethod(m)}
             className={`flex-1 text-[10px] rounded py-1 border ${method === m ? 'bg-accent text-white border-accent' : 'bg-panel border-border text-textDim'}`}
           >
-            {m === 'kmeans' ? 'K-means' : 'Dominantes'}
+            {m === 'kmeans' ? t('paletteExtractor.methodKmeans') : t('paletteExtractor.methodDominant')}
           </button>
         ))}
       </div>
 
       <label className="flex items-center gap-2 text-[10px] text-textDim">
-        Cantidad de colores
+        {t('paletteExtractor.colorCount')}
         <input
           type="number"
           min={2}
@@ -129,21 +132,21 @@ export default function PaletteExtractor() {
 
       <div className="grid grid-cols-2 gap-1.5">
         <button onClick={extractFromLayer} disabled={!currentLayerHasPixels} className="text-[11px] bg-panelLight rounded py-1.5 disabled:opacity-40">
-          Extraer de la capa actual
+          {t('paletteExtractor.extractFromLayer')}
         </button>
         <button onClick={extractFromImage} disabled={busy} className="text-[11px] bg-panelLight rounded py-1.5 disabled:opacity-40">
-          {busy ? 'Cargando…' : 'Extraer de imagen…'}
+          {busy ? t('paletteExtractor.loading') : t('paletteExtractor.extractFromImage')}
         </button>
       </div>
 
       {colors.length > 0 && (
         <>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] text-textDim">Ordenar</span>
+            <span className="text-[10px] text-textDim">{t('paletteExtractor.sort')}</span>
             <select value={sortBy} onChange={(e) => reSort(e.target.value as SortBy)} className="bg-panel border border-border rounded text-[10px] px-1 py-0.5">
-              <option value="hue">Tono</option>
-              <option value="lightness">Luminosidad</option>
-              <option value="saturation">Saturación</option>
+              <option value="hue">{t('paletteExtractor.sortHue')}</option>
+              <option value="lightness">{t('paletteExtractor.sortLightness')}</option>
+              <option value="saturation">{t('paletteExtractor.sortSaturation')}</option>
             </select>
           </div>
 
@@ -175,9 +178,9 @@ export default function PaletteExtractor() {
           </div>
 
           <button onClick={saveToLibrary} className="w-full text-[11px] bg-panelLight rounded py-1.5">
-            Guardar en biblioteca
+            {t('paletteExtractor.saveToLibrary')}
           </button>
-          {saved && <p className="text-[9px] text-textDim">Guardada.</p>}
+          {saved && <p className="text-[9px] text-textDim">{t('paletteExtractor.saved')}</p>}
         </>
       )}
     </div>

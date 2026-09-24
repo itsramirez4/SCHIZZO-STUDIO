@@ -1,0 +1,199 @@
+{
+  "colorToolsPanel": {
+    "tabs": {
+      "blindness": "Color Blindness",
+      "pigment": "Pigments",
+      "harmony": "Harmony",
+      "extraction": "Palette",
+      "mood": "Generator",
+      "naming": "Names",
+      "library": "Library",
+      "converter": "Spaces",
+      "accessibility": "Accessibility",
+      "print": "Print"
+    }
+  },
+  "colorWheelPicker": {
+    "dragHint": "Drag to pick hue (angle) and saturation (distance from the center)",
+    "brightness": "Brightness"
+  },
+  "colorBlindnessSimulator": {
+    "intro": "How your current primary/secondary colors look for different types of color blindness. To simulate the whole canvas, use the \"Color Blindness\" filter in the Filters panel.",
+    "primary": "Primary",
+    "secondary": "Secondary",
+    "distinguishable": "Distinguishable",
+    "notDistinguishable": "Hard to distinguish"
+  },
+  "colorNamePanel": {
+    "nearestInfo": "{{color}} · nearest: {{nearest}} (ΔE {{distance}})",
+    "otherNames": "Other nearby names",
+    "useAsPrimary": "Use {{hex}} as the primary color",
+    "searchByName": "Search by name",
+    "searchPlaceholder": "e.g. blue, coral, olive…",
+    "noResults": "No results."
+  },
+  "colorSpaceConverter": {
+    "hslEditable": "HSL (editable)"
+  },
+  "harmonyGenerator": {
+    "rybHint": "Red–green, blue–orange and yellow–violet are complementary, as in painting",
+    "rgbHint": "Hues are laid out as on screen (red–cyan, green–magenta, blue–yellow)",
+    "dragHint": "Drag on the wheel: the angle is the hue, and the distance from the center is the saturation. Click a harmony dot to use that color (Shift: as secondary).",
+    "base": "Base",
+    "useAsPrimary": "Click: use as the primary color",
+    "useAsSecondary": "Use as secondary",
+    "saveToLibrary": "Save to library",
+    "saved": "Saved."
+  },
+  "moodPaletteGenerator": {
+    "colorCount": "Number of colors",
+    "regenerate": "Regenerate",
+    "useAsPrimary": "Click: use as the primary color",
+    "useAsSecondary": "Use as secondary",
+    "saved": "Saved to the palette library."
+  },
+  "paletteExtractor": {
+    "errorNoPixels": "This layer has no pixels of its own — pick a normal, text, or reference layer",
+    "errorElectronOnly": "Importing images is only available in the desktop app",
+    "methodKmeans": "K-means",
+    "methodDominant": "Dominant",
+    "colorCount": "Number of colors",
+    "extractFromLayer": "Extract from current layer",
+    "loading": "Loading…",
+    "extractFromImage": "Extract from image…",
+    "sort": "Sort",
+    "sortHue": "Hue",
+    "sortLightness": "Lightness",
+    "sortSaturation": "Saturation",
+    "saveToLibrary": "Save to library",
+    "saved": "Saved.",
+    "extractedName": "Extracted ({{method}})"
+  },
+  "paletteLibraryPanel": {
+    "savedToProject": "Saved to this project",
+    "codeCopied": "Code copied — paste it wherever you want to share it",
+    "copyFailed": "Couldn't copy",
+    "invalidCode": "Invalid palette code",
+    "imported": "Palette \"{{name}}\" imported",
+    "errorElectronOnly": "Importing from a file is only available in the desktop app",
+    "noValidColors": "No valid colors were found in the file (.gpl and .hex are supported)",
+    "importedDefaultName": "Imported palette",
+    "importedFromFile": "Palette \"{{name}}\" imported ({{count}} colors)",
+    "pasteCodePlaceholder": "Paste palette code…",
+    "import": "Import",
+    "importFromFileTitle": "Import from a .gpl or .hex file",
+    "projectPalettes": "Palettes in this project",
+    "noneYet": "None yet: use a palette's folder icon to save it to the project.",
+    "removeFromProject": "Remove from project",
+    "useAsPrimary": "{{hex}} — use as the primary color",
+    "noSavedPalettes": "No saved palettes yet.",
+    "copyCode": "Copy code to share",
+    "saveToProject": "Save to this project",
+    "favorite": "Favorite",
+    "delete": "Delete"
+  },
+  "pigmentMixer": {
+    "intro": "Mixes like paint: blue + yellow makes green, not gray. This is an approximation in RYB space (not a spectral simulation of actual pigments).",
+    "colorA": "Color A",
+    "colorB": "Color B",
+    "ratioDisplay": "{{a}}% A · {{b}}% B",
+    "pigmentResult": "Pigment {{hex}}",
+    "lightResult": "Light (RGB) {{hex}}",
+    "rampTitle": "Mixing ramp (9 steps)",
+    "useAsMainColor": "{{hex}} — click to use as the main color",
+    "mainColorToast": "Main color: {{hex}}",
+    "mixApplied": "Mix applied as the main color",
+    "useMixAsMain": "Use mix as the main color"
+  },
+  "printWorkspace": {
+    "blackGenLight": "Light",
+    "blackGenMedium": "Medium",
+    "blackGenHeavy": "Heavy",
+    "blackGenMaximum": "Maximum",
+    "inkSettings": "Ink settings",
+    "inkLimit": "Ink limit",
+    "gcr": "Gray component replacement (GCR)",
+    "blackGeneration": "Black generation: {{label}}",
+    "primarySeparation": "Primary color separation",
+    "totalInk": "Total ink: {{percent}}%",
+    "colorDifference": "Color difference (round trip through CMYK)",
+    "original": "Original",
+    "afterRoundTrip": "After CMYK → RGB"
+  },
+  "accessibilityChecker": {
+    "background": "Background",
+    "text": "Text",
+    "sampleText": "Sample text Aa",
+    "contrastRatio": "Contrast ratio",
+    "largeText": "Large text:",
+    "smallText": "Small text:",
+    "pass": "OK",
+    "fail": "Fail",
+    "colorBlindness": "Color blindness",
+    "distinguishable": "Distinguishable",
+    "notDistinguishable": "Hard to distinguish",
+    "betterAlternatives": "Alternatives with better contrast"
+  },
+  "assetLibraryPanel": {
+    "tabs": {
+      "brush": "Brushes",
+      "pattern": "Patterns",
+      "gradient": "Gradients",
+      "texture": "Textures"
+    }
+  },
+  "brushLibraryTab": {
+    "searchPlaceholder": "Search brushes…",
+    "favoritesOnly": "Favorites only",
+    "emptyMessage": "No matching brushes",
+    "useThisBrush": "Use this brush",
+    "favorite": "Favorite"
+  },
+  "assetGrid": {
+    "favorite": "Favorite",
+    "delete": "Delete"
+  },
+  "gradientLibraryTab": {
+    "defaultName": "Custom gradient",
+    "fillHistory": "Fill with gradient \"{{name}}\"",
+    "searchPlaceholder": "Search gradients…",
+    "favoritesOnly": "Favorites only",
+    "emptyMessage": "No matching gradients",
+    "targetSelection": "selection",
+    "targetLayer": "layer",
+    "fillWith": "Fill {{target}} with \"{{name}}\"",
+    "new": "New…",
+    "namePlaceholder": "Name",
+    "linear": "Linear",
+    "radial": "Radial",
+    "addPoint": "+ Point",
+    "saveToLibrary": "Save to library"
+  },
+  "patternLibraryTab": {
+    "errorElectronOnly": "Importing patterns is only available in the desktop app",
+    "fillHistory": "Fill with pattern",
+    "fillHistoryNamed": "Fill with pattern \"{{name}}\"",
+    "presets": "Presets",
+    "custom": "Custom",
+    "searchPlaceholder": "Search…",
+    "emptyMessage": "No imported patterns",
+    "targetSelection": "selection",
+    "targetLayer": "layer",
+    "fillWithPattern": "Fill {{target}} with pattern",
+    "loading": "Loading…",
+    "import": "Import…"
+  },
+  "textureLibraryTab": {
+    "errorElectronOnly": "Importing textures is only available in the desktop app",
+    "fillHistory": "Fill with texture \"{{name}}\"",
+    "searchPlaceholder": "Search textures…",
+    "loading": "Loading…",
+    "import": "Import…",
+    "emptyMessage": "No imported textures",
+    "tile": "Tile",
+    "stretch": "Stretch",
+    "targetSelection": "selection",
+    "targetLayer": "layer",
+    "fillWith": "Fill {{target}} with \"{{name}}\""
+  }
+}

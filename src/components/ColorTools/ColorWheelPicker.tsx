@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { RGBA } from '@/types/colorTools';
 import { HSV, hexToRgba, rgbaToHex, rgbaToHsv, hsvToRgba } from '@/utils/colorUtils';
 import { WheelModel, drawWheel, wheelPick, wheelPosition } from '@/services/colorWheel.service';
@@ -20,6 +21,7 @@ const toHex = (hsv: HSV) => rgbaToHex(hsvToRgba(hsv.h, hsv.s, hsv.v));
 /** A colour wheel: angle is the hue, distance from the centre is the saturation, and a bar below sets
  * the brightness. The chosen colour and (optionally) the dots of a harmony are drawn on top. */
 export default function ColorWheelPicker({ hex, onChange, onCommitEnd, model, harmonyColors, onPickHarmony, size = 200 }: Props) {
+  const { t } = useTranslation('panelsColor');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dragRef = useRef(false);
   const [hsv, setHsv] = useState<HSV>(() => rgbaToHsv(hexToRgba(hex)));
@@ -158,10 +160,10 @@ export default function ColorWheelPicker({ hex, onChange, onCommitEnd, model, ha
         onPointerMove={(e) => dragRef.current && pickAt(e)}
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
-        title="Arrastra para elegir tono (ángulo) y saturación (distancia al centro)"
+        title={t('colorWheelPicker.dragHint')}
       />
       <label className="flex items-center gap-2 text-[10px] text-textDim">
-        <span className="w-14 shrink-0">Brillo</span>
+        <span className="w-14 shrink-0">{t('colorWheelPicker.brightness')}</span>
         <input
           type="range"
           min={0}

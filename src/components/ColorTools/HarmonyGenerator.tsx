@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { HarmonyType, HARMONY_LABELS } from '@/types/colorTools';
 import { hexToRgbaColor, rgbaColorToHex } from '@/services/colorSpace.service';
 import { WheelModel, WHEEL_MODEL_LABELS, wheelHarmony } from '@/services/colorWheel.service';
@@ -22,6 +23,7 @@ function readModel(): WheelModel {
 /** Colour wheel with harmonies: drag the base colour and the harmony (dots joined by a dashed shape)
  * turns with it, on either the screen (RGB) wheel or the painter's (RYB) wheel. */
 export default function HarmonyGenerator() {
+  const { t } = useTranslation('panelsColor');
   const { primaryColor, setPrimaryColor, setSecondaryColor } = useTools();
   const addPalette = useAssetLibraryStore((s) => s.addPalette);
   const addRecentColor = useRecentColorsStore((s) => s.addColor);
@@ -55,7 +57,7 @@ export default function HarmonyGenerator() {
             key={m}
             onClick={() => chooseModel(m)}
             className={`text-[10px] rounded py-1 border ${model === m ? 'bg-accent text-white border-accent' : 'bg-panel border-border text-textDim hover:text-text'}`}
-            title={m === 'ryb' ? 'Rojo–verde, azul–naranja y amarillo–violeta son complementarios, como en la pintura' : 'Los tonos se reparten como en la pantalla (rojo–cian, verde–magenta, azul–amarillo)'}
+            title={m === 'ryb' ? t('harmonyGenerator.rybHint') : t('harmonyGenerator.rgbHint')}
           >
             {WHEEL_MODEL_LABELS[m]}
           </button>
@@ -74,10 +76,10 @@ export default function HarmonyGenerator() {
         onPickHarmony={(hex, secondary) => (secondary ? setSecondaryColor(hex) : setPrimaryColor(hex))}
         size={220}
       />
-      <p className="text-[9px] text-textDim">Arrastra sobre la rueda: el ángulo es el tono y la distancia al centro, la saturación. Pulsa un punto de la armonía para usar ese color (Mayús: como secundario).</p>
+      <p className="text-[9px] text-textDim">{t('harmonyGenerator.dragHint')}</p>
 
       <div className="flex items-center gap-2">
-        <span className="text-[10px] text-textDim w-16">Base</span>
+        <span className="text-[10px] text-textDim w-16">{t('harmonyGenerator.base')}</span>
         <div className="w-8 h-8 rounded border border-border" style={{ background: primaryColor }} />
         <span className="text-[10px] text-textDim font-mono">{primaryColor}</span>
       </div>
@@ -103,10 +105,10 @@ export default function HarmonyGenerator() {
           const hex = rgbaColorToHex(color);
           return (
             <div key={i} className="border border-border rounded overflow-hidden">
-              <button onClick={() => setPrimaryColor(hex)} className="w-full h-14 block" style={{ background: hex }} title="Click: usar como color primario" />
+              <button onClick={() => setPrimaryColor(hex)} className="w-full h-14 block" style={{ background: hex }} title={t('harmonyGenerator.useAsPrimary')} />
               <div className="flex items-center justify-between px-1.5 py-1">
                 <span className="text-[9px] font-mono text-textDim">{hex}</span>
-                <button onClick={() => setSecondaryColor(hex)} className="text-[9px] text-textDim hover:text-text" title="Usar como secundario">
+                <button onClick={() => setSecondaryColor(hex)} className="text-[9px] text-textDim hover:text-text" title={t('harmonyGenerator.useAsSecondary')}>
                   2°
                 </button>
               </div>
@@ -116,9 +118,9 @@ export default function HarmonyGenerator() {
       </div>
 
       <button onClick={saveToLibrary} className="w-full text-[11px] bg-panelLight rounded py-1.5">
-        Guardar en biblioteca
+        {t('harmonyGenerator.saveToLibrary')}
       </button>
-      {saved && <p className="text-[9px] text-textDim">Guardada.</p>}
+      {saved && <p className="text-[9px] text-textDim">{t('harmonyGenerator.saved')}</p>}
     </div>
   );
 }

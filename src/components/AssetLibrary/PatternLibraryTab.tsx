@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import { useAssetLibraryStore } from '@/store/assetLibraryStore';
 import { useLayers } from '@/hooks/useLayers';
 import { useTools } from '@/hooks/useTools';
@@ -15,6 +16,7 @@ import AssetGrid from './AssetGrid';
 type Selection = { type: 'preset'; id: string } | { type: 'custom'; id: string } | null;
 
 export default function PatternLibraryTab() {
+  const { t } = useTranslation('panelsColor');
   const { patterns, addPattern, removePattern, togglePatternFavorite } = useAssetLibraryStore();
   const { currentLayer } = useLayers();
   const { primaryColor } = useTools();
@@ -29,7 +31,7 @@ export default function PatternLibraryTab() {
 
   async function importPattern() {
     if (!isElectron()) {
-      toast.error('Importar patrones solo está disponible en la app de escritorio');
+      toast.error(t('patternLibraryTab.errorElectronOnly'));
       return;
     }
     const result = await window.electronAPI.importImages();
@@ -52,20 +54,20 @@ export default function PatternLibraryTab() {
 
     if (selected.type === 'preset') {
       fillWithPattern(canvas, selected.id, primaryColor, selectionRect ?? undefined);
-      pushHistory('Rellenar con patrón');
+      pushHistory(t('patternLibraryTab.fillHistory'));
     } else {
       const pattern = patterns.find((p) => p.id === selected.id);
       if (!pattern) return;
       const img = await dataUrlToImage(pattern.tileDataUrl);
       applyCustomPatternFill(canvas, pattern, img, selectionRect ?? undefined);
-      pushHistory(`Rellenar con patrón "${pattern.name}"`);
+      pushHistory(t('patternLibraryTab.fillHistoryNamed', { name: pattern.name }));
     }
   }
 
   return (
     <div className="space-y-3">
       <div>
-        <div className="text-[10px] text-textDim mb-1">Predefinidos</div>
+        <div className="text-[10px] text-textDim mb-1">{t('patternLibraryTab.presets')}</div>
         <div className="grid grid-cols-6 gap-1">
           {PATTERN_PRESETS.map((p) => (
             <button
@@ -86,11 +88,11 @@ export default function PatternLibraryTab() {
 
       <div>
         <div className="flex items-center justify-between mb-1">
-          <span className="text-[10px] text-textDim">Personalizados</span>
+          <span className="text-[10px] text-textDim">{t('patternLibraryTab.custom')}</span>
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar…"
+            placeholder={t('patternLibraryTab.searchPlaceholder')}
             className="bg-panel border border-border rounded px-1.5 py-0.5 text-[10px] w-24"
           />
         </div>
@@ -103,7 +105,7 @@ export default function PatternLibraryTab() {
           onSelect={(p) => setSelected({ type: 'custom', id: p.id })}
           onToggleFavorite={(p) => togglePatternFavorite(p.id)}
           onDelete={(p) => removePattern(p.id)}
-          emptyMessage="Sin patrones importados"
+          emptyMessage={t('patternLibraryTab.emptyMessage')}
         />
       </div>
 
@@ -113,10 +115,10 @@ export default function PatternLibraryTab() {
           disabled={!currentLayer || !selected}
           className="flex-1 bg-accent text-white text-xs rounded py-1.5 disabled:opacity-40"
         >
-          Rellenar {selectionRect ? 'selección' : 'capa'} con patrón
+          {t('patternLibraryTab.fillWithPattern', { target: selectionRect ? t('patternLibraryTab.targetSelection') : t('patternLibraryTab.targetLayer') })}
         </button>
         <button onClick={importPattern} disabled={busy} className="bg-panelLight text-xs rounded px-2 disabled:opacity-40">
-          {busy ? 'Cargando…' : 'Importar…'}
+          {busy ? t('patternLibraryTab.loading') : t('patternLibraryTab.import')}
         </button>
       </div>
     </div>

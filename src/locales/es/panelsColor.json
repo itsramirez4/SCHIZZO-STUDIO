@@ -1,0 +1,199 @@
+{
+  "colorToolsPanel": {
+    "tabs": {
+      "blindness": "Daltonismo",
+      "pigment": "Pigmentos",
+      "harmony": "Armonía",
+      "extraction": "Paleta",
+      "mood": "Generador",
+      "naming": "Nombres",
+      "library": "Biblioteca",
+      "converter": "Espacios",
+      "accessibility": "Accesibilidad",
+      "print": "Imprenta"
+    }
+  },
+  "colorWheelPicker": {
+    "dragHint": "Arrastra para elegir tono (ángulo) y saturación (distancia al centro)",
+    "brightness": "Brillo"
+  },
+  "colorBlindnessSimulator": {
+    "intro": "Cómo se ven tus colores primario/secundario actuales para distintos tipos de daltonismo. Para simular el lienzo completo, usá el filtro \"Daltonismo\" en el panel de Filtros.",
+    "primary": "Primario",
+    "secondary": "Secundario",
+    "distinguishable": "Se distinguen",
+    "notDistinguishable": "Difícil de distinguir"
+  },
+  "colorNamePanel": {
+    "nearestInfo": "{{color}} · más cercano: {{nearest}} (ΔE {{distance}})",
+    "otherNames": "Otros nombres cercanos",
+    "useAsPrimary": "Usar {{hex}} como color primario",
+    "searchByName": "Buscar por nombre",
+    "searchPlaceholder": "ej. azul, coral, oliva…",
+    "noResults": "Sin resultados."
+  },
+  "colorSpaceConverter": {
+    "hslEditable": "HSL (editable)"
+  },
+  "harmonyGenerator": {
+    "rybHint": "Rojo–verde, azul–naranja y amarillo–violeta son complementarios, como en la pintura",
+    "rgbHint": "Los tonos se reparten como en la pantalla (rojo–cian, verde–magenta, azul–amarillo)",
+    "dragHint": "Arrastra sobre la rueda: el ángulo es el tono y la distancia al centro, la saturación. Pulsa un punto de la armonía para usar ese color (Mayús: como secundario).",
+    "base": "Base",
+    "useAsPrimary": "Click: usar como color primario",
+    "useAsSecondary": "Usar como secundario",
+    "saveToLibrary": "Guardar en biblioteca",
+    "saved": "Guardada."
+  },
+  "moodPaletteGenerator": {
+    "colorCount": "Cantidad de colores",
+    "regenerate": "Regenerar",
+    "useAsPrimary": "Click: usar como color primario",
+    "useAsSecondary": "Usar como secundario",
+    "saved": "Guardada en la biblioteca de paletas."
+  },
+  "paletteExtractor": {
+    "errorNoPixels": "Esta capa no tiene píxeles propios — elegí una capa normal, de texto o de referencia",
+    "errorElectronOnly": "Importar imágenes solo está disponible en la app de escritorio",
+    "methodKmeans": "K-means",
+    "methodDominant": "Dominantes",
+    "colorCount": "Cantidad de colores",
+    "extractFromLayer": "Extraer de la capa actual",
+    "loading": "Cargando…",
+    "extractFromImage": "Extraer de imagen…",
+    "sort": "Ordenar",
+    "sortHue": "Tono",
+    "sortLightness": "Luminosidad",
+    "sortSaturation": "Saturación",
+    "saveToLibrary": "Guardar en biblioteca",
+    "saved": "Guardada.",
+    "extractedName": "Extraída ({{method}})"
+  },
+  "paletteLibraryPanel": {
+    "savedToProject": "Guardada en este proyecto",
+    "codeCopied": "Código copiado — pegalo donde quieras compartirlo",
+    "copyFailed": "No se pudo copiar",
+    "invalidCode": "Código de paleta inválido",
+    "imported": "Paleta \"{{name}}\" importada",
+    "errorElectronOnly": "Importar desde archivo solo está disponible en la app de escritorio",
+    "noValidColors": "No se encontraron colores válidos en el archivo (se admiten .gpl y .hex)",
+    "importedDefaultName": "Paleta importada",
+    "importedFromFile": "Paleta \"{{name}}\" importada ({{count}} colores)",
+    "pasteCodePlaceholder": "Pegar código de paleta…",
+    "import": "Importar",
+    "importFromFileTitle": "Importar desde archivo .gpl o .hex",
+    "projectPalettes": "Paletas de este proyecto",
+    "noneYet": "Ninguna todavía: usa el icono de carpeta de una paleta para guardarla en el proyecto.",
+    "removeFromProject": "Quitar del proyecto",
+    "useAsPrimary": "{{hex}} — usar como color primario",
+    "noSavedPalettes": "No hay paletas guardadas todavía.",
+    "copyCode": "Copiar código para compartir",
+    "saveToProject": "Guardar en este proyecto",
+    "favorite": "Favorita",
+    "delete": "Eliminar"
+  },
+  "pigmentMixer": {
+    "intro": "Mezcla como pintura: azul + amarillo da verde y no gris. Es una aproximación en espacio RYB (no una simulación espectral de pigmentos concretos).",
+    "colorA": "Color A",
+    "colorB": "Color B",
+    "ratioDisplay": "{{a}}% A · {{b}}% B",
+    "pigmentResult": "Pigmento {{hex}}",
+    "lightResult": "Luz (RGB) {{hex}}",
+    "rampTitle": "Rampa de mezcla (9 pasos)",
+    "useAsMainColor": "{{hex}} — clic para usar como color principal",
+    "mainColorToast": "Color principal: {{hex}}",
+    "mixApplied": "Mezcla aplicada como color principal",
+    "useMixAsMain": "Usar mezcla como color principal"
+  },
+  "printWorkspace": {
+    "blackGenLight": "Ligera",
+    "blackGenMedium": "Media",
+    "blackGenHeavy": "Fuerte",
+    "blackGenMaximum": "Máxima",
+    "inkSettings": "Ajustes de tinta",
+    "inkLimit": "Límite de tinta",
+    "gcr": "Reemplazo de componente gris (GCR)",
+    "blackGeneration": "Generación de negro: {{label}}",
+    "primarySeparation": "Separación del color primario",
+    "totalInk": "Tinta total: {{percent}}%",
+    "colorDifference": "Diferencia de color (ida y vuelta por CMYK)",
+    "original": "Original",
+    "afterRoundTrip": "Tras CMYK → RGB"
+  },
+  "accessibilityChecker": {
+    "background": "Fondo",
+    "text": "Texto",
+    "sampleText": "Texto de muestra Aa",
+    "contrastRatio": "Ratio de contraste",
+    "largeText": "Texto grande:",
+    "smallText": "Texto chico:",
+    "pass": "OK",
+    "fail": "Falla",
+    "colorBlindness": "Daltonismo",
+    "distinguishable": "Se distingue",
+    "notDistinguishable": "Poco distinguible",
+    "betterAlternatives": "Alternativas con mejor contraste"
+  },
+  "assetLibraryPanel": {
+    "tabs": {
+      "brush": "Pinceles",
+      "pattern": "Patrones",
+      "gradient": "Degradados",
+      "texture": "Texturas"
+    }
+  },
+  "brushLibraryTab": {
+    "searchPlaceholder": "Buscar pinceles…",
+    "favoritesOnly": "Solo favoritos",
+    "emptyMessage": "Sin pinceles que coincidan",
+    "useThisBrush": "Usar este pincel",
+    "favorite": "Favorito"
+  },
+  "assetGrid": {
+    "favorite": "Favorito",
+    "delete": "Eliminar"
+  },
+  "gradientLibraryTab": {
+    "defaultName": "Degradado personalizado",
+    "fillHistory": "Rellenar con degradado \"{{name}}\"",
+    "searchPlaceholder": "Buscar degradados…",
+    "favoritesOnly": "Solo favoritos",
+    "emptyMessage": "Sin degradados que coincidan",
+    "targetSelection": "selección",
+    "targetLayer": "capa",
+    "fillWith": "Rellenar {{target}} con \"{{name}}\"",
+    "new": "Nuevo…",
+    "namePlaceholder": "Nombre",
+    "linear": "Lineal",
+    "radial": "Radial",
+    "addPoint": "+ Punto",
+    "saveToLibrary": "Guardar en la biblioteca"
+  },
+  "patternLibraryTab": {
+    "errorElectronOnly": "Importar patrones solo está disponible en la app de escritorio",
+    "fillHistory": "Rellenar con patrón",
+    "fillHistoryNamed": "Rellenar con patrón \"{{name}}\"",
+    "presets": "Predefinidos",
+    "custom": "Personalizados",
+    "searchPlaceholder": "Buscar…",
+    "emptyMessage": "Sin patrones importados",
+    "targetSelection": "selección",
+    "targetLayer": "capa",
+    "fillWithPattern": "Rellenar {{target}} con patrón",
+    "loading": "Cargando…",
+    "import": "Importar…"
+  },
+  "textureLibraryTab": {
+    "errorElectronOnly": "Importar texturas solo está disponible en la app de escritorio",
+    "fillHistory": "Rellenar con textura \"{{name}}\"",
+    "searchPlaceholder": "Buscar texturas…",
+    "loading": "Cargando…",
+    "import": "Importar…",
+    "emptyMessage": "Sin texturas importadas",
+    "tile": "Mosaico",
+    "stretch": "Estirar",
+    "targetSelection": "selección",
+    "targetLayer": "capa",
+    "fillWith": "Rellenar {{target}} con \"{{name}}\""
+  }
+}

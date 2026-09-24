@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MoodTheme, MOOD_LABELS } from '@/types/colorTools';
 import { generateMoodPalette } from '@/services/paletteMood.service';
 import { useTools } from '@/hooks/useTools';
@@ -10,6 +11,7 @@ const MOODS = Object.keys(MOOD_LABELS) as MoodTheme[];
 /** Generates a palette biased toward a chosen mood's real hue range (see paletteMood.service —
  * "warm" actually lands on reds/oranges, not just a lightness tweak on whatever hue was there). */
 export default function MoodPaletteGenerator() {
+  const { t } = useTranslation('panelsColor');
   const { setPrimaryColor, setSecondaryColor } = useTools();
   const addPalette = useAssetLibraryStore((s) => s.addPalette);
   const [mood, setMood] = useState<MoodTheme>('warm');
@@ -48,7 +50,7 @@ export default function MoodPaletteGenerator() {
       </div>
 
       <label className="flex items-center gap-2 text-[10px] text-textDim">
-        Cantidad de colores
+        {t('moodPaletteGenerator.colorCount')}
         <input
           type="range"
           min={3}
@@ -65,16 +67,16 @@ export default function MoodPaletteGenerator() {
       </label>
 
       <button onClick={() => regenerate(mood, count)} className="w-full text-[11px] bg-panelLight rounded py-1.5">
-        Regenerar
+        {t('moodPaletteGenerator.regenerate')}
       </button>
 
       <div className="grid grid-cols-2 gap-1.5">
         {colors.map((hex, i) => (
           <div key={i} className="border border-border rounded overflow-hidden">
-            <button onClick={() => setPrimaryColor(hex)} className="w-full h-12 block" style={{ background: hex }} title="Click: usar como color primario" />
+            <button onClick={() => setPrimaryColor(hex)} className="w-full h-12 block" style={{ background: hex }} title={t('moodPaletteGenerator.useAsPrimary')} />
             <div className="flex items-center justify-between px-1.5 py-1">
               <span className="text-[9px] font-mono text-textDim">{hex}</span>
-              <button onClick={() => setSecondaryColor(hex)} className="text-[9px] text-textDim hover:text-text" title="Usar como secundario">
+              <button onClick={() => setSecondaryColor(hex)} className="text-[9px] text-textDim hover:text-text" title={t('moodPaletteGenerator.useAsSecondary')}>
                 2°
               </button>
             </div>
@@ -91,10 +93,10 @@ export default function MoodPaletteGenerator() {
           className="flex-1 bg-panel border border-border rounded text-[11px] px-1.5 py-1"
         />
         <button onClick={save} className="text-[11px] bg-panelLight rounded px-2.5">
-          Guardar
+          {t('common:save')}
         </button>
       </div>
-      {saved && <p className="text-[9px] text-textDim">Guardada en la biblioteca de paletas.</p>}
+      {saved && <p className="text-[9px] text-textDim">{t('moodPaletteGenerator.saved')}</p>}
     </div>
   );
 }

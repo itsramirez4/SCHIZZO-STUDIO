@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Star } from 'lucide-react';
 import { useAssetLibraryStore } from '@/store/assetLibraryStore';
 import { useLayers } from '@/hooks/useLayers';
@@ -10,6 +11,7 @@ import { GradientStop } from '@/types/assetLibrary';
 import AssetGrid from './AssetGrid';
 
 export default function GradientLibraryTab() {
+  const { t } = useTranslation('panelsColor');
   const { gradients, addGradient, removeGradient, toggleGradientFavorite } = useAssetLibraryStore();
   const { currentLayer } = useLayers();
   const selection = useAppStore((s) => s.selection);
@@ -19,7 +21,7 @@ export default function GradientLibraryTab() {
   const [favoriteOnly, setFavoriteOnly] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(gradients[0]?.id ?? null);
   const [showEditor, setShowEditor] = useState(false);
-  const [name, setName] = useState('Degradado personalizado');
+  const [name, setName] = useState(t('gradientLibraryTab.defaultName'));
   const [kind, setKind] = useState<'linear' | 'radial'>('linear');
   const [stops, setStops] = useState<GradientStop[]>([
     { position: 0, color: '#000000' },
@@ -40,11 +42,11 @@ export default function GradientLibraryTab() {
     const canvas = layerService.getLayerCanvas(currentLayer.id);
     if (!canvas) return;
     applyGradientFill(canvas, selected, selection ?? undefined);
-    pushHistory(`Rellenar con degradado "${selected.name}"`);
+    pushHistory(t('gradientLibraryTab.fillHistory', { name: selected.name }));
   }
 
   function saveNew() {
-    const gradient = createGradient(name.trim() || 'Degradado personalizado', stops, kind);
+    const gradient = createGradient(name.trim() || t('gradientLibraryTab.defaultName'), stops, kind);
     addGradient(gradient);
     setSelectedId(gradient.id);
     setShowEditor(false);
@@ -60,12 +62,12 @@ export default function GradientLibraryTab() {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar degradados…"
+          placeholder={t('gradientLibraryTab.searchPlaceholder')}
           className="flex-1 bg-panel border border-border rounded px-2 py-1 text-[11px]"
         />
         <button
           onClick={() => setFavoriteOnly((v) => !v)}
-          title="Solo favoritos"
+          title={t('gradientLibraryTab.favoritesOnly')}
           className={`px-2 rounded border ${favoriteOnly ? 'bg-accent border-accent' : 'border-border'}`}
         >
           <Star size={12} className={favoriteOnly ? 'fill-white text-white' : 'text-textDim'} />
@@ -82,7 +84,7 @@ export default function GradientLibraryTab() {
         onToggleFavorite={(g) => toggleGradientFavorite(g.id)}
         canDelete={(g) => !g.builtIn}
         onDelete={(g) => removeGradient(g.id)}
-        emptyMessage="Sin degradados que coincidan"
+        emptyMessage={t('gradientLibraryTab.emptyMessage')}
       />
 
       <div className="flex gap-1.5">
@@ -91,10 +93,10 @@ export default function GradientLibraryTab() {
           disabled={!currentLayer || !selected}
           className="flex-1 bg-accent text-white text-xs rounded py-1.5 disabled:opacity-40"
         >
-          Rellenar {selection ? 'selección' : 'capa'} con "{selected?.name ?? '—'}"
+          {t('gradientLibraryTab.fillWith', { target: selection ? t('gradientLibraryTab.targetSelection') : t('gradientLibraryTab.targetLayer'), name: selected?.name ?? '—' })}
         </button>
         <button onClick={() => setShowEditor((v) => !v)} className="bg-panelLight text-xs rounded px-2">
-          {showEditor ? 'Cancelar' : 'Nuevo…'}
+          {showEditor ? t('common:cancel') : t('gradientLibraryTab.new')}
         </button>
       </div>
 
@@ -103,7 +105,7 @@ export default function GradientLibraryTab() {
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Nombre"
+            placeholder={t('gradientLibraryTab.namePlaceholder')}
             className="w-full bg-panel border border-border rounded px-2 py-1 text-[11px]"
           />
           <div className="flex gap-1">
@@ -113,7 +115,7 @@ export default function GradientLibraryTab() {
                 onClick={() => setKind(k)}
                 className={`flex-1 text-[10px] rounded py-1 border ${kind === k ? 'bg-accent text-white border-accent' : 'bg-panel border-border text-textDim'}`}
               >
-                {k === 'linear' ? 'Lineal' : 'Radial'}
+                {k === 'linear' ? t('gradientLibraryTab.linear') : t('gradientLibraryTab.radial')}
               </button>
             ))}
           </div>
@@ -146,10 +148,10 @@ export default function GradientLibraryTab() {
               onClick={() => setStops((s) => [...s, { position: 0.5, color: '#808080' }])}
               className="flex-1 bg-panelLight text-[10px] rounded py-1"
             >
-              + Punto
+              {t('gradientLibraryTab.addPoint')}
             </button>
             <button onClick={saveNew} className="flex-1 bg-accent text-white text-[10px] rounded py-1">
-              Guardar en la biblioteca
+              {t('gradientLibraryTab.saveToLibrary')}
             </button>
           </div>
         </div>

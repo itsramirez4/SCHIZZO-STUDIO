@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import { useAssetLibraryStore } from '@/store/assetLibraryStore';
 import { useLayers } from '@/hooks/useLayers';
 import { useAppStore } from '@/store/appStore';
@@ -11,6 +12,7 @@ import { isElectron } from '@/utils/fileUtils';
 import AssetGrid from './AssetGrid';
 
 export default function TextureLibraryTab() {
+  const { t } = useTranslation('panelsColor');
   const { textures, addTexture, removeTexture, toggleTextureFavorite } = useAssetLibraryStore();
   const { currentLayer } = useLayers();
   const selection = useAppStore((s) => s.selection);
@@ -26,7 +28,7 @@ export default function TextureLibraryTab() {
 
   async function importTexture() {
     if (!isElectron()) {
-      toast.error('Importar texturas solo está disponible en la app de escritorio');
+      toast.error(t('textureLibraryTab.errorElectronOnly'));
       return;
     }
     const result = await window.electronAPI.importImages();
@@ -48,7 +50,7 @@ export default function TextureLibraryTab() {
     if (!canvas) return;
     const img = await dataUrlToImage(selected.dataUrl);
     applyTextureFill(canvas, img, mode, selection ?? undefined);
-    pushHistory(`Rellenar con textura "${selected.name}"`);
+    pushHistory(t('textureLibraryTab.fillHistory', { name: selected.name }));
   }
 
   return (
@@ -57,24 +59,24 @@ export default function TextureLibraryTab() {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar texturas…"
+          placeholder={t('textureLibraryTab.searchPlaceholder')}
           className="flex-1 bg-panel border border-border rounded px-2 py-1 text-[11px]"
         />
         <button onClick={importTexture} disabled={busy} className="bg-panelLight text-[11px] rounded px-2 disabled:opacity-40">
-          {busy ? 'Cargando…' : 'Importar…'}
+          {busy ? t('textureLibraryTab.loading') : t('textureLibraryTab.import')}
         </button>
       </div>
 
       <AssetGrid
         items={filtered}
-        getId={(t) => t.id}
-        getName={(t) => t.name}
-        getFavorite={(t) => t.favorite}
-        renderPreview={(t) => <img src={t.dataUrl} className="w-full h-full object-cover" />}
-        onSelect={(t) => setSelectedId(t.id)}
-        onToggleFavorite={(t) => toggleTextureFavorite(t.id)}
-        onDelete={(t) => removeTexture(t.id)}
-        emptyMessage="Sin texturas importadas"
+        getId={(tex) => tex.id}
+        getName={(tex) => tex.name}
+        getFavorite={(tex) => tex.favorite}
+        renderPreview={(tex) => <img src={tex.dataUrl} className="w-full h-full object-cover" />}
+        onSelect={(tex) => setSelectedId(tex.id)}
+        onToggleFavorite={(tex) => toggleTextureFavorite(tex.id)}
+        onDelete={(tex) => removeTexture(tex.id)}
+        emptyMessage={t('textureLibraryTab.emptyMessage')}
       />
 
       <div className="flex gap-1">
@@ -84,7 +86,7 @@ export default function TextureLibraryTab() {
             onClick={() => setMode(m)}
             className={`flex-1 text-[10px] rounded py-1 border ${mode === m ? 'bg-accent text-white border-accent' : 'bg-panel border-border text-textDim'}`}
           >
-            {m === 'tile' ? 'Mosaico' : 'Estirar'}
+            {m === 'tile' ? t('textureLibraryTab.tile') : t('textureLibraryTab.stretch')}
           </button>
         ))}
       </div>
@@ -94,7 +96,7 @@ export default function TextureLibraryTab() {
         disabled={!currentLayer || !selected}
         className="w-full bg-accent text-white text-xs rounded py-1.5 disabled:opacity-40"
       >
-        Rellenar {selection ? 'selección' : 'capa'} con "{selected?.name ?? '—'}"
+        {t('textureLibraryTab.fillWith', { target: selection ? t('textureLibraryTab.targetSelection') : t('textureLibraryTab.targetLayer'), name: selected?.name ?? '—' })}
       </button>
     </div>
   );
